@@ -14,6 +14,8 @@ import { MerchantDashboard } from "./domains/merchant/components/MerchantDashboa
 import { DriverDashboard } from "./domains/driver/components/DriverDashboard";
 import { DisplacedDashboard } from "./domains/displaced/components/DisplacedDashboard";
 import { OperatorDashboard } from "./domains/operator/components/OperatorDashboard";
+import { SpecialistDashboard } from "./domains/specialist/components/SpecialistDashboard";
+import { ManagerDashboard } from "./domains/manager/components/ManagerDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
@@ -22,6 +24,8 @@ function HomeSwitcher() {
   if (currentRole?.slug === 'driver') return <DriverDashboard />;
   if (currentRole?.slug === 'displaced') return <DisplacedDashboard />;
   if (currentRole?.slug === 'operator') return <OperatorDashboard />;
+  if (currentRole?.slug === 'specialist') return <SpecialistDashboard />;
+  if (currentRole?.slug === 'manager') return <ManagerDashboard />;
   return <ReportHome />;
 }
 

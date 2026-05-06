@@ -84,6 +84,22 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             themeColor: '#4f46e5',
             icon: 'Headset',
             description: 'لإدارة البلاغات الواردة وتوجيهها للفرق الميدانية المختصة بسرعة وكفاءة.'
+          },
+          {
+            id: '7',
+            name: 'موظف الإدارة المختصة',
+            slug: 'specialist',
+            themeColor: '#be123c',
+            icon: 'HardHat',
+            description: 'لمتابعة البلاغات المحولة للقسم، تكليف الفرق الميدانية، وتحديث حالة المعالجة على الخريطة.'
+          },
+          {
+            id: '8',
+            name: 'مدير الإدارة',
+            slug: 'manager',
+            themeColor: '#334155',
+            icon: 'BarChart3',
+            description: 'للإشراف على أداء القسم، تحليل مؤشرات الاستجابة، وإدارة الموارد البشرية والميدانية.'
           }
         ];
       }
@@ -145,6 +161,22 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           themeColor: '#4f46e5',
           icon: 'Headset',
           description: 'لإدارة البلاغات الواردة وتوجيهها للفرق الميدانية المختصة بسرعة وكفاءة.'
+        },
+        {
+          id: '7',
+          name: 'موظف الإدارة المختصة',
+          slug: 'specialist',
+          themeColor: '#be123c',
+          icon: 'HardHat',
+          description: 'لمتابعة البلاغات المحولة للقسم، تكليف الفرق الميدانية، وتحديث حالة المعالجة على الخريطة.'
+        },
+        {
+          id: '8',
+          name: 'مدير الإدارة',
+          slug: 'manager',
+          themeColor: '#334155',
+          icon: 'BarChart3',
+          description: 'للإشراف على أداء القسم، تحليل مؤشرات الاستجابة، وإدارة الموارد البشرية والميدانية.'
         }
       ];
       setAvailableRoles(fallback);
