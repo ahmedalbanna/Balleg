@@ -10,6 +10,7 @@ export interface AppRole {
   description: string;
   features?: string[];
   slug: string;
+  category?: 'citizens' | 'business' | 'admin' | 'leadership';
 }
 
 interface RoleContextType {
@@ -29,10 +30,22 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const q = query(collection(db, 'roles'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      let roles = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
-      })) as AppRole[];
+      let roles = snapshot.docs.map(doc => {
+        const data = doc.data();
+        let category: AppRole['category'] = 'citizens';
+        const slug = data.slug;
+        
+        if (['citizen', 'displaced', 'driver'].includes(slug)) category = 'citizens';
+        else if (['merchant'].includes(slug)) category = 'business';
+        else if (['operator', 'specialist', 'official'].includes(slug)) category = 'admin';
+        else if (['manager', 'admin', 'council'].includes(slug)) category = 'leadership';
+
+        return {
+          ...data,
+          id: doc.id,
+          category
+        };
+      }) as AppRole[];
       
       // Fallback if DB is empty
       if (roles.length === 0) {
@@ -43,7 +56,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'citizen',
             themeColor: '#3b82f6',
             icon: 'User',
-            description: 'للمواطنين والجمهور العام لتقديم البلاغات الحية.'
+            description: 'للمواطنين والجمهور العام لتقديم البلاغات الحية.',
+            category: 'citizens'
           },
           {
             id: '2',
@@ -51,7 +65,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'official',
             themeColor: '#000000',
             icon: 'Shield',
-            description: 'لمتابعة البلاغات واتخاذ الإجراءات اللازمة.'
+            description: 'لمتابعة البلاغات واتخاذ الإجراءات اللازمة.',
+            category: 'admin'
           },
           {
             id: '3',
@@ -59,7 +74,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'merchant',
             themeColor: '#059669',
             icon: 'Store',
-            description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم التجارية.'
+            description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم التجارية.',
+            category: 'business'
           },
           {
             id: '4',
@@ -67,7 +83,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'driver',
             themeColor: '#f59e0b',
             icon: 'Car',
-            description: 'للسائقين الحريصين على سلامة الطرق والإبلاغ السريع عن الأعطال.'
+            description: 'للسائقين الحريصين على سلامة الطرق والإبلاغ السريع عن الأعطال.',
+            category: 'citizens'
           },
           {
             id: '5',
@@ -75,7 +92,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'displaced',
             themeColor: '#f97316',
             icon: 'Home',
-            description: 'منصة لرفع صوت المجتمعات المكتظة وضمان وصول الخدمات الأساسية والمساعدات.'
+            description: 'منصة لرفع صوت المجتمعات المكتظة وضمان وصول الخدمات الأساسية والمساعدات.',
+            category: 'citizens'
           },
           {
             id: '6',
@@ -83,7 +101,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'operator',
             themeColor: '#4f46e5',
             icon: 'Headset',
-            description: 'لإدارة البلاغات الواردة وتوجيهها للفرق الميدانية المختصة بسرعة وكفاءة.'
+            description: 'لإدارة البلاغات الواردة وتوجيهها للفرق الميدانية المختصة بسرعة وكفاءة.',
+            category: 'admin'
           },
           {
             id: '7',
@@ -91,7 +110,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'specialist',
             themeColor: '#be123c',
             icon: 'HardHat',
-            description: 'لمتابعة البلاغات المحولة للقسم، تكليف الفرق الميدانية، وتحديث حالة المعالجة على الخريطة.'
+            description: 'لمتابعة البلاغات المحولة للقسم، تكليف الفرق الميدانية، وتحديث حالة المعالجة على الخريطة.',
+            category: 'admin'
           },
           {
             id: '8',
@@ -99,7 +119,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'manager',
             themeColor: '#334155',
             icon: 'BarChart3',
-            description: 'للإشراف على أداء القسم، تحليل مؤشرات الاستجابة، وإدارة الموارد البشرية والميدانية.'
+            description: 'للإشراف على أداء القسم، تحليل مؤشرات الاستجابة، وإدارة الموارد البشرية والميدانية.',
+            category: 'leadership'
           },
           {
             id: '9',
@@ -107,7 +128,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'admin',
             themeColor: '#0f172a',
             icon: 'Briefcase',
-            description: 'السلطة التنفيذية العليا للإشراف الشامل على أداء المديريات والقطاعات الخدمية.'
+            description: 'السلطة التنفيذية العليا للإشراف الشامل على أداء المديريات والقطاعات الخدمية.',
+            category: 'leadership'
           },
           {
             id: '10',
@@ -115,7 +137,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             slug: 'council',
             themeColor: '#1e293b',
             icon: 'Landmark',
-            description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.'
+            description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.',
+            category: 'leadership'
           }
         ];
       }
@@ -136,7 +159,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'citizen',
           themeColor: '#3b82f6',
           icon: 'User',
-          description: 'للمواطنين والجمهور العام لتقديم البلاغات الحية.'
+          description: 'للمواطنين والجمهور العام لتقديم البلاغات الحية.',
+          category: 'citizens'
         },
         {
           id: '2',
@@ -144,7 +168,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'official',
           themeColor: '#000000',
           icon: 'Shield',
-          description: 'لمتابعة البلاغات واتخاذ الإجراءات اللازمة.'
+          description: 'لمتابعة البلاغات واتخاذ الإجراءات اللازمة.',
+          category: 'admin'
         },
         {
           id: '3',
@@ -152,7 +177,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'merchant',
           themeColor: '#059669',
           icon: 'Store',
-          description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم التجارية.'
+          description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم التجارية.',
+          category: 'business'
         },
         {
           id: '4',
@@ -160,7 +186,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'driver',
           themeColor: '#f59e0b',
           icon: 'Car',
-          description: 'للسائقين الحريصين على سلامة الطرق والإبلاغ السريع عن الأعطال.'
+          description: 'للسائقين الحريصين على سلامة الطرق والإبلاغ السريع عن الأعطال.',
+          category: 'citizens'
         },
         {
           id: '5',
@@ -168,7 +195,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'displaced',
           themeColor: '#f97316',
           icon: 'Home',
-          description: 'منصة لرفع صوت المجتمعات المكتظة وضمان وصول الخدمات الأساسية والمساعدات.'
+          description: 'منصة لرفع صوت المجتمعات المكتظة وضمان وصول الخدمات الأساسية والمساعدات.',
+          category: 'citizens'
         },
         {
           id: '6',
@@ -176,7 +204,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'operator',
           themeColor: '#4f46e5',
           icon: 'Headset',
-          description: 'لإدارة البلاغات الواردة وتوجيهها للفرق الميدانية المختصة بسرعة وكفاءة.'
+          description: 'لإدارة البلاغات الواردة وتوجيهها للفرق الميدانية المختصة بسرعة وكفاءة.',
+          category: 'admin'
         },
         {
           id: '7',
@@ -184,7 +213,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'specialist',
           themeColor: '#be123c',
           icon: 'HardHat',
-          description: 'لمتابعة البلاغات المحولة للقسم، تكليف الفرق الميدانية، وتحديث حالة المعالجة على الخريطة.'
+          description: 'لمتابعة البلاغات المحولة للقسم، تكليف الفرق الميدانية، وتحديث حالة المعالجة على الخريطة.',
+          category: 'admin'
         },
         {
           id: '8',
@@ -192,7 +222,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'manager',
           themeColor: '#334155',
           icon: 'BarChart3',
-          description: 'للإشراف على أداء القسم، تحليل مؤشرات الاستجابة، وإدارة الموارد البشرية والميدانية.'
+          description: 'للإشراف على أداء القسم، تحليل مؤشرات الاستجابة، وإدارة الموارد البشرية والميدانية.',
+          category: 'leadership'
         },
         {
           id: '9',
@@ -200,7 +231,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'admin',
           themeColor: '#0f172a',
           icon: 'Briefcase',
-          description: 'السلطة التنفيذية العليا للإشراف الشامل على أداء المديريات والقطاعات الخدمية.'
+          description: 'السلطة التنفيذية العليا للإشراف الشامل على أداء المديريات والقطاعات الخدمية.',
+          category: 'leadership'
         },
         {
           id: '10',
@@ -208,7 +240,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'council',
           themeColor: '#1e293b',
           icon: 'Landmark',
-          description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.'
+          description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.',
+          category: 'leadership'
         }
       ];
       setAvailableRoles(fallback);

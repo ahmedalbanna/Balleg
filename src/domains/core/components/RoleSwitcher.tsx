@@ -22,6 +22,20 @@ export function RoleSwitcher() {
     }
   };
 
+  const categoryMap = {
+    citizens: "المواطنون والمجتمع",
+    business: "قطاع الأعمال",
+    admin: "الوحدات التنفيذية",
+    leadership: "القيادة والرقابة"
+  };
+
+  const groupedRoles = availableRoles.reduce((acc, role) => {
+    const cat = role.category || 'citizens';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(role);
+    return acc;
+  }, {} as Record<string, typeof availableRoles>);
+
   if (!currentRole) return null;
 
   return (
@@ -61,7 +75,7 @@ export function RoleSwitcher() {
               initial={{ opacity: 0, y: 15, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 15, scale: 0.95 }}
-              className="absolute left-0 top-full mt-3 w-72 bg-white border border-slate-200 rounded-[2rem] shadow-2xl z-50 overflow-hidden"
+              className="absolute left-0 top-full mt-3 w-80 bg-white border border-slate-200 rounded-[2rem] shadow-2xl z-50 overflow-hidden"
             >
               {/* User Info Header */}
               <div className="p-6 bg-slate-50/50 border-b border-slate-100">
@@ -71,35 +85,48 @@ export function RoleSwitcher() {
               </div>
 
               {/* Roles Section */}
-              <div className="p-4">
-                <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">اختر دور العرض (تجريبي)</div>
-                <div className="space-y-1 mt-1">
-                    {availableRoles.map((role) => (
-                        <button
-                        key={role.id}
-                        onClick={() => {
-                            setCurrentRole(role);
-                            setIsOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all ${
-                            currentRole.id === role.id 
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                            : 'hover:bg-slate-50 text-slate-600'
-                        }`}
-                        >
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                            currentRole.id === role.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                            {getIcon(role.slug)}
+              <div className="max-h-[400px] overflow-y-auto custom-scrollbar p-4">
+                <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-3">اختر دور العرض (تجريبي)</div>
+                
+                <div className="space-y-6">
+                  {(Object.keys(categoryMap) as Array<keyof typeof categoryMap>).map((catKey) => {
+                    const roles = groupedRoles[catKey];
+                    if (!roles || roles.length === 0) return null;
+
+                    return (
+                      <div key={catKey} className="space-y-2">
+                        <h5 className="px-3 text-[9px] font-black text-slate-400 uppercase tracking-wider">{categoryMap[catKey]}</h5>
+                        <div className="space-y-1">
+                          {roles.map((role) => (
+                            <button
+                              key={role.id}
+                              onClick={() => {
+                                  setCurrentRole(role);
+                                  setIsOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all ${
+                                  currentRole.id === role.id 
+                                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                                  : 'hover:bg-slate-50 text-slate-600'
+                              }`}
+                            >
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                                  currentRole.id === role.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                  {getIcon(role.slug)}
+                              </div>
+                              <div className="text-right">
+                                  <div className="text-sm font-black">{role.name}</div>
+                                  <div className={`text-[10px] ${currentRole.id === role.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                      واجهة {role.name}
+                                  </div>
+                              </div>
+                            </button>
+                          ))}
                         </div>
-                        <div className="text-right">
-                            <div className="text-sm font-black">{role.name}</div>
-                            <div className={`text-[10px] ${currentRole.id === role.id ? 'text-blue-100' : 'text-slate-400'}`}>
-                                واجهة {role.name}
-                            </div>
-                        </div>
-                        </button>
-                    ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
