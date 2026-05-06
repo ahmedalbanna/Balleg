@@ -1,5 +1,5 @@
 import { useRole } from "../context/RoleContext";
-import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car } from "lucide-react";
+import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "../utils/cn";
 
@@ -11,6 +11,7 @@ export function Sidebar() {
       case 'official': return <Shield className="w-5 h-5" />;
       case 'merchant': return <Store className="w-5 h-5" />;
       case 'driver': return <Car className="w-5 h-5" />;
+      case 'displaced': return <Home className="w-5 h-5" />;
       default: return <User className="w-5 h-5" />;
     }
   };

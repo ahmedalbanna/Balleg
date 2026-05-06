@@ -1,5 +1,5 @@
 import { useRole } from "../context/RoleContext";
-import { User, Shield, Briefcase, ChevronDown, Store, LogOut, Settings, Car } from "lucide-react";
+import { User, Shield, Briefcase, ChevronDown, Store, LogOut, Settings, Car, Home } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -12,6 +12,7 @@ export function RoleSwitcher() {
       case 'official': return <Shield className="w-4 h-4" />;
       case 'merchant': return <Store className="w-4 h-4" />;
       case 'driver': return <Car className="w-4 h-4" />;
+      case 'displaced': return <Home className="w-4 h-4" />;
       default: return <User className="w-4 h-4" />;
     }
   };

@@ -68,6 +68,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             themeColor: '#f59e0b',
             icon: 'Car',
             description: 'للسائقين الحريصين على سلامة الطرق والإبلاغ السريع عن الأعطال.'
+          },
+          {
+            id: '5',
+            name: 'النازحون والمجتمعات',
+            slug: 'displaced',
+            themeColor: '#f97316',
+            icon: 'Home',
+            description: 'منصة لرفع صوت المجتمعات المكتظة وضمان وصول الخدمات الأساسية والمساعدات.'
           }
         ];
       }
@@ -113,6 +121,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           themeColor: '#f59e0b',
           icon: 'Car',
           description: 'للسائقين الحريصين على سلامة الطرق والإبلاغ السريع عن الأعطال.'
+        },
+        {
+          id: '5',
+          name: 'النازحون والمجتمعات',
+          slug: 'displaced',
+          themeColor: '#f97316',
+          icon: 'Home',
+          description: 'منصة لرفع صوت المجتمعات المكتظة وضمان وصول الخدمات الأساسية والمساعدات.'
         }
       ];
       setAvailableRoles(fallback);

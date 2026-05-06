@@ -12,12 +12,14 @@ import { RoleProvider, useRole } from "./domains/core/context/RoleContext";
 import { OfficialDashboard } from "./domains/official/components/OfficialDashboard";
 import { MerchantDashboard } from "./domains/merchant/components/MerchantDashboard";
 import { DriverDashboard } from "./domains/driver/components/DriverDashboard";
+import { DisplacedDashboard } from "./domains/displaced/components/DisplacedDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
   if (currentRole?.slug === 'official') return <OfficialDashboard />;
   if (currentRole?.slug === 'merchant') return <MerchantDashboard />;
   if (currentRole?.slug === 'driver') return <DriverDashboard />;
+  if (currentRole?.slug === 'displaced') return <DisplacedDashboard />;
   return <ReportHome />;
 }
 
