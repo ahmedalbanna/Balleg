@@ -1,17 +1,22 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Mic, Square, Camera as CameraIcon, UploadCloud, RefreshCcw, CheckCircle2, ChevronRight, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { Mic, Square, Camera as CameraIcon, UploadCloud, RefreshCcw, CheckCircle2, ChevronRight, AlertCircle, Loader2, Sparkles, EyeOff, ShieldCheck } from "lucide-react";
 import * as motion from "motion/react-client";
 import { cn } from "../../core/utils/cn";
 import { reportApi } from "../../core/services/reportApi";
 import { aiService } from "../../core/services/ai";
 import { mediaUtils } from "../../core/utils/media";
+import { useRole } from "../../core/context/RoleContext";
+import { auth } from "../../core/services/firebase";
+import { toast } from "sonner";
 
 export function NewReport() {
+  const { currentRole } = useRole();
   const [step, setStep] = useState<"capture" | "review" | "success">("capture");
   
   // Text state
   const [description, setDescription] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   // Media states
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -104,6 +109,21 @@ export function NewReport() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    
+    if (currentRole?.slug === 'displaced') {
+      try {
+        const myReports = await reportApi.getMyReports(auth.currentUser?.uid || 'anonymous');
+        const openReports = myReports.filter((r: any) => ['pending_operator', 'pending_official', 'in_progress'].includes(r.status));
+        if (openReports.length >= 3) {
+          toast.error("عذراً، لديك ٣ بلاغات مفتوحة حالياً. يرجى الانتظار حتى معالجتها لتتمكن من تقديم بلاغ جديد.");
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to check open reports", err);
+      }
+    }
+
     setSubmitProgress("جاري تحليل البلاغ بالذكاء الاصطناعي...");
     try {
       // 1. AI Analysis
@@ -128,7 +148,9 @@ export function NewReport() {
         type: analysis.classification || "عام", 
         location: [33.5138, 36.2765],
         imageUrl: uploadedImageUrl,
-        aiAnalysis: analysis
+        aiAnalysis: analysis,
+        isAnonymous: isAnonymous,
+        role: currentRole?.slug
       });
       
       if(res.success) {
@@ -182,6 +204,23 @@ export function NewReport() {
                     className="w-full bg-transparent border-none outline-none resize-none h-24 text-sm font-bold text-slate-700 placeholder:text-slate-400"
                 />
             </div>
+
+            {currentRole?.slug === 'displaced' && (
+              <div onClick={() => setIsAnonymous(!isAnonymous)} className={cn("p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between", isAnonymous ? "bg-slate-900 border-slate-900" : "bg-white border-slate-200 hover:border-slate-300")}>
+                  <div className="flex items-center gap-3">
+                      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", isAnonymous ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500")}>
+                          <EyeOff className="w-5 h-5" />
+                      </div>
+                      <div>
+                          <h4 className={cn("font-bold text-sm", isAnonymous ? "text-white" : "text-slate-800")}>تبليغ مجهول بالكامل</h4>
+                          <p className={cn("text-xs font-bold mt-1", isAnonymous ? "text-slate-400" : "text-slate-500")}>لن يتم تسجيل هويتك أو مشاركتها، ستحصل فقط على رقم تتبع.</p>
+                      </div>
+                  </div>
+                  <div className={cn("w-12 h-6 rounded-full p-1 flex items-center transition-colors", isAnonymous ? "bg-emerald-500 justify-end" : "bg-slate-200 justify-start")}>
+                      <div className="w-4 h-4 bg-white rounded-full"></div>
+                  </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Photo Area */}

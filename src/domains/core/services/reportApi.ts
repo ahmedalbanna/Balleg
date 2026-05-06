@@ -28,11 +28,13 @@ export const reportApi = {
     type?: string, 
     location?: [number, number],
     imageUrl?: string,
-    aiAnalysis?: any
+    aiAnalysis?: any,
+    isAnonymous?: boolean,
+    role?: string
   }) {
     const res = await axios.post('/api/domain/report/create', {
       ...data,
-      userId: auth.currentUser?.uid || "anonymous"
+      userId: data.isAnonymous ? "anonymous" : (auth.currentUser?.uid || "anonymous")
     });
     return res.data;
   },

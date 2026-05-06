@@ -77,9 +77,14 @@ async function startServer() {
 
   // 2. Citizen submits report
   reportRouter.post("/create", (req, res) => {
-    const { description, type, audioUrl, imageUrl, location, aiAnalysis, userId } = req.body;
+    const { description, type, audioUrl, imageUrl, location, aiAnalysis, userId, role } = req.body;
     const trackingNo = "BLG-" + Math.floor(100000 + Math.random() * 900000);
     
+    // Auto-route if displaced
+    const isDisplaced = role === "displaced";
+    const status = isDisplaced ? "pending_official" : "pending_operator";
+    const department = isDisplaced ? "البلدية والمنظمات الإنسانية" : undefined;
+
     const newReport = {
       id: trackingNo,
       userId: userId || "anonymous",
@@ -87,14 +92,15 @@ async function startServer() {
       type: type || "عادي",
       audioUrl,
       imageUrl,
-      status: "pending_operator",
+      status: status,
+      department: department,
       priority: aiAnalysis?.priority || 'medium',
       createdAt: new Date().toISOString(),
       location: location || [33.5138, 36.2765],
       aiAnalysis: aiAnalysis || null
     };
     
-    reportsDatabase.push(newReport);
+    reportsDatabase.push(newReport as any);
     console.log(`[Domain: Report] Received new report: ${trackingNo}`);
     res.json({ success: true, trackingNo, report: newReport, message: "تم تسجيل البلاغ بنجاح" });
   });
