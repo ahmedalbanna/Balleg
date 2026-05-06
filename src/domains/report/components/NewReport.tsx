@@ -3,10 +3,14 @@ import { Link } from "react-router-dom";
 import { Mic, Square, Camera as CameraIcon, UploadCloud, RefreshCcw, CheckCircle2, ChevronRight, AlertCircle, Loader2 } from "lucide-react";
 import * as motion from "motion/react-client";
 import { cn } from "../../core/utils/cn";
+import { reportApi } from "../../core/services/reportApi";
 
 export function NewReport() {
   const [step, setStep] = useState<"capture" | "review" | "success">("capture");
   
+  // Text state
+  const [description, setDescription] = useState("");
+
   // Media states
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -46,7 +50,6 @@ export function NewReport() {
       }, 1000);
     } catch (err) {
       console.error("Microphone access denied:", err);
-      // In a real app we'd show a toast here
     }
   };
 
@@ -55,8 +58,6 @@ export function NewReport() {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       if (timerRef.current) clearInterval(timerRef.current);
-      
-      // Stop the tracks
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
   };
@@ -95,31 +96,16 @@ export function NewReport() {
     }
   };
 
-  const resetAll = () => {
-    setAudioBlob(null);
-    setImageSrc(null);
-    setRecordingTime(0);
-    stopCamera();
-    stopRecording();
-  };
-
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
-    // Simulate API upload
     try {
-      const res = await fetch("/api/domain/report/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "mixed",
-          hasAudio: !!audioBlob,
-          hasImage: !!imageSrc
-        })
+      const res = await reportApi.createReport({
+        description: description || "تسجيل صوتي مرفق",
+        type: "عام", 
+        location: [33.5138, 36.2765] // random location near Damascus
       });
-      const data = await res.json();
-      if(data.success) {
-        setTrackingNo(data.trackingNo);
+      if(res.success) {
+        setTrackingNo(res.trackingNo);
         setStep("success");
       }
     } catch (error) {
@@ -129,7 +115,6 @@ export function NewReport() {
     }
   };
 
-  // Format time (MM:SS)
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
     const s = (seconds % 60).toString().padStart(2, "0");
@@ -149,7 +134,16 @@ export function NewReport() {
           <motion.div initial={{opacity:0}} animate={{opacity:1}} className="space-y-8">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold font-readex text-slate-900 mb-2">إضافة المشكلة</h2>
-              <p className="text-slate-500">تحدث عنها، أو التقط لها صورة. نحن هنا للمساعدة.</p>
+              <p className="text-slate-500">تحدث عنها، اكتبها، أو التقط لها صورة. نحن هنا للمساعدة.</p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-inner">
+                <textarea 
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="اكتب وصفاً مختصراً للمشكلة هنا..."
+                    className="w-full bg-transparent border-none outline-none resize-none h-24 text-sm font-bold text-slate-700 placeholder:text-slate-400"
+                />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -228,7 +222,7 @@ export function NewReport() {
             <div className="pt-8 flex justify-end">
               <button
                 onClick={() => setStep("review")}
-                disabled={!audioBlob && !imageSrc}
+                disabled={!audioBlob && !imageSrc && description.length < 5}
                 className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
               >
                 متابعة
@@ -246,22 +240,29 @@ export function NewReport() {
 
             <div className="bg-[#F8FAFC] rounded-2xl border border-slate-200 p-6 space-y-4 shadow-inner">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
-                  <CameraIcon className={imageSrc ? "text-blue-600" : "text-slate-400"} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 text-lg">الصورة المرفقة</h4>
-                  <p className="text-sm text-slate-500">{imageSrc ? "تم إرفاق صورة بنجاح" : "لم يتم إرفاق صورة"}</p>
+                <div className="flex-1">
+                  <h4 className="font-bold text-slate-900 text-lg mb-2">الوصف النصي</h4>
+                  <p className="text-sm text-slate-600 bg-white p-3 rounded-xl border border-slate-100 leading-relaxed min-h-[60px]">{description || "لا يوجد"}</p>
                 </div>
               </div>
               <div className="w-full h-px bg-slate-200"></div>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center shrink-0">
+                  <CameraIcon className={imageSrc ? "text-blue-600" : "text-slate-400"} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">الصورة المرفقة</h4>
+                  <p className="text-xs text-slate-500">{imageSrc ? "تم إرفاق صورة بنجاح" : "لم يتم إرفاق صورة"}</p>
+                </div>
+              </div>
+              <div className="w-full h-px bg-slate-200"></div>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center shrink-0">
                   <Mic className={audioBlob ? "text-blue-600" : "text-slate-400"} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 text-lg">التسجيل الصوتي</h4>
-                  <p className="text-sm text-slate-500">{audioBlob ? `مرفق تسجيل مدته ${formatTime(recordingTime)}` : "لم يتم تسجيل صوت"}</p>
+                  <h4 className="font-bold text-slate-900 text-sm">التسجيل الصوتي</h4>
+                  <p className="text-xs text-slate-500">{audioBlob ? `مرفق تسجيل مدته ${formatTime(recordingTime)}` : "لم يتم تسجيل صوت"}</p>
                 </div>
               </div>
             </div>
@@ -303,7 +304,7 @@ export function NewReport() {
             
             <h2 className="text-3xl font-bold font-readex text-slate-900">تم إرسال بلاغك بنجاح!</h2>
             <p className="text-slate-500 max-w-md mx-auto">
-              شكراً لمساهمتك. سيتم مراجعة المشكلة من قبل فرقنا المختصة.
+              شكراً لمساهمتك. سيتم توجيه المشكلة تلقائياً للقسم المختص عبر مركز الاستقبال المدعوم بالذكاء الاصطناعي.
             </p>
 
             <div className="bg-[#F8FAFC] border border-slate-200 rounded-2xl p-6 mt-8 w-full max-w-sm mx-auto shadow-sm">
@@ -318,9 +319,15 @@ export function NewReport() {
             </div>
 
             <div className="pt-8 w-full max-w-sm mx-auto flex">
-              <Link to="/" className="flex-1 text-center justify-center px-8 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-medium rounded-xl transition-colors shadow-sm">
-                العودة للرئيسية
-              </Link>
+              <button onClick={() => {
+                setDescription("");
+                setAudioBlob(null);
+                setImageSrc(null);
+                setTrackingNo("");
+                setStep("capture");
+              }} className="flex-1 text-center justify-center px-8 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900 font-medium rounded-xl transition-colors shadow-sm cursor-pointer">
+                تقديم بلاغ آخر
+              </button>
             </div>
           </motion.div>
         )}
