@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Shield } from "lucide-react";
+import { RoleSwitcher } from "./RoleSwitcher";
 
 export function Layout() {
   const location = useLocation();
@@ -12,20 +13,23 @@ export function Layout() {
           <h1 className="text-2xl font-black tracking-tight text-blue-900 font-readex">بلّــــغ</h1>
         </Link>
 
-        <nav className="hidden sm:flex gap-8 text-sm font-medium">
-          <Link 
-            to="/" 
-            className={`transition-colors ${location.pathname === '/' ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-slate-500 hover:text-blue-600'}`}
-          >
-            الرئيسية
-          </Link>
-          <Link 
-            to="/track" 
-            className={`transition-colors ${location.pathname === '/track' ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-slate-500 hover:text-blue-600'}`}
-          >
-            متابعة البلاغات
-          </Link>
-        </nav>
+        <div className="flex items-center gap-4">
+          <nav className="hidden md:flex gap-8 text-sm font-medium ml-8">
+            <Link 
+              to="/" 
+              className={`transition-colors ${location.pathname === '/' ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-slate-500 hover:text-blue-600'}`}
+            >
+              الرئيسية
+            </Link>
+            <Link 
+              to="/track" 
+              className={`transition-colors ${location.pathname === '/track' ? 'text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-slate-500 hover:text-blue-600'}`}
+            >
+              متابعة البلاغات
+            </Link>
+          </nav>
+          <RoleSwitcher />
+        </div>
       </header>
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-10 py-8 flex flex-col gap-8">

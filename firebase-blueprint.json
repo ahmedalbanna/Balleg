@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "Role": {
+      "title": "Role",
+      "description": "App role configuration for different target audiences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "themeColor": { "type": "string" },
+        "icon": { "type": "string" },
+        "description": { "type": "string" },
+        "features": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["id", "name", "themeColor"]
+    }
+  },
+  "firestore": {
+    "/roles/{roleId}": {
+      "schema": "Role",
+      "description": "Collection of available app roles"
+    }
+  }
+}
