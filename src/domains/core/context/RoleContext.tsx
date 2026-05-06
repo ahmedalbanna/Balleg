@@ -60,6 +60,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             themeColor: '#059669',
             icon: 'Store',
             description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم التجارية.'
+          },
+          {
+            id: '4',
+            name: 'سائقو النقل',
+            slug: 'driver',
+            themeColor: '#f59e0b',
+            icon: 'Car',
+            description: 'للسائقين الحريصين على سلامة الطرق والإبلاغ السريع عن الأعطال.'
           }
         ];
       }
@@ -97,6 +105,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           themeColor: '#059669',
           icon: 'Store',
           description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم التجارية.'
+        },
+        {
+          id: '4',
+          name: 'سائقو النقل',
+          slug: 'driver',
+          themeColor: '#f59e0b',
+          icon: 'Car',
+          description: 'للسائقين الحريصين على سلامة الطرق والإبلاغ السريع عن الأعطال.'
         }
       ];
       setAvailableRoles(fallback);
