@@ -36,10 +36,10 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         const slug = data.slug;
         
         if (['citizen', 'displaced', 'driver'].includes(slug)) category = 'citizens';
-        else if (['merchant'].includes(slug)) category = 'business';
+        else if (['merchant', 'telecom'].includes(slug)) category = 'business';
         else if (['operator', 'specialist', 'official'].includes(slug)) category = 'admin';
         else if (['manager', 'admin', 'council'].includes(slug)) category = 'leadership';
-        else if (['neighborhood_council', 'humanitarian'].includes(slug)) category = 'community';
+        else if (['neighborhood_council', 'humanitarian', 'journalist'].includes(slug)) category = 'community';
 
         return {
           ...data,
@@ -167,6 +167,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Newspaper',
             description: 'للوصول إلى البيانات الموثقة، رصد القضايا الأكثر تأثيراً، وكشف فجوات الأداء الخدمي.',
             category: 'community'
+          },
+          {
+            id: '14',
+            name: 'شركات الاتصالات',
+            slug: 'telecom',
+            themeColor: '#0ea5e9',
+            icon: 'Signal',
+            description: 'لتحسين خدمة العملاء، رصد أعطال الأبراج، وبناء سمعة "الشركة المستجيبة" تقنياً.',
+            category: 'business'
           }
         ];
       }
@@ -282,7 +291,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           },
           {
             id: '12',
-            name: 'الالمنظمات الإنسانية',
+            name: 'المنظمات الإنسانية',
             slug: 'humanitarian',
             themeColor: '#0284c7',
             icon: 'HeartPulse',
@@ -297,6 +306,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Newspaper',
             description: 'للوصول إلى البيانات الموثقة، رصد القضايا الأكثر تأثيراً، وكشف فجوات الأداء الخدمي.',
             category: 'community'
+          },
+          {
+            id: '14',
+            name: 'شركات الاتصالات',
+            slug: 'telecom',
+            themeColor: '#0ea5e9',
+            icon: 'Signal',
+            description: 'لتحسين خدمة العملاء، رصد أعطال الأبراج، وبناء سمعة "الشركة المستجيبة" تقنياً.',
+            category: 'business'
           }
         ];
       setAvailableRoles(fallback);

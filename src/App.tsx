@@ -21,6 +21,7 @@ import { CouncilDashboard } from "./domains/council/components/CouncilDashboard"
 import { NeighborhoodDashboard } from "./domains/neighborhood/components/NeighborhoodDashboard";
 import { HumanitarianDashboard } from "./domains/humanitarian/components/HumanitarianDashboard";
 import { JournalistDashboard } from "./domains/journalist/components/JournalistDashboard";
+import { TelecomDashboard } from "./domains/telecom/components/TelecomDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
@@ -36,6 +37,7 @@ function HomeSwitcher() {
   if (currentRole?.slug === 'neighborhood_council') return <NeighborhoodDashboard />;
   if (currentRole?.slug === 'humanitarian') return <HumanitarianDashboard />;
   if (currentRole?.slug === 'journalist') return <JournalistDashboard />;
+  if (currentRole?.slug === 'telecom') return <TelecomDashboard />;
   return <ReportHome />;
 }
 
