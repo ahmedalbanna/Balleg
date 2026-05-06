@@ -46,6 +46,7 @@ async function startServer() {
       description: "هناك ماسورة مياه مكسورة في وسط الطريق تسبب في إعاقة حركة السير وتسرب كميات هائلة من المياه العذبة. الموقع يحتاج تدخل سريع לפני غرق المحلات المجاورة.",
       type: "مياه",
       status: "pending_operator",
+      priority: "critical",
       createdAt: new Date().toISOString(),
       location: [33.5138, 36.2765]
     },
@@ -54,6 +55,7 @@ async function startServer() {
       description: "القمامة متراكمة في تقاطع الشارع الرئيسي منذ أسبوع والرائحة لا تحتمل.",
       type: "نظافة",
       status: "pending_official",
+      priority: "high",
       department: "نظافة",
       createdAt: new Date(Date.now() - 86400000).toISOString(),
       classification: "نظافة",
@@ -85,6 +87,7 @@ async function startServer() {
       audioUrl,
       imageUrl,
       status: "pending_operator",
+      priority: aiAnalysis?.priority || 'medium',
       createdAt: new Date().toISOString(),
       location: location || [33.5138, 36.2765],
       aiAnalysis: aiAnalysis || null

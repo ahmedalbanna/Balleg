@@ -8,6 +8,7 @@ export interface AIClassificationResult {
   classification?: string;
   detectedObjects?: string[];
   severity?: 'low' | 'medium' | 'high';
+  priority?: 'critical' | 'high' | 'medium' | 'low';
   summary?: string;
   error?: string;
 }
@@ -35,7 +36,8 @@ export const aiService = {
         1. classification: (طرق، نظافة، كهرباء، مياه، إنساني، طارئ)
         2. detectedObjects: قائمة بالأشياء المكتشفة في الصورة (مثل: حفرة، نفايات، أنبوب مكسور)
         3. severity: (low, medium, high)
-        4. summary: ملخص ذكي للبلاغ باللغة العربية.
+        4. priority: (critical, high, medium, low) - حدد critical فقط في حالات خطر الموت أو الكوارث الكبيرة.
+        5. summary: ملخص ذكي للبلاغ باللغة العربية.
         
         البلاغ النصي: "${text}"
       `;

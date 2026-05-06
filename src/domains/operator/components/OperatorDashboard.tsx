@@ -21,7 +21,15 @@ export function OperatorDashboard() {
   const fetchPending = async () => {
     try {
       const data = await reportApi.getPendingOperator();
-      setReports(data);
+      // Sort by priority then date
+      const priorityWeights: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+      const sorted = (data || []).sort((a: Report, b: Report) => {
+        const wA = priorityWeights[a.priority || 'low'] || 1;
+        const wB = priorityWeights[b.priority || 'low'] || 1;
+        if (wA !== wB) return wB - wA;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      setReports(sorted);
       setLoading(false);
     } catch (e) {
       console.error(e);
@@ -148,13 +156,26 @@ export function OperatorDashboard() {
                                         <Inbox className="w-6 h-6" />
                                     </div>
                                     <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            {report.priority === 'critical' && (
+                                                <span className="flex items-center gap-1 px-2 py-0.5 bg-red-600 text-white text-[8px] font-black rounded-lg animate-pulse">
+                                                    <AlertCircle className="w-2 h-2" />
+                                                    عاجل جداً
+                                                </span>
+                                            )}
+                                            {report.priority === 'high' && (
+                                                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[8px] font-black rounded-lg">
+                                                    أولوية مرتفعة
+                                                </span>
+                                            )}
+                                            <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500">
+                                                <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{report.id}</span>
+                                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {getTimeAgo(report.createdAt)}</span>
+                                                <span className="text-slate-400">نوع التدخيل: {report.type}</span>
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-2 mb-1">
                                             <h4 className="font-black text-slate-800 line-clamp-1 flex-1 leading-relaxed">{report.description}</h4>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 mb-3">
-                                            <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{report.id}</span>
-                                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {getTimeAgo(report.createdAt)}</span>
-                                            <span className="text-slate-400">نوع التدخيل: {report.type}</span>
                                         </div>
 
                                         {report.imageUrl && (

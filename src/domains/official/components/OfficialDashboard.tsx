@@ -1,8 +1,9 @@
-import { BarChart3, LayoutDashboard, Bell, Search, Filter, CheckCircle, Loader2 } from "lucide-react";
+import { BarChart3, LayoutDashboard, Bell, Search, Filter, CheckCircle, Loader2, AlertCircle, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { notificationService } from "../../core/services/notifications";
+import { cn } from "../../core/utils/cn";
 
 export function OfficialDashboard() {
   const [department, setDepartment] = useState("نظافة");
@@ -19,7 +20,15 @@ export function OfficialDashboard() {
   const fetchReports = async () => {
     try {
       const data = await reportApi.getDepartmentReports(department);
-      setReports(data);
+      // Sort by priority then date
+      const priorityWeights: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+      const sorted = (data || []).sort((a: Report, b: Report) => {
+        const wA = priorityWeights[a.priority || 'low'] || 1;
+        const wB = priorityWeights[b.priority || 'low'] || 1;
+        if (wA !== wB) return wB - wA;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      setReports(sorted);
       setLoading(false);
     } catch (e) {
       console.error(e);
@@ -144,7 +153,19 @@ export function OfficialDashboard() {
                                 initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0, scale:0.95}}
                                 key={report.id} className="hover:bg-slate-50/80 transition-colors group"
                             >
-                                <td className="px-6 py-4 font-mono text-sm font-bold text-slate-700">{report.id}</td>
+                                <td className="px-6 py-4 font-mono text-sm font-bold text-slate-700">
+                                    <div className="flex flex-col gap-1">
+                                        <span>{report.id}</span>
+                                        {report.priority === 'critical' && (
+                                            <span className="flex items-center gap-0.5 text-[8px] font-black text-red-600 uppercase animate-pulse">
+                                                <AlertCircle className="w-2 h-2" /> عاجل جداً
+                                            </span>
+                                        )}
+                                        {report.priority === 'high' && (
+                                            <span className="text-[8px] font-black text-orange-600 uppercase">أولوية مرتفعة</span>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="px-6 py-4 text-sm font-bold opacity-80 leading-relaxed max-w-xs transition-all">
                                     <div className="flex flex-col gap-2">
                                         <p className="line-clamp-2">{report.description}</p>
