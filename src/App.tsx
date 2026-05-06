@@ -13,6 +13,7 @@ import { RegisterPage } from "./domains/auth/components/RegisterPage";
 import { ReportHome } from "./domains/report/components/ReportHome";
 import { NewReport } from "./domains/report/components/NewReport";
 import { TrackReport } from "./domains/report/components/TrackReport";
+import { MyReports } from "./domains/report/components/MyReports";
 import { OfficialDashboard } from "./domains/official/components/OfficialDashboard";
 import { MerchantDashboard } from "./domains/merchant/components/MerchantDashboard";
 import { DriverDashboard } from "./domains/driver/components/DriverDashboard";
@@ -75,6 +76,7 @@ export default function App() {
               <Route path="/" element={<HomeSwitcher />} />
               <Route path="/new" element={<NewReport />} />
               <Route path="/track" element={<TrackReport />} />
+              <Route path="/reports/my" element={<MyReports />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
             

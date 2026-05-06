@@ -188,7 +188,16 @@ async function startServer() {
     });
   });
 
-  // 7. Operator/Official fetches reports
+  // 7. Get reports for a specific user
+  reportRouter.get("/user/:userId", (req, res) => {
+    const userId = req.params.userId;
+    // In actual production, we filter by authenticated UID. 
+    // Here we simulate by looking at userId field in reports
+    const userReports = reportsDatabase.filter(r => r.userId === userId || r.id.includes(userId));
+    res.json({ reports: userReports.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) });
+  });
+
+  // 8. Operator/Official fetches reports
   reportRouter.get("/all", (req, res) => {
     res.json({ reports: reportsDatabase.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) });
   });

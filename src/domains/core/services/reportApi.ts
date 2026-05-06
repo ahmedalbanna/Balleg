@@ -39,6 +39,11 @@ export const reportApi = {
     return res.data;
   },
   
+  async getMyReports(userId: string) {
+    const res = await axios.get(`/api/domain/report/user/${userId}`);
+    return res.data;
+  },
+  
   // 2. Citizen tracks a report
   async trackReport(id: string) {
     const res = await axios.get(`/api/domain/report/track/${id}`);

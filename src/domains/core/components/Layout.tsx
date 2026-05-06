@@ -31,6 +31,12 @@ export function Layout() {
             >
               متابعة البلاغات
             </Link>
+            <Link 
+              to="/reports/my" 
+              className={`transition-all duration-300 relative py-7 ${location.pathname === '/reports/my' ? 'text-blue-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1.5 after:bg-blue-600 after:rounded-t-full' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              بلاغاتي
+            </Link>
           </nav>
 
           <div className="flex items-center gap-4">
