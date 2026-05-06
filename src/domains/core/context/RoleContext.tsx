@@ -408,6 +408,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Terminal',
             description: 'للمطورين والمهندسين لمراقبة صحة النظام، أداء الـ API، وحل المشكلات التقنية الحرجة.',
             category: 'admin'
+          },
+          {
+            id: '19',
+            name: 'الجهات المانحة (Donors)',
+            slug: 'donor',
+            themeColor: '#1e40af',
+            icon: 'Globe2',
+            description: 'للمنظمات الدولية المانحة لمراقبة مؤشرات الأداء، قياس أثر التمويل، وضمان الشفافية المؤسسية.',
+            category: 'leadership'
           }
         ];
       setAvailableRoles(fallback);
