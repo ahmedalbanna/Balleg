@@ -6,6 +6,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
+import { logActivity } from '../services/audit';
 
 interface UserProfile {
   uid: string;
@@ -56,14 +57,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
       if (firebaseUser) {
         await fetchProfile(firebaseUser.uid);
+        logActivity('LOGIN', `User ${firebaseUser.email || firebaseUser.uid} logged in`);
       } else {
+        if (user) logActivity('LOGOUT', `User ${user.email || user.uid} logged out`);
         setProfile(null);
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]); // Added user to dependencies to track the change for logging
 
   const signOut = async () => {
     await firebaseSignOut(auth);

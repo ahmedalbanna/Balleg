@@ -6,8 +6,24 @@ import { useAuth } from "../context/AuthContext";
 
 export function RoleSwitcher() {
   const { currentRole, setCurrentRole, availableRoles } = useRole();
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+
+  // In production/real scenario, only Admins or Developers can switch roles globally
+  // Citizens or regular employees should NOT see this switcher
+  const canSwitchRoles = profile?.role === 'admin' || profile?.role === 'developer';
+
+  if (!canSwitchRoles && profile?.role !== 'citizen') {
+    // If not admin/dev, but authenticated, we just show the current role status without switching capability
+    return (
+      <div className="flex items-center gap-2 py-2 px-4 bg-blue-50 text-blue-700 rounded-2xl border border-blue-100 shadow-sm">
+        <Shield className="w-4 h-4" />
+        <span className="text-xs font-bold">{currentRole.name}</span>
+      </div>
+    );
+  }
+
+  if (!canSwitchRoles) return null;
 
   const getIcon = (slug: string) => {
     switch (slug) {

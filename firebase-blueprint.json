@@ -62,6 +62,20 @@
         "verified": { "type": "boolean" }
       },
       "required": ["phoneNumber", "otpCode", "expiresAt", "verified"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "System-wide activity logs for security and monitoring",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "path": { "type": "string" },
+        "ip": { "type": "string" }
+      },
+      "required": ["userId", "action", "timestamp"]
     }
   },
   "firestore": {
@@ -80,6 +94,10 @@
     "/citizen_verification/{phoneNumber}": {
       "schema": "CitizenVerification",
       "description": "Phone verification records"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Admin security logs"
     }
   }
 }

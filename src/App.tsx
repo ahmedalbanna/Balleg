@@ -32,14 +32,14 @@ import { VerifierDashboard } from "./domains/verifier/components/VerifierDashboa
 import { DeveloperDashboard } from "./domains/developer/components/DeveloperDashboard";
 import { DonorDashboard } from "./domains/donor/components/DonorDashboard";
 
+import { ProfilePage } from "./domains/core/components/ProfilePage";
+import { AdminDashboard } from "./domains/admin/components/AdminDashboard";
+
 function HomeSwitcher() {
   const { currentRole } = useRole();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   
-  // If not logged in and trying to access root, might want to show public home
-  // but for this app the Root is the dashboard. 
-  // AuthGuard will handle redirection if needed.
-  
+  if (currentRole?.slug === 'admin') return <AdminDashboard />;
   if (currentRole?.slug === 'official') return <OfficialDashboard />;
   if (currentRole?.slug === 'merchant') return <MerchantDashboard />;
   if (currentRole?.slug === 'driver') return <DriverDashboard />;
@@ -75,6 +75,7 @@ export default function App() {
               <Route path="/" element={<HomeSwitcher />} />
               <Route path="/new" element={<NewReport />} />
               <Route path="/track" element={<TrackReport />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
             
             <Route path="*" element={<Navigate to="/" replace />} />

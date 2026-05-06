@@ -2,6 +2,7 @@ import { useRole } from "../context/RoleContext";
 import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse, Newspaper, Signal, Hammer, Wrench, FileSearch, Terminal, Globe2 } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "../utils/cn";
+import { Link } from "react-router-dom";
 
 export function Sidebar() {
   const { currentRole, setCurrentRole, availableRoles } = useRole();
@@ -115,14 +116,18 @@ export function Sidebar() {
             </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-            <button className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-100">
+        <div className="grid grid-cols-3 gap-2">
+            <Link to="/" className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-100">
                 <LayoutDashboard className="w-4 h-4" />
                 <span className="text-[9px] font-black uppercase tracking-tighter">الرئيسية</span>
-            </button>
+            </Link>
+            <Link to="/profile" className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-100">
+                <User className="w-4 h-4" />
+                <span className="text-[9px] font-black uppercase tracking-tighter">الملف</span>
+            </Link>
             <button className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-100">
                 <Settings className="w-4 h-4" />
-                <span className="text-[9px] font-black uppercase tracking-tighter">الإعدادات</span>
+                <span className="text-[9px] font-black uppercase tracking-tighter">الاعدادات</span>
             </button>
         </div>
       </div>
