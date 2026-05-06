@@ -1,9 +1,16 @@
 import { HardHat, Map, Users, CheckCircle2, AlertCircle, Clock, Navigation, TrendingUp, BarChart3, ChevronLeft } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import MapView from "../../locations/components/MapView";
 
 export function SpecialistDashboard() {
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
+
+  const maintenanceMarkers = [
+    { id: 'TSK-102', lat: 33.5138, lng: 36.2765, title: 'صيانة حفرة شارع الستين', description: 'فريق صيانة الطرق (أ) - جاري العمل، نسبة الإنجاز ٦٠٪', type: 'info' as const, status: 'قيد التنفيذ' },
+    { id: 'TSK-105', lat: 33.5250, lng: 36.2900, title: 'إصلاح هبوط رصيف الصافية', description: 'بانتظار وصول المواد الخام (إسمنت وحجر رصيف)', type: 'complaint' as const, status: 'تم التكليف' },
+    { id: 'TSK-108', lat: 33.5050, lng: 36.2650, title: 'تغطية منهل مفتوح', description: 'إجراء عاجل: تم تأمين الموقع بحواجز تحذيرية مؤقتة', type: 'hazard' as const, status: 'طارئ' },
+  ];
 
   const stats = [
     { label: "مهام نشطة", value: "٦", icon: AlertCircle, color: "text-rose-600", bg: "bg-rose-50" },
@@ -77,35 +84,9 @@ export function SpecialistDashboard() {
                 </div>
                 
                 <div className="flex-1 bg-slate-100 relative group overflow-hidden">
-                    {/* Simulated Map Background */}
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                    <MapView markers={maintenanceMarkers} center={[33.5138, 36.2765]} zoom={13} role="specialist" />
                     
-                    {/* Dynamic Markers */}
-                    {tasks.map((task, i) => (
-                        <motion.button 
-                            key={task.id}
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: i * 0.2 }}
-                            onClick={() => setSelectedTask(task.id)}
-                            className={`absolute flex flex-col items-center group/marker cursor-pointer z-10`}
-                            style={{ 
-                                top: `${20 + (i * 20)}%`, 
-                                left: `${30 + (i * 15)}%` 
-                            }}
-                        >
-                            <div className={`p-2 rounded-2xl shadow-xl border-2 border-white transition-all ${
-                                task.priority === 'critical' ? 'bg-rose-600 text-white' : 'bg-white text-rose-600'
-                            } group-hover/marker:scale-125`}>
-                                <Navigation className={`w-5 h-5 ${task.id === selectedTask ? 'animate-bounce' : ''}`} />
-                            </div>
-                            <div className="mt-2 bg-slate-900/90 text-white px-2 py-1 rounded-lg text-[8px] font-black shadow-lg opacity-0 group-hover/marker:opacity-100 transition-opacity">
-                                {task.id}
-                            </div>
-                        </motion.button>
-                    ))}
-
-                    <div className="absolute bottom-6 left-6 right-6">
+                    <div className="absolute bottom-6 left-6 right-6 z-[1000]">
                         <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl border border-white shadow-2xl flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white">

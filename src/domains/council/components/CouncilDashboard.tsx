@@ -1,12 +1,19 @@
-import { Landmark, FileText, Gavel, Users, Search, Download, AlertCircle, PieChart, Activity, Zap } from "lucide-react";
+import { Landmark, FileText, Gavel, Users, Search, Download, AlertCircle, PieChart, Activity, Zap, Map as MapIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import MapView from "../../locations/components/MapView";
 
 export function CouncilDashboard() {
   const transparencyData = [
     { name: 'منجز', value: 65, color: '#10b981' },
     { name: 'قيد المعالجة', value: 25, color: '#3b82f6' },
     { name: 'متأخر', value: 10, color: '#ef4444' },
+  ];
+
+  const councilMarkers = [
+    { id: 'c1', lat: 33.5138, lng: 36.2765, title: 'مشروع صيانة الصافية', description: 'متابعة سير العمل في رصف الطرق الرئيسية، نسبة الإنجاز ٤٠٪', type: 'info' as const, status: 'تحت الرقابة' },
+    { id: 'c2', lat: 33.5300, lng: 36.3000, title: 'شكاوى حي الستين', description: 'تراكم غير قانوني لمخلفات تجارية، بانتظار رد البلدية', type: 'hazard' as const, status: 'جلسة مساءلة' },
+    { id: 'c3', lat: 33.5000, lng: 36.2500, title: 'صنعاء القديمة', description: 'تقييم كفاءة الصرف الصحي في المنطقة التاريخية', type: 'complaint' as const, status: 'مستقر' },
   ];
 
   const councilAgendas = [
@@ -146,17 +153,16 @@ export function CouncilDashboard() {
                 </button>
             </section>
 
-            <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">مناطق تحت الرقابة المشددة</h4>
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-50 border border-rose-100">
-                        <span className="text-sm font-black text-rose-900">حي الصافية</span>
-                        <span className="text-[10px] font-black text-rose-600 uppercase">نزول ميداني</span>
-                    </div>
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                        <span className="text-sm font-black text-slate-800">صنعاء القديمة</span>
-                        <span className="text-[10px] font-black text-slate-400 uppercase">مستقرة</span>
-                    </div>
+            <section className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <MapIcon className="w-4 h-4 text-slate-900" />
+                        الخارطة الرقابية الحية
+                    </h4>
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">١٠٠٪ شفافية</span>
+                </div>
+                <div className="flex-1 relative">
+                    <MapView markers={councilMarkers} center={[33.5138, 36.2765]} zoom={12} role="council" />
                 </div>
             </section>
         </div>

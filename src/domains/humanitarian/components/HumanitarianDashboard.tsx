@@ -2,9 +2,16 @@ import { HeartPulse, Globe, BarChart, MapPin, AlertTriangle, FileText, ChevronRi
 import { motion } from "motion/react";
 import { useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import MapView from "../../locations/components/MapView";
 
 export function HumanitarianDashboard() {
   const [activeTab, setActiveTab] = useState("needs");
+
+  const needMarkers = [
+    { id: 'h1', lat: 33.5138, lng: 36.2765, title: 'مخيم النازحين - الشمال', description: 'نقص حاد في مياه الشرب والمستلزمات الطبية الأساسية', type: 'need' as const, status: 'حرج' },
+    { id: 'h2', lat: 33.5050, lng: 36.2600, title: 'مركز توزيع الصافية', description: 'تأخر الإمدادات الغذائية لأكثر من أسبوع', type: 'need' as const, status: 'قيد المعالجة' },
+    { id: 'h3', lat: 33.5250, lng: 36.2950, title: 'وحدة طبية متنقلة', description: 'بحاجة إلى طاقم تمريض إضافي نظراً لزيادة الحالات', type: 'need' as const, status: 'طلب عاجل' },
+  ];
 
   const impactData = [
     { name: "صحة", value: 35, color: "#ef4444" },
@@ -142,20 +149,8 @@ export function HumanitarianDashboard() {
                     </button>
                 </div>
             </div>
-            <div className="flex-1 bg-slate-50 relative min-h-[400px] flex items-center justify-center border-b border-slate-50">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5"></div>
-                <div className="text-center p-12 max-w-sm">
-                    <div className="w-20 h-20 bg-white rounded-[2rem] shadow-xl flex items-center justify-center mx-auto mb-6">
-                        <Activity className="w-10 h-10 text-sky-500 animate-pulse" />
-                    </div>
-                    <h4 className="font-black text-slate-800 mb-2">وضع البيانات المتكامل</h4>
-                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed mb-6">
-                        يتم دمج بلاغات المواطنين مع مسوحات المنظمات الميدانية لإنتاج خريطة حرارية موحدة للاحتياجات.
-                    </p>
-                    <button className="px-8 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black shadow-sm hover:bg-slate-50 transition-all">
-                        تحميل طبقات البيانات (GIS)
-                    </button>
-                </div>
+            <div className="flex-1 bg-slate-50 relative min-h-[400px] flex items-center justify-center border-b border-slate-50 overflow-hidden">
+                <MapView markers={needMarkers} center={[33.5138, 36.2765]} zoom={12} role="humanitarian" />
             </div>
         </div>
 

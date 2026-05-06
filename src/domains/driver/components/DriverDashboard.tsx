@@ -2,9 +2,16 @@ import { Car, Mic, Map as MapIcon, ShieldAlert, Navigation, Zap, AlertTriangle, 
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import MapView from "../../locations/components/MapView";
 
 export function DriverDashboard() {
   const [isRecording, setIsRecording] = useState(false);
+
+  const hazardMarkers = [
+    { id: '1', lat: 33.5138, lng: 36.2765, title: 'حفرة عميقة', description: 'حفرة كبيرة تشكل خطراً على الإطارات في منعطف الشارع الرئيسي', type: 'hazard' as const, status: 'نشط' },
+    { id: '2', lat: 33.5200, lng: 36.2850, title: 'إشارة معطلة', description: 'الإشارة الضوئية لا تعمل في تقاطع الستين', type: 'hazard' as const, status: 'قيد المتابعة' },
+    { id: '3', lat: 33.5100, lng: 36.2700, title: 'تراكم نفايات', description: 'وجود مخلفات بناء كبيرة تعيق الرؤية', type: 'complaint' as const, status: 'تم الرفع' },
+  ];
 
   const driverStats = [
     { label: "نقاط السلامة", value: "٨٥٠", color: "text-amber-600", bg: "bg-amber-50" },
@@ -94,32 +101,18 @@ export function DriverDashboard() {
                 )}
             </motion.button>
 
-            {/* Simulated Live Map Preview */}
-            <div className="h-full bg-slate-50/30 rounded-[2rem] border border-slate-100 p-6 flex flex-col gap-4 overflow-hidden group">
-                <div className="flex items-center justify-between mb-2">
+            {/* Real Interactive Map */}
+            <div className="flex-1 min-h-[300px] h-full bg-slate-50/30 rounded-[2rem] border border-slate-100 p-4 flex flex-col gap-4 overflow-hidden group">
+                <div className="flex items-center justify-between">
                     <h4 className="font-black text-xs text-slate-400 flex items-center gap-2 uppercase tracking-widest">
                         <MapIcon className="w-4 h-4 text-blue-500" />
-                        خريطة المخاطر القريبة
+                        خريطة المخاطر التفاعلية
                     </h4>
-                    <span className="text-[10px] font-bold text-slate-400">تحديث حي</span>
+                    <span className="text-[10px] font-bold text-slate-400">تحديث حي من الميدان</span>
                 </div>
                 
-                <div className="relative flex-1 bg-white rounded-2xl overflow-hidden border border-slate-200/50 shadow-inner">
-                    <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
-                    
-                    {/* Simulated Map Markers */}
-                    <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping absolute"></div>
-                        <div className="w-3 h-3 bg-blue-500 rounded-full relative border-2 border-white shadow-sm"></div>
-                        <span className="text-[8px] font-black text-blue-600 mt-1 uppercase bg-white/80 px-1 rounded">موقعك</span>
-                    </div>
-
-                    <div className="absolute top-1/4 right-1/4 flex flex-col items-center">
-                        <AlertTriangle className="w-5 h-5 text-red-500 animate-bounce" />
-                        <span className="text-[8px] font-black text-red-600 mt-1 bg-white/80 px-1 rounded">حفرة</span>
-                    </div>
-
-                    <Navigation className="absolute bottom-10 left-10 w-8 h-8 text-amber-500/20 rotate-45" />
+                <div className="relative flex-1 bg-white rounded-2xl overflow-hidden border border-slate-200/50 shadow-inner min-h-[250px]">
+                    <MapView markers={hazardMarkers} center={[33.5138, 36.2765]} zoom={13} role="driver" />
                 </div>
             </div>
         </div>
