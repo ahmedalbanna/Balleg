@@ -34,7 +34,6 @@ import { DeveloperDashboard } from "./domains/developer/components/DeveloperDash
 import { DonorDashboard } from "./domains/donor/components/DonorDashboard";
 
 import { ProfilePage } from "./domains/core/components/ProfilePage";
-import { AdminDashboard } from "./domains/admin/components/AdminDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();

@@ -25,14 +25,8 @@ export function DriverDashboard() {
           const userId = auth.currentUser?.uid || "anonymous";
           await reportApi.createReport({
             description: "بلاغ صوتي: حفرة عميقة تم رصدها في شارع الستين، يرجى الحذر.",
-            location: {
-              latitude: 33.5138,
-              longitude: 36.2765,
-              address: "شارع الستين",
-            },
+            location: [33.5138, 36.2765],
             type: "hazard",
-            userId: userId,
-            mediaUrls: [],
           });
           toast.success("تم تأكيد البلاغ ونشره على خريطة المخاطر بنجاح!", { id: toastId });
         } catch (error) {
@@ -59,6 +53,13 @@ export function DriverDashboard() {
     { id: '2', lat: 33.5200, lng: 36.2850, title: 'إشارة معطلة', description: 'الإشارة الضوئية لا تعمل في تقاطع الستين', type: 'hazard' as const, status: 'قيد المتابعة' },
     { id: '3', lat: 33.5100, lng: 36.2700, title: 'تراكم نفايات', description: 'وجود مخلفات بناء كبيرة تعيق الرؤية', type: 'complaint' as const, status: 'تم الرفع' },
   ];
+
+  const mapPoints = hazardMarkers.map(m => ({
+     lat: m.lat,
+     lng: m.lng,
+     intensity: m.type === 'hazard' ? 1 : 0.5,
+     label: m.title
+  }));
 
   const driverStats = [
     { label: "نقاط السلامة", value: "٨٥٠", color: "text-amber-600", bg: "bg-amber-50" },
@@ -159,7 +160,7 @@ export function DriverDashboard() {
                 </div>
                 
                 <div className="relative flex-1 bg-white rounded-2xl overflow-hidden border border-slate-200/50 shadow-inner min-h-[250px]">
-                    <MapView markers={hazardMarkers} center={[33.5138, 36.2765]} zoom={13} role="driver" />
+                    <MapView points={mapPoints} center={[33.5138, 36.2765]} zoom={13} />
                 </div>
             </div>
         </div>

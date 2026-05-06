@@ -1,14 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, ChevronRight, Activity, Clock, CheckCircle2, RotateCw, Star, MessageSquareCode, Send, Loader2, MapPin } from "lucide-react";
+import { Search, ChevronRight, Activity, Clock, CheckCircle2, RotateCw, Star, MessageSquareCode, Send, Loader2, MapPin, SearchX, UploadCloud, FileWarning } from "lucide-react";
 import * as motion from "motion/react-client";
 import { cn } from "../../core/utils/cn";
 import { reportApi } from "../../core/services/reportApi";
+import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
+import { doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
+import { toast } from "sonner";
+import { Report } from "../../core/services/reportApi";
 
 export function TrackReport() {
   const [trackingNo, setTrackingNo] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [report, setReport] = useState<any>(null);
+  const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Feedback states
@@ -18,6 +22,26 @@ export function TrackReport() {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
+  // Re-open trigger
+  const [showReopenPrompt, setShowReopenPrompt] = useState(false);
+
+  // Subscribe to live report data
+  useEffect(() => {
+    let unsubscribe: () => void;
+    
+    if (report?.id) {
+       unsubscribe = onSnapshot(doc(db, 'reports', report.id), (docSnap) => {
+         if (docSnap.exists()) {
+            setReport({ id: docSnap.id, ...docSnap.data() } as Report);
+         }
+       }, (err) => handleFirestoreError(err, OperationType.GET, 'reports'));
+    }
+
+    return () => {
+       if (unsubscribe) unsubscribe();
+    };
+  }, [report?.id]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trackingNo.trim()) return;
@@ -25,30 +49,57 @@ export function TrackReport() {
     setIsSearching(true);
     setError(null);
     setFeedbackSuccess(false);
+    setReport(null);
     try {
-      const res = await reportApi.trackReport(trackingNo);
-      if (res.report) {
-        setReport(res.report);
+      const docRef = doc(db, 'reports', trackingNo.trim());
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setReport({ id: docSnap.id, ...docSnap.data() } as Report);
       } else {
         setError("لم يتم العثور على بلاغ بهذا الرقم. يرجى التأكد والمحاولة مرة أخرى.");
-        setReport(null);
       }
     } catch (err) {
+      handleFirestoreError(err, OperationType.GET, 'reports');
       setError("حدث خطأ أثناء البحث. يرجى المحاولة لاحقاً.");
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleSubmitFeedback = async () => {
+  const handleRatingSelect = (s: number) => {
+     setRating(s);
+     if (s <= 2) {
+        setShowReopenPrompt(true);
+     } else {
+        setShowReopenPrompt(false);
+     }
+  };
+
+  const handleSubmitFeedback = async (isReopen: boolean = false) => {
     if (rating === 0) return;
     setSubmittingFeedback(true);
     try {
-      await reportApi.submitFeedback(report.id, { rating, feedback: feedbackText });
+      const payload: any = { 
+        rating, 
+        feedback: feedbackText,
+        updatedAt: new Date().toISOString()
+      };
+      
+      if (isReopen) {
+         payload.status = 'pending_operator';
+         payload.reroutedReason = 'رفض المواطن لجودة المعالجة - إعادة فتح';
+         toast.info("تم إعادة فتح البلاغ وتقييم الحالة.");
+      } else {
+         payload.status = 'resolved';
+         toast.success("تم إغلاق البلاغ بنجاح، شكراً لتقييمك.");
+      }
+
+      await updateDoc(doc(db, 'reports', report!.id), payload);
       setFeedbackSuccess(true);
-      setReport({ ...report, rating, feedback: feedbackText });
+      setShowReopenPrompt(false);
     } catch (err) {
       console.error(err);
+      toast.error("عذراً، حدث خطأ أثناء إرسال التقييم.");
     } finally {
       setSubmittingFeedback(false);
     }
@@ -59,10 +110,14 @@ export function TrackReport() {
       case "pending_operator":
       case "pending_official":
         return <RotateCw className="w-6 h-6 text-amber-500 animate-spin-slow" />;
+      case "resolved_pending_rating":
+        return <Star className="w-6 h-6 text-blue-500 animate-bounce" />;
       case "resolved":
         return <CheckCircle2 className="w-6 h-6 text-emerald-500" />;
       case "in_progress":
-        return <Activity className="w-6 h-6 text-blue-500 animate-pulse" />;
+        return <Activity className="w-6 h-6 text-indigo-500 animate-pulse" />;
+      case "rejected":
+        return <FileWarning className="w-6 h-6 text-red-500" />;
       default:
         return <Clock className="w-6 h-6 text-slate-400" />;
     }
@@ -73,7 +128,9 @@ export function TrackReport() {
       'pending_operator': 'قيد المراجعة الأولية',
       'pending_official': 'تم التوجيه للقسم المختص',
       'in_progress': 'جاري المعالجة الميدانية',
-      'resolved': 'تم الإنجاز بنجاح'
+      'resolved_pending_rating': 'تم الإنجاز - بانتظار تقييمك',
+      'resolved': 'مُغلق (مكتمل)',
+      'rejected': 'تم رفض البلاغ'
     };
     return map[status] || status;
   };
@@ -90,7 +147,7 @@ export function TrackReport() {
           <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-6">
             <Search className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-bold font-readex text-slate-900 mb-2">متابعة حالة البلاغ</h2>
+          <h2 className="text-2xl font-bold font-readex text-slate-900 mb-2">متابعة حالة البلاغ (لحظياً)</h2>
           <p className="text-slate-500">أدخل رقم المتابعة الذي حصلت عليه عند تقديم البلاغ.</p>
         </div>
 
@@ -121,14 +178,16 @@ export function TrackReport() {
         {report && (
           <motion.div initial={{opacity:0, y:10}} animate={{opacity:1, y:0}} className="bg-[#F8FAFC] rounded-2xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
-              <span className="text-slate-500 text-sm">البلاغ <span className="font-mono text-slate-900 font-bold">{report.trackingNo}</span></span>
+              <span className="text-slate-500 text-sm">البلاغ <span className="font-mono text-slate-900 font-bold">{report.id}</span></span>
               <span className="text-slate-400 text-sm dir-ltr">{new Date(report.createdAt).toLocaleDateString('ar-SA')}</span>
             </div>
 
-            <div className="flex items-center gap-4 p-4 rounded-xl relative overflow-hidden bg-white border border-slate-100 shadow-sm transition-all hover:border-slate-300">
+            <div className="flex items-center gap-4 p-4 rounded-xl relative overflow-hidden bg-white border border-slate-100 shadow-sm transition-all hover:border-slate-300 mb-6">
                <div className={cn(
                  "absolute inset-0 opacity-10",
-                 report.status === "resolved" ? "bg-emerald-500" : "bg-amber-500"
+                 report.status === "resolved" ? "bg-emerald-500" : 
+                 report.status === "resolved_pending_rating" ? "bg-blue-500" :
+                 report.status === "rejected" ? "bg-red-500" : "bg-amber-500"
                )}></div>
               <div className="relative z-10 w-12 h-12 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm">
                 {getStatusIcon(report.status)}
@@ -137,27 +196,49 @@ export function TrackReport() {
                 <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">الحالة الحالية</span>
                 <span className={cn(
                   "font-black text-lg",
-                  report.status === "resolved" ? "text-emerald-600" : "text-amber-600"
+                  report.status === "resolved" ? "text-emerald-600" : 
+                  report.status === "resolved_pending_rating" ? "text-blue-600" :
+                  report.status === "rejected" ? "text-red-600" : "text-amber-600"
                 )}>
                   {getStatusText(report.status)}
                 </span>
+                {report.department && (
+                  <span className="text-xs text-slate-500 block mt-1 font-bold">جهة التنفيذ: {report.department}</span>
+                )}
               </div>
             </div>
 
+            {report.status === 'rejected' && (
+               <div className="bg-red-50 p-4 rounded-2xl border border-red-100 mb-6">
+                 <h4 className="font-black text-red-800 text-sm mb-2 text-red-700">{report.rejectReason}</h4>
+                 <p className="text-xs text-red-600 font-bold">{report.rejectDetails}</p>
+               </div>
+            )}
+
+            {(report.status === 'resolved_pending_rating' || report.status === 'resolved') && report.resolutionImageUrl && (
+                <div className="mb-6 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+                   <div className="bg-slate-50 px-4 py-2 rounded-t-xl border-b border-slate-100 flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-700">صورة توثيق المعالجة (بعد)</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                   </div>
+                   <img src={report.resolutionImageUrl} alt="بعد المعالجة" className="w-full h-48 object-cover rounded-b-xl" />
+                </div>
+            )}
+
             {/* Citizen Feedback Section */}
-            {report.status === 'resolved' && !report.rating && !feedbackSuccess && (
+            {report.status === 'resolved_pending_rating' && !feedbackSuccess && (
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="mt-8 p-6 bg-blue-50/50 rounded-3xl border border-blue-100 shadow-inner"
+                    className="mt-4 p-6 bg-blue-50/50 rounded-3xl border border-blue-100 shadow-inner"
                 >
                     <div className="flex items-center gap-3 mb-5">
                         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm">
                             <Star className="w-5 h-5 fill-current" />
                         </div>
                         <div>
-                            <h4 className="text-sm font-black text-slate-900">كيف كانت جودة الحل؟</h4>
-                            <p className="text-[10px] text-slate-500 font-bold">تقييمك يساعدنا على تطوير الأداء الحكومي.</p>
+                            <h4 className="text-sm font-black text-slate-900">حدثنا عن رأيك في الإنجاز المرفق</h4>
+                            <p className="text-[10px] text-slate-500 font-bold">بموجب الموثوقية العالية، يمكنك إعادة فتح البلاغ إذا كان الإنجاز غير مرضٍ.</p>
                         </div>
                     </div>
 
@@ -167,7 +248,7 @@ export function TrackReport() {
                                 key={s}
                                 onMouseEnter={() => setHoverRating(s)}
                                 onMouseLeave={() => setHoverRating(0)}
-                                onClick={() => setRating(s)}
+                                onClick={() => handleRatingSelect(s)}
                                 className="transition-all hover:scale-125"
                             >
                                 <Star 
@@ -185,23 +266,46 @@ export function TrackReport() {
                         <textarea
                             value={feedbackText}
                             onChange={(e) => setFeedbackText(e.target.value)}
-                            placeholder="هل لديك أي ملاحظات تطويرية؟ (اختياري)"
+                            placeholder="سبب التقييم (اختياري)..."
                             className="w-full bg-white border border-blue-100 rounded-2xl py-3 pr-10 pl-4 text-xs font-bold focus:ring-4 focus:ring-blue-500/10 outline-none min-h-[90px] resize-none"
                         />
                     </div>
 
-                    <button
-                        onClick={handleSubmitFeedback}
-                        disabled={rating === 0 || submittingFeedback}
-                        className="w-full py-4 bg-blue-600 text-white rounded-2xl text-xs font-black shadow-xl shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                    >
-                        {submittingFeedback ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={14} />}
-                        إرسال التقييم النهائي
-                    </button>
+                    {showReopenPrompt ? (
+                       <div className="flex flex-col gap-2">
+                          <p className="text-xs font-black text-red-600 mb-2 text-center">التقييم المنخفض يشير إلى عدم رضاك. هل ترغب في إعادة فتح البلاغ لإعادة النظر؟</p>
+                          <div className="flex gap-2">
+                             <button
+                                 onClick={() => handleSubmitFeedback(true)}
+                                 disabled={submittingFeedback}
+                                 className="flex-1 py-3 bg-red-600 text-white rounded-xl text-xs font-black shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                             >
+                                 {submittingFeedback ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCw size={14} />}
+                                 نعم، إعادة فتح البلاغ
+                             </button>
+                             <button
+                                 onClick={() => handleSubmitFeedback(false)}
+                                 disabled={submittingFeedback}
+                                 className="flex-1 py-3 bg-slate-200 text-slate-700 rounded-xl text-xs font-black hover:bg-slate-300 transition-all flex items-center justify-center gap-2"
+                             >
+                                 لا، إغلاقه بالتقييم الحالي
+                             </button>
+                          </div>
+                       </div>
+                    ) : (
+                       <button
+                           onClick={() => handleSubmitFeedback(false)}
+                           disabled={rating === 0 || submittingFeedback}
+                           className="w-full py-4 bg-emerald-600 text-white rounded-2xl text-xs font-black shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                       >
+                           {submittingFeedback ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={14} />}
+                           اعتماد الإنجاز وإغلاق البلاغ
+                       </button>
+                    )}
                 </motion.div>
             )}
 
-            {(report.rating || feedbackSuccess) && (
+            {(report.status === 'resolved' || feedbackSuccess) && (
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -209,27 +313,10 @@ export function TrackReport() {
                 >
                     <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-4" />
                     <h4 className="text-lg font-black text-emerald-900 mb-1">شكراً لمساهمتك</h4>
-                    <p className="text-xs text-emerald-700 font-bold opacity-80">تم استلام تقييمك بنجاح، ملاحظاتك ستؤخذ بعين الاعتبار.</p>
+                    <p className="text-xs text-emerald-700 font-bold opacity-80">تم إغلاق البلاغ بنجاح، ملاحظاتك ستؤخذ بعين الاعتبار لتحسين خدماتنا.</p>
                 </motion.div>
             )}
 
-            <div className="mt-8 border-r-2 border-slate-200 mr-6 pr-6 space-y-8 relative">
-              <div className="relative">
-                <div className="absolute -right-[31px] w-4 h-4 rounded-full bg-amber-500 border-4 border-[#F8FAFC]"></div>
-                <h4 className="text-slate-900 font-bold">استلام البلاغ</h4>
-                <p className="text-sm text-slate-500 mt-1">تم إدخال البلاغ للنظام بنجاح</p>
-              </div>
-              <div className="relative opacity-80">
-                <div className="absolute -right-[31px] w-4 h-4 rounded-full bg-slate-200 border-4 border-[#F8FAFC]"></div>
-                <h4 className="text-slate-700 font-bold">قيد الإجراء</h4>
-                <p className="text-sm text-slate-500 mt-1">يتم الآن اتخاذ الإجراءات اللازمة</p>
-              </div>
-              <div className="relative opacity-50">
-                <div className="absolute -right-[31px] w-4 h-4 rounded-full bg-slate-200 border-4 border-[#F8FAFC]"></div>
-                <h4 className="text-slate-700 font-bold">اكتمل</h4>
-                <p className="text-sm text-slate-500 mt-1">تم حل المشكلة وإغلاق البلاغ</p>
-              </div>
-            </div>
           </motion.div>
         )}
       </div>

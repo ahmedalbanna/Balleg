@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Shield, Building2, Calendar, MapPin, Camera } from 'lucide-react';
+import { User, Mail, Phone, Shield, Building2, Calendar, MapPin, Camera, Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const ProfilePage: React.FC = () => {

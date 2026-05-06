@@ -13,6 +13,13 @@ export function HumanitarianDashboard() {
     { id: 'h3', lat: 33.5250, lng: 36.2950, title: 'وحدة طبية متنقلة', description: 'بحاجة إلى طاقم تمريض إضافي نظراً لزيادة الحالات', type: 'need' as const, status: 'طلب عاجل' },
   ];
 
+  const mapPoints = needMarkers.map(m => ({
+     lat: m.lat,
+     lng: m.lng,
+     intensity: m.status === 'حرج' ? 1 : m.status === 'طلب عاجل' ? 0.7 : 0.4,
+     label: m.title
+  }));
+
   const impactData = [
     { name: "صحة", value: 35, color: "#ef4444" },
     { name: "مياه", value: 25, color: "#3b82f6" },
@@ -150,7 +157,7 @@ export function HumanitarianDashboard() {
                 </div>
             </div>
             <div className="flex-1 bg-slate-50 relative min-h-[400px] flex items-center justify-center border-b border-slate-50 overflow-hidden">
-                <MapView markers={needMarkers} center={[33.5138, 36.2765]} zoom={12} role="humanitarian" />
+                <MapView points={mapPoints} center={[33.5138, 36.2765]} zoom={12} />
             </div>
         </div>
 

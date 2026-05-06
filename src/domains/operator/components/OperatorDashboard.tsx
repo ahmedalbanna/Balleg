@@ -21,29 +21,23 @@ export function OperatorDashboard() {
   const [selectedMapLocation, setSelectedMapLocation] = useState<[number, number] | null>(null);
 
   useEffect(() => {
-    fetchPending();
-    const interval = setInterval(fetchPending, 5000);
-    return () => clearInterval(interval);
+    import("firebase/firestore").then(({ collection, query, where, onSnapshot }) => {
+       const q = query(collection(db, 'reports'), where('status', '==', 'pending_operator'));
+       const unsubscribe = onSnapshot(q, (snapshot) => {
+          const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
+          const priorityWeights: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+          const sorted = docs.sort((a: Report, b: Report) => {
+            const wA = priorityWeights[a.priority || 'low'] || 1;
+            const wB = priorityWeights[b.priority || 'low'] || 1;
+            if (wA !== wB) return wB - wA;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+          setReports(sorted);
+          setLoading(false);
+       });
+       return () => unsubscribe();
+    });
   }, []);
-
-  const fetchPending = async () => {
-    try {
-      const data = await reportApi.getPendingOperator();
-      // Sort by priority then date
-      const priorityWeights: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
-      const sorted = (data || []).sort((a: Report, b: Report) => {
-        const wA = priorityWeights[a.priority || 'low'] || 1;
-        const wB = priorityWeights[b.priority || 'low'] || 1;
-        if (wA !== wB) return wB - wA;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-      setReports(sorted);
-      setLoading(false);
-    } catch (e) {
-      console.error(e);
-      setLoading(false);
-    }
-  };
 
   const handleRoute = async (report: Report, department: string) => {
     setRoutingId(report.id);
@@ -54,7 +48,12 @@ export function OperatorDashboard() {
          if (res.success) classification = res.classification;
       }
       
-      await reportApi.routeReport(report.id, department, classification || "عام");
+      const reportRef = doc(db, 'reports', report.id);
+      await updateDoc(reportRef, {
+        status: 'pending_official',
+        department: department,
+        updatedAt: new Date().toISOString()
+      });
       
       await notificationService.notifyUser(department, {
         title: "بلاغ جديد موجه لقسمك",
@@ -370,13 +369,12 @@ export function OperatorDashboard() {
                   </div>
                   <div className="h-[500px] w-full">
                      <MapView 
-                        initialCenter={selectedMapLocation}
-                        markers={[{
-                           id: 'preview',
+                        center={selectedMapLocation}
+                        points={[{
                            lat: selectedMapLocation[0],
                            lng: selectedMapLocation[1],
-                           title: 'موقع المخالفة',
-                           type: 'hazard'
+                           intensity: 0.8,
+                           label: "موقع المخالفة"
                         }]}
                      />
                   </div>

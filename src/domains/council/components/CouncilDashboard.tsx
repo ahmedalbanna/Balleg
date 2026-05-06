@@ -16,6 +16,13 @@ export function CouncilDashboard() {
     { id: 'c3', lat: 33.5000, lng: 36.2500, title: 'صنعاء القديمة', description: 'تقييم كفاءة الصرف الصحي في المنطقة التاريخية', type: 'complaint' as const, status: 'مستقر' },
   ];
 
+  const mapPoints = councilMarkers.map(m => ({
+     lat: m.lat,
+     lng: m.lng,
+     intensity: m.type === 'hazard' ? 1 : m.type === 'info' ? 0.4 : 0.7,
+     label: m.title
+  }));
+
   const councilAgendas = [
     { id: 1, title: "مساءلة مدير مكتب النظافة حول تدني مستوى الإنجاز", date: "١٥ مايو", priority: "high" },
     { id: 2, title: "مراجعة تقرير الاستجابة للبلاغات الحرجة - حي الصافية", date: "١٨ مايو", priority: "medium" },
@@ -162,7 +169,7 @@ export function CouncilDashboard() {
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">١٠٠٪ شفافية</span>
                 </div>
                 <div className="flex-1 relative">
-                    <MapView markers={councilMarkers} center={[33.5138, 36.2765]} zoom={12} role="council" />
+                    <MapView points={mapPoints} center={[33.5138, 36.2765]} zoom={12} />
                 </div>
             </section>
         </div>

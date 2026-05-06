@@ -2,7 +2,8 @@ import { Store, TrendingUp, Award, Clock, MapPin, Plus, HeartHandshake, Zap, Tro
 import { motion, AnimatePresence } from "motion/react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { auth } from "../../core/services/firebase";
+import { auth, db, handleFirestoreError, OperationType } from "../../core/services/firebase";
+import { collection, query, where, onSnapshot, getDocs, updateDoc, doc } from "firebase/firestore";
 import { toast } from "sonner";
 import { Report, reportApi } from "../../core/services/reportApi";
 
@@ -11,40 +12,38 @@ export function MerchantDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch pending reports that can be sponsored
-    const fetchReports = async () => {
-      try {
-        const allReports = await reportApi.getMerchantReports();
-        setReports(allReports);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReports();
+    // We fetch open reports for the neighborhood (simplified: status includes pending_operator, pending_official, in_progress, and resolved but we want to show anything sponsor-able)
+    const q = query(
+      collection(db, 'reports')
+      // Note: In a real app we'd filter by geo and status, but here we just get some recent documents using onSnapshot
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
+      setReports(docs);
+      setLoading(false);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, 'reports');
+      setLoading(false);
+    });
+    
+    return () => unsubscribe();
   }, []);
 
   const handleSponsor = async (reportId: string) => {
     try {
       const toastId = toast.loading('جاري تسجيل الرعاية...');
-      await reportApi.sponsorReport(reportId, {
+      const reportRef = doc(db, 'reports', reportId);
+      await updateDoc(reportRef, {
         sponsorId: auth.currentUser?.uid || 'merchant_1',
         sponsorName: auth.currentUser?.displayName || 'تاجر محلي',
         sponsorDate: new Date().toISOString()
       });
       
-      // Update local state
-      setReports(reports.map(r => r.id === reportId ? {
-        ...r, 
-        sponsorId: auth.currentUser?.uid || 'merchant_1',
-        sponsorName: auth.currentUser?.displayName || 'تاجر محلي',
-        sponsorDate: new Date().toISOString()
-      } as any : r));
-
       toast.success('تم تسجيل رعايتك للبلاغ بنجاح! شارة "تاجر مشارك" أضيفت لحسابك.', { id: toastId });
     } catch (err) {
       console.error(err);
+      handleFirestoreError(err, OperationType.UPDATE, 'reports');
       toast.error('حدث خطأ أثناء تسجيل الرعاية');
     }
   };
