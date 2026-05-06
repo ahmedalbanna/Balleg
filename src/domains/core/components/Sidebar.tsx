@@ -1,5 +1,5 @@
 import { useRole } from "../context/RoleContext";
-import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home, Headset, HardHat, BarChart3, Landmark } from "lucide-react";
+import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home, Headset, HardHat, BarChart3, Landmark, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "../utils/cn";
 
@@ -17,6 +17,7 @@ export function Sidebar() {
       case 'manager': return <BarChart3 className="w-5 h-5" />;
       case 'admin': return <Briefcase className="w-5 h-5" />;
       case 'council': return <Landmark className="w-5 h-5" />;
+      case 'neighborhood_council': return <Users className="w-5 h-5" />;
       default: return <User className="w-5 h-5" />;
     }
   };
@@ -24,6 +25,7 @@ export function Sidebar() {
   const categoryMap = {
     citizens: "المواطنون والمجتمع",
     business: "قطاع الأعمال",
+    community: "المجتمع المدني",
     admin: "الوحدات التنفيذية",
     leadership: "القيادة والرقابة"
   };

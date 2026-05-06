@@ -10,7 +10,7 @@ export interface AppRole {
   description: string;
   features?: string[];
   slug: string;
-  category?: 'citizens' | 'business' | 'admin' | 'leadership';
+  category?: 'citizens' | 'business' | 'admin' | 'leadership' | 'community';
 }
 
 interface RoleContextType {
@@ -242,6 +242,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           icon: 'Landmark',
           description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.',
           category: 'leadership'
+        },
+        {
+          id: '11',
+          name: 'المجالس المجتمعية',
+          slug: 'neighborhood_council',
+          themeColor: '#64748b',
+          icon: 'Users',
+          description: 'للدور الرقابي المجتمعي، متابعة بلاغات الحي المتأخرة، والرفع بالتقييمات للبلدية.',
+          category: 'community'
         }
       ];
       setAvailableRoles(fallback);
