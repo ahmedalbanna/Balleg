@@ -122,7 +122,7 @@ async function startServer() {
     }
   });
 
-  // 4. Submit Citizen Feedback
+  // 5. Submit Citizen Feedback
   reportRouter.patch("/feedback/:id", (req, res) => {
     const id = req.params.id;
     const { rating, feedback } = req.body;
@@ -143,7 +143,49 @@ async function startServer() {
     }
   });
 
-  // 5. Operator/Official fetches reports
+  // 6. Analytics & Statistics for Admin
+  reportRouter.get("/stats", (req, res) => {
+    const total = reportsDatabase.length;
+    const resolved = reportsDatabase.filter(r => r.status === 'resolved').length;
+    const inProgress = reportsDatabase.filter(r => r.status === 'in_progress').length;
+    const pending = total - resolved - inProgress;
+
+    // Distribution by Type
+    const typeDist: Record<string, number> = {};
+    reportsDatabase.forEach(r => {
+      const t = r.classification || r.type || "عام";
+      typeDist[t] = (typeDist[t] || 0) + 1;
+    });
+
+    // Department Performance (Simulated delays)
+    const deptPerformance = [
+      { name: 'نظافة', active: reportsDatabase.filter(r => r.department === 'نظافة' && r.status !== 'resolved').length, score: 92 },
+      { name: 'مياه', active: reportsDatabase.filter(r => r.department === 'مياه' && r.status !== 'resolved').length, score: 85 },
+      { name: 'طرق', active: reportsDatabase.filter(r => r.department === 'طرق' && r.status !== 'resolved').length, score: 64 },
+      { name: 'كهرباء', active: reportsDatabase.filter(r => r.department === 'كهرباء' && r.status !== 'resolved').length, score: 78 }
+    ];
+
+    // Trends (Last 7 days simulated)
+    const last7Days = [...Array(7)].map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      return {
+        date: dateStr,
+        received: Math.floor(Math.random() * 10) + 2,
+        resolved: Math.floor(Math.random() * 8) + 1
+      };
+    }).reverse();
+
+    res.json({
+      summary: { total, resolved, inProgress, pending, resolutionRate: total > 0 ? (resolved / total * 100).toFixed(1) : 0 },
+      typeDistribution: Object.entries(typeDist).map(([name, value]) => ({ name, value })),
+      deptPerformance,
+      trends: last7Days
+    });
+  });
+
+  // 7. Operator/Official fetches reports
   reportRouter.get("/all", (req, res) => {
     res.json({ reports: reportsDatabase.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) });
   });
