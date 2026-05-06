@@ -5,7 +5,7 @@ import * as motion from "motion/react-client";
 import { cn } from "../../core/utils/cn";
 import { reportApi } from "../../core/services/reportApi";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
-import { doc, onSnapshot, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { Report } from "../../core/services/reportApi";
 
@@ -82,7 +82,7 @@ export function TrackReport() {
       const payload: any = { 
         rating, 
         feedback: feedbackText,
-        updatedAt: serverTimestamp()
+        updatedAt: new Date().toISOString()
       };
       
       if (isReopen) {
@@ -347,7 +347,7 @@ export function TrackReport() {
                                             await updateDoc(doc(db, 'reports', report.id), {
                                                 assignedTo: bid.handymanId,
                                                 status: 'assigned',
-                                                updatedAt: serverTimestamp()
+                                                updatedAt: new Date().toISOString()
                                             });
                                             toast.success("تم اختيار الفني بنجاح!");
                                         } catch (e) {

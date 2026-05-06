@@ -1,11 +1,9 @@
 import { HardHat, Map, Users, CheckCircle2, AlertCircle, Clock, Navigation, TrendingUp, BarChart3, ChevronLeft, Forward, Camera as CameraIcon, PenTool, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
-import { usePermissions } from "../../core/hooks/usePermissions";
-import { RequirePermission } from "../../core/components/RequirePermission";
 import MapView from "../../locations/components/MapView";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { Report } from "../../core/services/reportApi";
 import { toast } from "sonner";
 import { mediaUtils } from "../../core/utils/media";
@@ -21,12 +19,7 @@ export function SpecialistDashboard() {
   // For demo, we are showing the "النظافة والمخلفات" department.
   const specialistDept = "النظافة والمخلفات";
 
-  const { hasPermission } = usePermissions();
-
   useEffect(() => {
-    if (!hasPermission('report:read_department')) {
-      return;
-    }
     const q = query(
       collection(db, 'reports'),
       where('department', '==', specialistDept),
@@ -49,7 +42,7 @@ export function SpecialistDashboard() {
       const reportRef = doc(db, 'reports', reportId);
       await updateDoc(reportRef, {
         status: 'in_progress',
-        updatedAt: serverTimestamp()
+        updatedAt: new Date().toISOString()
       });
       toast.success('تم تحويل البلاغ إلى (تحت المعالجة)', { id: toastId });
     } catch (err) {
@@ -72,7 +65,7 @@ export function SpecialistDashboard() {
       const updatePayload: any = {
         status: 'resolved_pending_rating',
         resolutionImageUrl: afterImageUrl,
-        updatedAt: serverTimestamp()
+        updatedAt: new Date().toISOString()
       };
       
       if (internalNote) {
@@ -101,7 +94,7 @@ export function SpecialistDashboard() {
       await updateDoc(reportRef, {
         status: 'pending_operator',
         department: '', // Clear department
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date().toISOString(),
         reroutedReason: internalNote || 'جهة اختصاص خاطئة'
       });
       toast.success('تم الإرجاع لغرفة العمليات للمراجعة', { id: toastId });

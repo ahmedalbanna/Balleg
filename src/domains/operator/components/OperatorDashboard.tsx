@@ -1,15 +1,13 @@
 import { Headset, Inbox, CheckCircle2, XCircle, Forward, Clock, Filter, Search, MoreHorizontal, Loader2, Sparkles, MapPin, X, ShieldCheck, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
-import { usePermissions } from "../../core/hooks/usePermissions";
-import { RequirePermission } from "../../core/components/RequirePermission";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { aiService } from "../../core/services/ai";
 import { notificationService } from "../../core/services/notifications";
 import { cn } from "../../core/utils/cn";
 import { toast } from "sonner";
 import MapView from "../../locations/components/MapView";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../core/services/firebase";
 
 export function OperatorDashboard() {
@@ -22,14 +20,7 @@ export function OperatorDashboard() {
   const [rejectDetails, setRejectDetails] = useState("");
   const [selectedMapLocation, setSelectedMapLocation] = useState<[number, number] | null>(null);
 
-  const { hasPermission } = usePermissions();
-
   useEffect(() => {
-    if (!hasPermission('report:read_all')) {
-      setLoading(false);
-      return;
-    }
-    
     import("firebase/firestore").then(({ collection, query, where, onSnapshot }) => {
        const q = query(collection(db, 'reports'), where('status', '==', 'pending_operator'));
        const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -61,7 +52,7 @@ export function OperatorDashboard() {
       await updateDoc(reportRef, {
         status: 'pending_official',
         department: department,
-        updatedAt: serverTimestamp()
+        updatedAt: new Date().toISOString()
       });
       
       await notificationService.notifyUser(department, {
@@ -98,7 +89,7 @@ export function OperatorDashboard() {
         status: 'rejected',
         rejectReason: rejectReason,
         rejectDetails: rejectDetails,
-        updatedAt: serverTimestamp()
+        updatedAt: new Date().toISOString()
       });
       
       setReports(prev => prev.filter(r => r.id !== reportId));

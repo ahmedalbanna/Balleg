@@ -11,7 +11,7 @@ export async function logActivity(action: string, details: string, path: string 
       action,
       details,
       path,
-      createdAt: serverTimestamp(),
+      timestamp: serverTimestamp(),
     });
   } catch (error) {
     console.error("Failed to log activity:", error);
