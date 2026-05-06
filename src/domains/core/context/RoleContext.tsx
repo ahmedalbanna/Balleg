@@ -38,7 +38,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         if (['citizen', 'displaced', 'driver'].includes(slug)) category = 'citizens';
         else if (['merchant', 'telecom', 'contractor', 'handyman'].includes(slug)) category = 'business';
         else if (['operator', 'specialist', 'official', 'verifier', 'developer'].includes(slug)) category = 'admin';
-        else if (['manager', 'admin', 'council'].includes(slug)) category = 'leadership';
+        else if (['manager', 'admin', 'council', 'donor'].includes(slug)) category = 'leadership';
         else if (['neighborhood_council', 'humanitarian', 'journalist'].includes(slug)) category = 'community';
 
         return {
@@ -212,6 +212,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Terminal',
             description: 'للمطورين والمهندسين لمراقبة صحة النظام، أداء الـ API، وحل المشكلات التقنية الحرجة.',
             category: 'admin'
+          },
+          {
+            id: '19',
+            name: 'الجهات المانحة (Donors)',
+            slug: 'donor',
+            themeColor: '#1e40af',
+            icon: 'Globe2',
+            description: 'للمنظمات الدولية المانحة لمراقبة مؤشرات الأداء، قياس أثر التمويل، وضمان الشفافية المؤسسية.',
+            category: 'leadership'
           }
         ];
       }

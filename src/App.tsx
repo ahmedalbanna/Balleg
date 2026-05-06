@@ -26,6 +26,7 @@ import { ContractorDashboard } from "./domains/contractor/components/ContractorD
 import { HandymanDashboard } from "./domains/handyman/components/HandymanDashboard";
 import { VerifierDashboard } from "./domains/verifier/components/VerifierDashboard";
 import { DeveloperDashboard } from "./domains/developer/components/DeveloperDashboard";
+import { DonorDashboard } from "./domains/donor/components/DonorDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
@@ -46,6 +47,7 @@ function HomeSwitcher() {
   if (currentRole?.slug === 'handyman') return <HandymanDashboard />;
   if (currentRole?.slug === 'verifier') return <VerifierDashboard />;
   if (currentRole?.slug === 'developer') return <DeveloperDashboard />;
+  if (currentRole?.slug === 'donor') return <DonorDashboard />;
   return <ReportHome />;
 }
 
