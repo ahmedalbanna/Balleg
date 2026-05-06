@@ -32,8 +32,48 @@ async function startServer() {
     });
   });
 
+  // Domain: "AI" Module API Routes
+  const aiRouter = express.Router();
+  aiRouter.post("/classify", async (req, res) => {
+    const { text } = req.body;
+    const OLLAMA_HOST = "http://185.190.140.93:11434";
+    const MODEL = "qwen2.5:1.5b";
+
+    if (!text) {
+      return res.status(400).json({ error: "Text is required for classification" });
+    }
+
+    try {
+      const prompt = `صنّف البلاغ التالي إلى أحد هذه الأصناف: (طرق، نظافة، كهرباء، مياه، إنساني، طارئ). 
+      أريد الإجابة بكلمة واحدة فقط تمثل الصنف.
+      البلاغ: "${text}"`;
+
+      const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          prompt: prompt,
+          stream: false,
+          options: {
+            temperature: 0.1
+          }
+        }),
+      });
+
+      const data: any = await response.json();
+      const classification = data.response.trim();
+      
+      res.json({ success: true, classification });
+    } catch (error: any) {
+      console.error("[Domain: AI] Ollama Error:", error.message);
+      res.status(500).json({ success: false, error: "فشل الاتصال بمحرك الذكاء الاصطناعي" });
+    }
+  });
+
   // Mount Domain APIs
   app.use("/api/domain/report", reportRouter);
+  app.use("/api/domain/ai", aiRouter);
 
   // Health and Core API
   app.get("/api/health", (req, res) => {

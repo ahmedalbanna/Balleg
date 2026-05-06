@@ -1,10 +1,13 @@
-import { FileSearch, CheckCircle2, XCircle, AlertCircle, Image as ImageIcon, Mic, MapPin, Search, Filter, ChevronLeft, ChevronRight, History, BarChart3, ShieldCheck } from "lucide-react";
+import { FileSearch, CheckCircle2, XCircle, AlertCircle, Image as ImageIcon, Mic, MapPin, Search, Filter, ChevronLeft, ChevronRight, History, BarChart3, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
+import { aiService } from "../../core/services/ai";
 
 export function VerifierDashboard() {
   const [selectedReport, setSelectedReport] = useState<number | null>(1);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isAIClassifying, setIsAIClassifying] = useState(false);
+  const [aiClassification, setAiClassification] = useState<string | null>(null);
 
   const pendingReports = [
     { 
@@ -42,8 +45,24 @@ export function VerifierDashboard() {
     setIsVerifying(true);
     setTimeout(() => {
         setIsVerifying(false);
+        setAiClassification(null);
         setSelectedReport(prev => (prev && prev < pendingReports.length ? prev + 1 : null));
     }, 1500);
+  };
+
+  const handleAIClassify = async () => {
+    const reportText = "هناك ماسورة مياه مكسورة في وسط الطريق تسبب في إعاقة حركة السير وتسرب كميات هائلة من المياه العذبة. الموقع يحتاج تدخل سريع قبل غرق المحلات المجاورة.";
+    setIsAIClassifying(true);
+    setAiClassification(null);
+    
+    const result = await aiService.classifyReport(reportText);
+    
+    if (result.success) {
+        setAiClassification(result.classification || "غير معروف");
+    } else {
+        alert(result.error);
+    }
+    setIsAIClassifying(false);
   };
 
   return (
@@ -190,14 +209,39 @@ export function VerifierDashboard() {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase block">التصنيف المقترح</label>
-                                            <select className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-[11px] font-black outline-none focus:ring-2 focus:ring-slate-100 transition-all appearance-none cursor-pointer">
-                                                <option>بنية تحتية - مياه</option>
-                                                <option>طرق وعوائق</option>
-                                                <option>نظافة عامة</option>
-                                                <option>أعطال كهرباء</option>
-                                            </select>
+                                        <div className="space-y-2 relative">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase block">التصنيف المختارة</label>
+                                                <button 
+                                                    onClick={handleAIClassify}
+                                                    disabled={isAIClassifying}
+                                                    className="flex items-center gap-1 text-[9px] font-black text-violet-600 bg-violet-50 px-2 py-1 rounded-lg hover:bg-violet-100 transition-colors disabled:opacity-50"
+                                                >
+                                                    {isAIClassifying ? (
+                                                        <div className="w-2 h-2 border border-violet-600 border-t-transparent rounded-full animate-spin" />
+                                                    ) : <Sparkles className="w-2 h-2" />}
+                                                    تصنيف ذكي
+                                                </button>
+                                            </div>
+                                            <div className="relative">
+                                                <select 
+                                                    value={aiClassification || ""}
+                                                    onChange={(e) => setAiClassification(e.target.value)}
+                                                    className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-[11px] font-black outline-none focus:ring-2 focus:ring-slate-100 transition-all appearance-none cursor-pointer"
+                                                >
+                                                    <option value="">{aiClassification ? aiClassification : "بنية تحتية - مياه"}</option>
+                                                    <option value="طرق">طرق وعوائق</option>
+                                                    <option value="نظافة">نظافة عامة</option>
+                                                    <option value="كهرباء">أعطال كهرباء</option>
+                                                    <option value="إنساني">إنساني</option>
+                                                    <option value="طارئ">حالة طوارئ</option>
+                                                </select>
+                                                {aiClassification && (
+                                                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                                                        <Wand2 className="w-3 h-3 text-violet-500 animate-pulse" />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-slate-400 uppercase block">مستوى الأولوية</label>
