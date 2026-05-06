@@ -36,7 +36,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         const slug = data.slug;
         
         if (['citizen', 'displaced', 'driver'].includes(slug)) category = 'citizens';
-        else if (['merchant', 'telecom', 'contractor'].includes(slug)) category = 'business';
+        else if (['merchant', 'telecom', 'contractor', 'handyman'].includes(slug)) category = 'business';
         else if (['operator', 'specialist', 'official'].includes(slug)) category = 'admin';
         else if (['manager', 'admin', 'council'].includes(slug)) category = 'leadership';
         else if (['neighborhood_council', 'humanitarian', 'journalist'].includes(slug)) category = 'community';
@@ -185,6 +185,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Hammer',
             description: 'لشركات المقاولات لمتابعة عقود الصيانة، جدولة الفرق الميدانية، وتحسين السمعة عبر سرعة التنفيذ.',
             category: 'business'
+          },
+          {
+            id: '16',
+            name: 'خدمات صيانة منزلية',
+            slug: 'handyman',
+            themeColor: '#4f46e5',
+            icon: 'Wrench',
+            description: 'للفنيين والمتاجر المحلية لتقديم خدمات الإصلاح المنزلي والترويج الجغرافي للمنتجات.',
+            category: 'business'
           }
         ];
       }
@@ -332,6 +341,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             themeColor: '#7c2d12',
             icon: 'Hammer',
             description: 'لشركات المقاولات لمتابعة عقود الصيانة، جدولة الفرق الميدانية، وتحسين السمعة عبر سرعة التنفيذ.',
+            category: 'business'
+          },
+          {
+            id: '16',
+            name: 'خدمات صيانة منزلية',
+            slug: 'handyman',
+            themeColor: '#4f46e5',
+            icon: 'Wrench',
+            description: 'للفنيين والمتاجر المحلية لتقديم خدمات الإصلاح المنزلي والترويج الجغرافي للمنتجات.',
             category: 'business'
           }
         ];

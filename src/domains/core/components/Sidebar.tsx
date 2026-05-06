@@ -1,5 +1,5 @@
 import { useRole } from "../context/RoleContext";
-import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse, Newspaper, Signal, Hammer } from "lucide-react";
+import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse, Newspaper, Signal, Hammer, Wrench } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "../utils/cn";
 
@@ -22,6 +22,7 @@ export function Sidebar() {
       case 'journalist': return <Newspaper className="w-5 h-5" />;
       case 'telecom': return <Signal className="w-5 h-5" />;
       case 'contractor': return <Hammer className="w-5 h-5" />;
+      case 'handyman': return <Wrench className="w-5 h-5" />;
       default: return <User className="w-5 h-5" />;
     }
   };
