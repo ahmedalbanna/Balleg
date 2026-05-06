@@ -1,23 +1,49 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Shield, LogOut, User as UserIcon } from "lucide-react";
+import { Shield, LogOut, User as UserIcon, AlertTriangle } from "lucide-react";
 import { Toaster } from "sonner";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { Sidebar } from "./Sidebar";
 import { NotificationCenter } from "./NotificationCenter";
 import { useAuth } from "../context/AuthContext";
+import { useRole } from "../context/RoleContext";
 
 export function Layout() {
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const { currentRole, availableRoles, setCurrentRole } = useRole();
+
+  const isGuestMode = currentRole && profile && currentRole.slug !== profile.role;
+
+  const handleResetRole = () => {
+    const originalRole = availableRoles.find(r => r.slug === profile?.role);
+    if (originalRole) {
+      setCurrentRole(originalRole);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col font-cairo bg-[#F8FAFC] text-[#1E293B] overflow-x-hidden selection:bg-blue-100" dir="rtl">
       <Toaster position="top-center" richColors />
-      <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 sm:px-12 shrink-0 sticky top-0 z-50">
+      
+      {isGuestMode && (
+        <div className="bg-amber-100 border-b border-amber-200 px-6 py-2 flex items-center justify-center gap-3 text-amber-800 text-xs font-bold z-50">
+          <AlertTriangle size={14} />
+          <span>أنت الآن تتصفح واجهة "{currentRole.name}" بصفة ضيف (وضع الاختبار).</span>
+          <button 
+            onClick={handleResetRole}
+            className="bg-white px-3 py-1 rounded-md shadow-sm border border-amber-200 hover:bg-amber-50 transition-colors ml-2"
+          >
+            العودة لدوري الأساسي
+          </button>
+        </div>
+      )}
+
+      <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 sm:px-12 shrink-0 sticky top-0 z-40">
         <Link to="/" className="flex items-center gap-3 group">
           <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl pb-1 shadow-lg shadow-blue-600/20 group-hover:scale-105 transition-transform">ب</div>
           <h1 className="text-2xl font-black tracking-tighter text-slate-900 font-readex">بلّــــغ</h1>
         </Link>
+
 
         <div className="flex items-center gap-6 text-neutral-400">
           <nav className="hidden lg:flex gap-10 text-sm font-bold">

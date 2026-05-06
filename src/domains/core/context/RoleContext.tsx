@@ -34,7 +34,10 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     if (profile?.role && availableRoles.length > 0) {
       const match = availableRoles.find(r => r.slug === profile.role);
       if (match) {
-        setCurrentRole(match);
+        setCurrentRole(prev => {
+           if (prev?.slug === match.slug) return prev;
+           return match;
+        });
       }
     }
   }, [profile, availableRoles]);
@@ -239,10 +242,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
       setAvailableRoles(roles);
       
-      if (!currentRole && roles.length > 0) {
-        const citizen = roles.find(r => r.slug === 'citizen') || roles[0];
-        setCurrentRole(citizen);
-      }
+      setCurrentRole(prev => {
+        if (!prev && roles.length > 0) {
+           return roles.find(r => r.slug === 'citizen') || roles[0];
+        }
+        // If prev exists, let it be. But maybe we need to update it with the new role object?
+        // Let's just keep the existing logic but functional update.
+        return prev;
+      });
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching roles:", error);
@@ -420,13 +427,16 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           }
         ];
       setAvailableRoles(fallback);
-      if (!currentRole) setCurrentRole(fallback[0]);
+      setCurrentRole(prev => {
+        if (!prev) return fallback[0];
+        return prev;
+      });
       setIsLoading(false);
       handleFirestoreError(error, OperationType.LIST, 'roles');
     });
 
     return () => unsubscribe();
-  }, [currentRole]);
+  }, []);
 
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole, availableRoles, isLoading }}>
