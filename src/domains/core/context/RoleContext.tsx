@@ -76,6 +76,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             themeColor: '#f97316',
             icon: 'Home',
             description: 'منصة لرفع صوت المجتمعات المكتظة وضمان وصول الخدمات الأساسية والمساعدات.'
+          },
+          {
+            id: '6',
+            name: 'موظف الاستقبال',
+            slug: 'operator',
+            themeColor: '#4f46e5',
+            icon: 'Headset',
+            description: 'لإدارة البلاغات الواردة وتوجيهها للفرق الميدانية المختصة بسرعة وكفاءة.'
           }
         ];
       }
@@ -129,6 +137,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           themeColor: '#f97316',
           icon: 'Home',
           description: 'منصة لرفع صوت المجتمعات المكتظة وضمان وصول الخدمات الأساسية والمساعدات.'
+        },
+        {
+          id: '6',
+          name: 'موظف الاستقبال',
+          slug: 'operator',
+          themeColor: '#4f46e5',
+          icon: 'Headset',
+          description: 'لإدارة البلاغات الواردة وتوجيهها للفرق الميدانية المختصة بسرعة وكفاءة.'
         }
       ];
       setAvailableRoles(fallback);
