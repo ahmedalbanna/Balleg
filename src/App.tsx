@@ -19,6 +19,7 @@ import { ManagerDashboard } from "./domains/manager/components/ManagerDashboard"
 import { AdminDashboard } from "./domains/admin/components/AdminDashboard";
 import { CouncilDashboard } from "./domains/council/components/CouncilDashboard";
 import { NeighborhoodDashboard } from "./domains/neighborhood/components/NeighborhoodDashboard";
+import { HumanitarianDashboard } from "./domains/humanitarian/components/HumanitarianDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
@@ -32,6 +33,7 @@ function HomeSwitcher() {
   if (currentRole?.slug === 'admin') return <AdminDashboard />;
   if (currentRole?.slug === 'council') return <CouncilDashboard />;
   if (currentRole?.slug === 'neighborhood_council') return <NeighborhoodDashboard />;
+  if (currentRole?.slug === 'humanitarian') return <HumanitarianDashboard />;
   return <ReportHome />;
 }
 

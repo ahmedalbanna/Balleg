@@ -39,6 +39,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         else if (['merchant'].includes(slug)) category = 'business';
         else if (['operator', 'specialist', 'official'].includes(slug)) category = 'admin';
         else if (['manager', 'admin', 'council'].includes(slug)) category = 'leadership';
+        else if (['neighborhood_council', 'humanitarian'].includes(slug)) category = 'community';
 
         return {
           ...data,
@@ -139,6 +140,24 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Landmark',
             description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.',
             category: 'leadership'
+          },
+          {
+            id: '11',
+            name: 'المجالس المجتمعية',
+            slug: 'neighborhood_council',
+            themeColor: '#64748b',
+            icon: 'Users',
+            description: 'للدور الرقابي المجتمعي، متابعة بلاغات الحي المتأخرة، والرفع بالتقييمات للبلدية.',
+            category: 'community'
+          },
+          {
+            id: '12',
+            name: 'المنظمات الإنسانية',
+            slug: 'humanitarian',
+            themeColor: '#0284c7',
+            icon: 'HeartPulse',
+            description: 'للمنظمات الدولية والمحلية لتوجيه التدخلات وحل مشكلات البنية التحتية والنزوح.',
+            category: 'community'
           }
         ];
       }
@@ -243,16 +262,25 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.',
           category: 'leadership'
         },
-        {
-          id: '11',
-          name: 'المجالس المجتمعية',
-          slug: 'neighborhood_council',
-          themeColor: '#64748b',
-          icon: 'Users',
-          description: 'للدور الرقابي المجتمعي، متابعة بلاغات الحي المتأخرة، والرفع بالتقييمات للبلدية.',
-          category: 'community'
-        }
-      ];
+          {
+            id: '11',
+            name: 'المجالس المجتمعية',
+            slug: 'neighborhood_council',
+            themeColor: '#64748b',
+            icon: 'Users',
+            description: 'للدور الرقابي المجتمعي، متابعة بلاغات الحي المتأخرة، والرفع بالتقييمات للبلدية.',
+            category: 'community'
+          },
+          {
+            id: '12',
+            name: 'المنظمات الإنسانية',
+            slug: 'humanitarian',
+            themeColor: '#0284c7',
+            icon: 'HeartPulse',
+            description: 'للمنظمات الدولية والمحلية لتوجيه التدخلات وحل مشكلات البنية التحتية والنزوح.',
+            category: 'community'
+          }
+        ];
       setAvailableRoles(fallback);
       if (!currentRole) setCurrentRole(fallback[0]);
       setIsLoading(false);
