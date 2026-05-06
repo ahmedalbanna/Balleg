@@ -42,7 +42,7 @@ export const reportApi = {
     // Ensure we have a tracking number.
     const trackingNo = "BLG-" + Math.floor(100000 + Math.random() * 900000);
     const isDisplaced = data.role === "displaced";
-    const status = isDisplaced ? "pending_official" : "pending_operator";
+    const status = isDisplaced ? "pending_official" : (data.isPrivateService ? "pending_operator" : "pending_verification");
     const department = isDisplaced ? "البلدية والمنظمات الإنسانية" : (data.isPrivateService ? "خدمات خاصة" : undefined);
     
     const newReport: Report = {

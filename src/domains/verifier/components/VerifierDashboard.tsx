@@ -1,66 +1,90 @@
 import { FileSearch, CheckCircle2, XCircle, AlertCircle, Image as ImageIcon, Mic, MapPin, Search, Filter, ChevronLeft, ChevronRight, History, BarChart3, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { aiService } from "../../core/services/ai";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
+import { Report } from "../../core/services/reportApi";
+import { toast } from "sonner";
+import MapView from "../../locations/components/MapView";
 
 export function VerifierDashboard() {
-  const [selectedReport, setSelectedReport] = useState<number | null>(1);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isAIClassifying, setIsAIClassifying] = useState(false);
   const [aiClassification, setAiClassification] = useState<string | null>(null);
+  const [priorityInfo, setPriorityInfo] = useState<string>("medium");
 
-  const pendingReports = [
-    { 
-        id: 1, 
-        title: "تسرب مياه ضخم - تقاطع شارع النصر", 
-        timestamp: "منذ ٥ دقائق", 
-        type: "بنية تحتية", 
-        hasAudio: true, 
-        hasImage: true,
-        priority: "high"
-    },
-    { 
-        id: 2, 
-        title: "حفرة خطيرة في طريق المدرسة", 
-        timestamp: "منذ ١٢ دقيقة", 
-        type: "طرق", 
-        hasAudio: false, 
-        hasImage: true,
-        priority: "critical"
-    },
-    { 
-        id: 3, 
-        title: "تراكم نفايات صلبة خلف السوق", 
-        timestamp: "منذ ٢٤ دقيقة", 
-        type: "نظافة", 
-        hasAudio: true, 
-        hasImage: true,
-        priority: "medium"
-    },
-  ];
+  useEffect(() => {
+    const q = query(collection(db, 'reports'), where('status', '==', 'pending_verification'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
+      setReports(docs);
+      if (docs.length > 0 && !selectedReportId) {
+        setSelectedReportId(docs[0].id);
+        const rep = docs[0];
+        setAiClassification(rep.aiAnalysis?.classification || rep.department || "غير محدد");
+        setPriorityInfo(rep.aiAnalysis?.priority || rep.priority || "medium");
+      }
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'reports'));
 
-  const currentReport = pendingReports.find(r => r.id === selectedReport);
+    return () => unsubscribe();
+  }, []);
 
-  const handleVerify = () => {
+  const currentReport = reports.find(r => r.id === selectedReportId);
+
+  const handleVerify = async () => {
+    if(!currentReport) return;
     setIsVerifying(true);
-    setTimeout(() => {
+    try {
+        const repRef = doc(db, 'reports', currentReport.id);
+        await updateDoc(repRef, {
+            status: "pending_operator",
+            department: aiClassification || currentReport.department || "غير محدد",
+            priority: priorityInfo,
+            updatedAt: new Date().toISOString()
+        });
+        toast.success("تم اعتماد البلاغ وتوجيهه بنجاح.");
+        setSelectedReportId(null);
+    } catch (e) {
+        handleFirestoreError(e, OperationType.UPDATE, 'reports');
+    } finally {
         setIsVerifying(false);
-        setAiClassification(null);
-        setSelectedReport(prev => (prev && prev < pendingReports.length ? prev + 1 : null));
-    }, 1500);
+    }
+  };
+
+  const handleReject = async () => {
+    if(!currentReport) return;
+    setIsVerifying(true);
+    try {
+        const repRef = doc(db, 'reports', currentReport.id);
+        await updateDoc(repRef, {
+            status: "rejected",
+            rejectReason: "بلاغ وهمي أو مكرر (تدقيق بشري)",
+            updatedAt: new Date().toISOString()
+        });
+        toast.info("تم استبعاد البلاغ.");
+        setSelectedReportId(null);
+    } catch (e) {
+        handleFirestoreError(e, OperationType.UPDATE, 'reports');
+    } finally {
+        setIsVerifying(false);
+    }
   };
 
   const handleAIClassify = async () => {
-    const reportText = "هناك ماسورة مياه مكسورة في وسط الطريق تسبب في إعاقة حركة السير وتسرب كميات هائلة من المياه العذبة. الموقع يحتاج تدخل سريع قبل غرق المحلات المجاورة.";
+    if(!currentReport?.description) return;
     setIsAIClassifying(true);
     setAiClassification(null);
     
-    const result = await aiService.classifyReport(reportText);
+    const result = await aiService.classifyReport(currentReport.description);
     
     if (result.success) {
         setAiClassification(result.classification || "غير معروف");
+        setPriorityInfo(result.priority || "medium");
     } else {
-        alert(result.error);
+        toast.error(result.error);
     }
     setIsAIClassifying(false);
   };
@@ -109,30 +133,34 @@ export function VerifierDashboard() {
                 </div>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-3">
-                    {pendingReports.map(report => (
+                    {reports.map(report => (
                         <button 
                             key={report.id}
-                            onClick={() => setSelectedReport(report.id)}
+                            onClick={() => {
+                                setSelectedReportId(report.id);
+                                setAiClassification(report.aiAnalysis?.classification || report.department || "غير محدد");
+                                setPriorityInfo(report.aiAnalysis?.priority || report.priority || "medium");
+                            }}
                             className={`w-full text-right p-4 rounded-2xl border transition-all ${
-                                selectedReport === report.id 
+                                selectedReportId === report.id 
                                 ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-900/20 active-scale-95' 
                                 : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-white hover:border-slate-300'
                             }`}
                         >
                             <div className="flex justify-between items-center mb-2">
                                 <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase ${
-                                    selectedReport === report.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                                    selectedReportId === report.id ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
                                 }`}>
                                     {report.type}
                                 </span>
-                                <span className={`text-[9px] font-bold ${selectedReport === report.id ? 'text-slate-400' : 'text-slate-400'}`}>
-                                    {report.timestamp}
+                                <span className={`text-[9px] font-bold ${selectedReportId === report.id ? 'text-slate-400' : 'text-slate-400'}`}>
+                                    {new Date(report.createdAt).toLocaleDateString()}
                                 </span>
                             </div>
-                            <h4 className="text-xs font-black truncate">{report.title}</h4>
+                            <h4 className="text-xs font-black truncate">{report.description || "بلاغ غير معروف"}</h4>
                             <div className="flex items-center gap-2 mt-3">
-                                {report.hasImage && <ImageIcon className={`w-3 h-3 ${selectedReport === report.id ? 'text-slate-400' : 'text-slate-300'}`} />}
-                                {report.hasAudio && <Mic className={`w-3 h-3 ${selectedReport === report.id ? 'text-slate-400' : 'text-slate-300'}`} />}
+                                {report.imageUrl && <ImageIcon className={`w-3 h-3 ${selectedReportId === report.id ? 'text-slate-400' : 'text-slate-300'}`} />}
+                                {report.audioUrl && <Mic className={`w-3 h-3 ${selectedReportId === report.id ? 'text-slate-400' : 'text-slate-300'}`} />}
                                 <div className={`ml-auto w-1.5 h-1.5 rounded-full ${report.priority === 'critical' ? 'bg-rose-500 animate-pulse' : 'bg-amber-500'}`} />
                             </div>
                         </button>
@@ -144,9 +172,9 @@ export function VerifierDashboard() {
         {/* Verification Stage */}
         <div className="lg:col-span-8">
             <AnimatePresence mode="wait">
-                {selectedReport ? (
+                {currentReport ? (
                     <motion.div 
-                        key={selectedReport}
+                        key={currentReport.id}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
@@ -170,16 +198,22 @@ export function VerifierDashboard() {
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
-                                    <div className="aspect-video bg-slate-200 rounded-[2rem] overflow-hidden relative group">
-                                        <img 
-                                            src={`https://images.unsplash.com/photo-1584467541268-b027f6120b28?auto=format&fit=crop&q=80&w=800`} 
-                                            alt="Evidence" 
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                                            referrerPolicy="no-referrer"
-                                        />
-                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="px-6 py-2.5 bg-white text-slate-900 rounded-xl text-[10px] font-black shadow-xl">تفعيل المكبر</button>
-                                        </div>
+                                    <div className="aspect-video bg-slate-200 rounded-[2rem] overflow-hidden relative group flex items-center justify-center">
+                                        {currentReport.imageUrl ? (
+                                            <>
+                                                <img 
+                                                    src={currentReport.imageUrl} 
+                                                    alt="Evidence" 
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                                    referrerPolicy="no-referrer"
+                                                />
+                                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button className="px-6 py-2.5 bg-white text-slate-900 rounded-xl text-[10px] font-black shadow-xl">تفعيل المكبر</button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-slate-400 font-bold text-xs">لا يوجد صورة مرفقة</div>
+                                        )}
                                     </div>
 
                                     <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
@@ -188,15 +222,22 @@ export function VerifierDashboard() {
                                                 <Mic className="w-4 h-4 text-slate-400" />
                                                 <span className="text-[10px] font-black text-slate-900 uppercase">التسجيل الصوتي للمبلغ</span>
                                             </div>
-                                            <span className="text-[10px] font-bold text-slate-400">٠٠:١٨</span>
+                                            {currentReport.audioUrl ? (
+                                                <span className="text-[10px] font-bold text-emerald-500">مرفق</span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold text-slate-400">غير متوفر</span>
+                                            )}
                                         </div>
-                                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden relative">
-                                            <div className="absolute inset-y-0 left-0 w-1/3 bg-slate-900" />
-                                        </div>
-                                        <div className="flex justify-between mt-3">
-                                            <button className="text-[9px] font-black text-slate-400 hover:text-slate-900 transition-colors">تحويل لصوت لنص (AI)</button>
-                                            <button className="text-[9px] font-black text-slate-400 hover:text-slate-900 transition-colors">تحميل المقطع</button>
-                                        </div>
+                                        {currentReport.audioUrl ? (
+                                            <audio src={currentReport.audioUrl} controls className="w-full h-8" />
+                                        ) : (
+                                            <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden relative" />
+                                        )}
+                                        {currentReport.audioUrl && (
+                                            <div className="flex justify-between mt-3">
+                                                <button className="text-[9px] font-black text-slate-400 hover:text-slate-900 transition-colors">تحويل لصوت لنص (AI)</button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -204,7 +245,7 @@ export function VerifierDashboard() {
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">وصف البلاغ</label>
                                         <p className="text-sm font-bold text-slate-800 leading-relaxed bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                                            "هناك ماسورة مياه مكسورة في وسط الطريق تسبب في إعاقة حركة السير وتسرب كميات هائلة من المياه العذبة. الموقع يحتاج تدخل سريع قبل غرق المحلات المجاورة."
+                                            {currentReport.description || "لا يوجد وصف كتابي لإظهاره."}
                                         </p>
                                     </div>
 
@@ -229,12 +270,12 @@ export function VerifierDashboard() {
                                                     onChange={(e) => setAiClassification(e.target.value)}
                                                     className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-[11px] font-black outline-none focus:ring-2 focus:ring-slate-100 transition-all appearance-none cursor-pointer"
                                                 >
-                                                    <option value="">{aiClassification ? aiClassification : "بنية تحتية - مياه"}</option>
-                                                    <option value="طرق">طرق وعوائق</option>
-                                                    <option value="نظافة">نظافة عامة</option>
-                                                    <option value="كهرباء">أعطال كهرباء</option>
-                                                    <option value="إنساني">إنساني</option>
-                                                    <option value="طارئ">حالة طوارئ</option>
+                                                    <option value="">{aiClassification ? aiClassification : "غير محدد"}</option>
+                                                    <option value="بنية تحتية والمياه">بنية تحتية والمياه</option>
+                                                    <option value="طرق والنقل">طرق والنقل</option>
+                                                    <option value="نظافة وبيئة">نظافة وبيئة</option>
+                                                    <option value="كهرباء وطاقة">أعطال كهرباء</option>
+                                                    <option value="البلدية والمنظمات الإنسانية">إنساني</option>
                                                 </select>
                                                 {aiClassification && (
                                                     <div className="absolute left-3 top-1/2 -translate-y-1/2">
@@ -246,8 +287,9 @@ export function VerifierDashboard() {
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-slate-400 uppercase block">مستوى الأولوية</label>
                                             <div className="flex gap-2">
-                                                <button className="flex-1 py-4 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100 text-[10px] font-black shadow-sm">حرج</button>
-                                                <button className="flex-1 py-4 bg-slate-50 text-slate-400 rounded-2xl border border-slate-100 text-[10px] font-black">عادي</button>
+                                                <button onClick={() => setPriorityInfo('critical')} className={`flex-1 py-4 rounded-2xl border text-[10px] font-black transition-all ${priorityInfo === 'critical' ? 'bg-rose-50 text-rose-600 border-rose-200 shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>حرج</button>
+                                                <button onClick={() => setPriorityInfo('high')} className={`flex-1 py-4 rounded-2xl border text-[10px] font-black transition-all ${priorityInfo === 'high' ? 'bg-orange-50 text-orange-600 border-orange-200 shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>عالي</button>
+                                                <button onClick={() => setPriorityInfo('medium')} className={`flex-1 py-4 rounded-2xl border text-[10px] font-black transition-all ${priorityInfo === 'medium' ? 'bg-blue-50 text-blue-600 border-blue-200 shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>عادي</button>
                                             </div>
                                         </div>
                                     </div>
@@ -258,10 +300,12 @@ export function VerifierDashboard() {
                                             <span className="text-xs font-black">الموقع الجغرافي الموثق</span>
                                         </div>
                                         <div className="text-[10px] font-bold text-slate-400 mb-4 leading-relaxed">
-                                            الإحداثيات: 15.3694° N, 44.1910° E <br />
-                                            حي الصافية، القطاع الرابع، المنطقة المجاورة لشارع النصر.
+                                            {currentReport.location ? (
+                                                <>الإحداثيات: {currentReport.location[0].toFixed(4)}° N, {currentReport.location[1].toFixed(4)}° E</>
+                                            ) : (
+                                                "الموقع غير محدد"
+                                            )}
                                         </div>
-                                        <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black transition-all border border-white/10">مشاهدة على الخريطة الحرارية</button>
                                     </div>
                                 </div>
                             </div>
@@ -282,11 +326,16 @@ export function VerifierDashboard() {
                                     </>
                                 )}
                             </button>
-                            <button className="flex-1 py-5 bg-white border border-slate-200 text-slate-400 rounded-[2rem] font-black text-sm hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all flex items-center justify-center gap-3">
+                            <button 
+                                onClick={handleReject}
+                                disabled={isVerifying}
+                                className="flex-1 py-5 bg-white border border-slate-200 text-slate-400 rounded-[2rem] font-black text-sm hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all flex items-center justify-center gap-3 disabled:opacity-70">
                                 <XCircle className="w-5 h-5" />
                                 استبعاد (بلاغ وهمي)
                             </button>
-                            <button className="flex-1 py-5 bg-white border border-slate-200 text-slate-400 rounded-[2rem] font-black text-sm hover:bg-slate-100 hover:text-slate-900 transition-all flex items-center justify-center gap-3">
+                            <button 
+                                onClick={() => toast.info("تم وضع علامة مراجعة ميدانية على البلاغ")}
+                                className="flex-1 py-5 bg-white border border-slate-200 text-slate-400 rounded-[2rem] font-black text-sm hover:bg-slate-100 hover:text-slate-900 transition-all flex items-center justify-center gap-3">
                                 <AlertCircle className="w-5 h-5" />
                                 يحتاج مراجعة ميدانية
                             </button>

@@ -25,7 +25,7 @@ export function MyReports() {
       try {
         const userId = auth.currentUser?.uid || "anonymous";
         const res = await reportApi.getMyReports(userId);
-        setReports(res.reports || []);
+        setReports((res as unknown as Report[]) || []);
       } catch (err) {
         console.error(err);
       } finally {
