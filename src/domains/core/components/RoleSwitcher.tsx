@@ -1,5 +1,5 @@
-import { useRole } from "../../core/context/RoleContext";
-import { User, Shield, Briefcase, ChevronDown, Store } from "lucide-react";
+import { useRole } from "../context/RoleContext";
+import { User, Shield, Briefcase, ChevronDown, Store, LogOut, Settings } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -11,7 +11,6 @@ export function RoleSwitcher() {
     switch (slug) {
       case 'official': return <Shield className="w-4 h-4" />;
       case 'merchant': return <Store className="w-4 h-4" />;
-      case 'expert': return <Briefcase className="w-4 h-4" />;
       default: return <User className="w-4 h-4" />;
     }
   };
@@ -20,14 +19,30 @@ export function RoleSwitcher() {
 
   return (
     <div className="relative">
+      {/* Profile Trigger */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+        className="flex items-center gap-3 p-1.5 pr-4 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all shadow-sm bg-white group cursor-pointer"
       >
-        <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-          {getIcon(currentRole.slug)}
+        <div className="hidden sm:block text-left ml-1">
+          <p className="text-[10px] text-slate-400 font-black uppercase leading-none mb-1">مرحباً بك</p>
+          <p className="text-sm font-black text-slate-900 leading-none">أحمد محمد</p>
         </div>
-        <span className="text-sm font-bold text-slate-700 hidden sm:inline">{currentRole.name}</span>
+        
+        <div className="relative">
+            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm text-slate-500 overflow-hidden group-hover:border-blue-100 transition-colors">
+                <img 
+                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=Ahmed" 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover shadow-inner"
+                  referrerPolicy="no-referrer"
+                />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 rounded-full border-2 border-white flex items-center justify-center text-white">
+                {getIcon(currentRole.slug)}
+            </div>
+        </div>
+        
         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -36,36 +51,62 @@ export function RoleSwitcher() {
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
             <motion.div 
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              initial={{ opacity: 0, y: 15, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute left-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 overflow-hidden"
+              exit={{ opacity: 0, y: 15, scale: 0.95 }}
+              className="absolute left-0 top-full mt-3 w-72 bg-white border border-slate-200 rounded-[2rem] shadow-2xl z-50 overflow-hidden"
             >
-              <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">تبديل الدور التجريبي</div>
-              {availableRoles.map((role) => (
-                <button
-                  key={role.id}
-                  onClick={() => {
-                    setCurrentRole(role);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-                    currentRole.id === role.id 
-                      ? 'bg-blue-50 text-blue-700 font-bold' 
-                      : 'hover:bg-slate-50 text-slate-600'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    currentRole.id === role.id ? 'bg-blue-100' : 'bg-slate-100'
-                  }`}>
-                    {getIcon(role.slug)}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm">{role.name}</div>
-                    <div className="text-[10px] opacity-70">عرض مخصص</div>
-                  </div>
+              {/* User Info Header */}
+              <div className="p-6 bg-slate-50/50 border-b border-slate-100">
+                <p className="text-xs font-bold text-slate-400 uppercase mb-1">الحساب التجريبي</p>
+                <h4 className="text-lg font-black text-slate-900">أحمد محمد</h4>
+                <p className="text-xs text-slate-500 truncate">ahmed.demo@balleg.ye</p>
+              </div>
+
+              {/* Roles Section */}
+              <div className="p-4">
+                <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">اختر دور العرض (تجريبي)</div>
+                <div className="space-y-1 mt-1">
+                    {availableRoles.map((role) => (
+                        <button
+                        key={role.id}
+                        onClick={() => {
+                            setCurrentRole(role);
+                            setIsOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all ${
+                            currentRole.id === role.id 
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                            : 'hover:bg-slate-50 text-slate-600'
+                        }`}
+                        >
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                            currentRole.id === role.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                            {getIcon(role.slug)}
+                        </div>
+                        <div className="text-right">
+                            <div className="text-sm font-black">{role.name}</div>
+                            <div className={`text-[10px] ${currentRole.id === role.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                واجهة {role.name}
+                            </div>
+                        </div>
+                        </button>
+                    ))}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-2 bg-slate-50 border-t border-slate-100 flex gap-1">
+                <button className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors">
+                    <Settings className="w-3 h-3" />
+                    الإعدادات
                 </button>
-              ))}
+                <button className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                    <LogOut className="w-3 h-3" />
+                    خروج
+                </button>
+              </div>
             </motion.div>
           </>
         )}

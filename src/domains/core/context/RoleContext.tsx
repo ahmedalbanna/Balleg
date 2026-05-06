@@ -29,27 +29,54 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const q = query(collection(db, 'roles'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const roles = snapshot.docs.map(doc => ({
+      let roles = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
       })) as AppRole[];
       
+      // Fallback if DB is empty
+      if (roles.length === 0) {
+        roles = [
+          {
+            id: '1',
+            name: 'الجمهور العام',
+            slug: 'citizen',
+            themeColor: '#3b82f6',
+            icon: 'User',
+            description: 'للمواطنين والجمهور العام لتقديم البلاغات الحية.'
+          },
+          {
+            id: '2',
+            name: 'المسئول الحكومي',
+            slug: 'official',
+            themeColor: '#000000',
+            icon: 'Shield',
+            description: 'لمتابعة البلاغات واتخاذ الإجراءات اللازمة.'
+          },
+          {
+            id: '3',
+            name: 'التاجر المحلي',
+            slug: 'merchant',
+            themeColor: '#059669',
+            icon: 'Store',
+            description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم التجارية.'
+          }
+        ];
+      }
+
       setAvailableRoles(roles);
       
-      // Default to the first role if none set
       if (!currentRole && roles.length > 0) {
-        // Find if we have a default citizen role
         const citizen = roles.find(r => r.slug === 'citizen') || roles[0];
         setCurrentRole(citizen);
       }
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching roles:", error);
-      // Fallback for demo if DB is empty
       const fallback: AppRole[] = [
         {
           id: '1',
-          name: 'المواطن',
+          name: 'الجمهور العام',
           slug: 'citizen',
           themeColor: '#3b82f6',
           icon: 'User',
@@ -57,9 +84,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         },
         {
           id: '2',
-          name: 'المسؤول الحكومي',
+          name: 'المسئول الحكومي',
           slug: 'official',
-          themeColor: '#0f172a',
+          themeColor: '#000000',
           icon: 'Shield',
           description: 'لمتابعة البلاغات واتخاذ الإجراءات اللازمة.'
         },
@@ -69,7 +96,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           slug: 'merchant',
           themeColor: '#059669',
           icon: 'Store',
-          description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم.'
+          description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم التجارية.'
         }
       ];
       setAvailableRoles(fallback);
