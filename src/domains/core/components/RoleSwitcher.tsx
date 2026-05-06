@@ -73,7 +73,7 @@ export function RoleSwitcher() {
         className="flex items-center gap-2 py-2 px-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 group cursor-pointer"
       >
         <Layers className="w-4 h-4 text-blue-400" />
-        <span className="text-xs font-bold hidden sm:inline">تبديل الواجهة للعرض</span>
+        <span className="text-[11px] font-bold hidden sm:inline">محاكي الأدوار (اختبار)</span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 

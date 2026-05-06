@@ -51,7 +51,7 @@ export function Sidebar() {
   return (
     <aside className="w-72 bg-white border-l border-slate-100 hidden md:flex flex-col h-[calc(100vh-80px)] sticky top-20 z-40 shrink-0">
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">تبديل بيئة العرض</h3>
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">محاكاة الواجهات (للاختبار)</h3>
         
         <div className="space-y-8">
           {(Object.keys(categoryMap) as Array<keyof typeof categoryMap>).map((catKey) => {
