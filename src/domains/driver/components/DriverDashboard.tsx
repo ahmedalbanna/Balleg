@@ -19,25 +19,25 @@ export function DriverDashboard() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 w-full p-2 sm:p-8 bg-slate-900 min-h-[85vh] rounded-[2.5rem] border border-slate-800 text-slate-100 overflow-hidden relative">
+    <div className="flex flex-col gap-6 w-full p-2 sm:p-8 bg-white min-h-[85vh] rounded-[2.5rem] border border-slate-100 text-slate-900 overflow-hidden relative shadow-sm">
       {/* Background Decorative Element */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 blur-[120px] -z-10 rounded-full"></div>
+      <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 blur-[120px] -z-10 rounded-full"></div>
       
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-slate-900 flex items-center justify-center shadow-lg shadow-amber-500/20">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-xl shadow-amber-500/20">
             <Car className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="text-2xl font-black font-readex">بوابة العين الساهرة</h2>
-            <p className="text-slate-400 text-sm mt-1">طرق أكثر أماناً.. بفضل بلاغاتك السريعة</p>
+            <h2 className="text-2xl font-black font-readex text-slate-900">بوابة العين الساهرة</h2>
+            <p className="text-slate-500 text-sm mt-1">طرق أكثر أماناً.. بفضل بلاغاتك السريعة</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
             <div className="hidden md:flex flex-col items-end">
-                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">الحالة الحالية</span>
-                <span className="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">الحالة الحالية</span>
+                <span className="text-sm font-bold text-emerald-600 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                     متصل - نشط في الميدان
                 </span>
             </div>
@@ -52,32 +52,32 @@ export function DriverDashboard() {
             <motion.button 
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setIsRecording(!isRecording)}
-                className={`relative h-64 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center gap-6 group overflow-hidden ${
+                className={`relative h-64 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center gap-6 group overflow-hidden cursor-pointer ${
                     isRecording 
-                    ? 'border-red-500 bg-red-500/10 shadow-[0_0_50px_rgba(239,68,68,0.2)]' 
-                    : 'border-slate-800 bg-slate-800/50 hover:border-amber-500/50'
+                    ? 'border-red-500 bg-red-50 shadow-[0_0_50px_rgba(239,68,68,0.1)]' 
+                    : 'border-slate-100 bg-slate-50/50 hover:border-amber-500/50 hover:bg-white hover:shadow-xl hover:shadow-amber-500/5'
                 }`}
             >
                 {isRecording && (
                     <motion.div 
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0.1, 0.3, 0.1] }}
+                        animate={{ opacity: [0.3, 0.5, 0.3] }}
                         transition={{ repeat: Infinity, duration: 2 }}
-                        className="absolute inset-0 bg-red-500/20"
+                        className="absolute inset-0 bg-red-500/10"
                     />
                 )}
                 
                 <div className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 ${
-                    isRecording ? 'bg-red-500 shadow-xl' : 'bg-slate-700 group-hover:bg-amber-500 group-hover:text-slate-900 text-slate-300'
+                    isRecording ? 'bg-red-500 shadow-xl' : 'bg-white shadow-lg border border-slate-100 group-hover:bg-amber-500 group-hover:text-white text-slate-400'
                 }`}>
                     <Mic className={`w-10 h-10 ${isRecording ? 'animate-pulse text-white' : ''}`} />
                 </div>
                 
-                <div className="text-center">
-                    <h3 className={`text-2xl font-black mb-2 ${isRecording ? 'text-red-500' : 'text-white'}`}>
+                <div className="text-center relative z-10">
+                    <h3 className={`text-2xl font-black mb-2 ${isRecording ? 'text-red-600' : 'text-slate-900'}`}>
                         {isRecording ? 'جاري تسجيل البلاغ...' : 'تبليغ صوتي سريع'}
                     </h3>
-                    <p className="text-slate-400 font-medium">سجل العطل أو الحفرة بكلمة واحدة أثناء القيادة</p>
+                    <p className="text-slate-500 font-bold">سجل العطل أو الحفرة بكلمة واحدة أثناء القيادة</p>
                 </div>
 
                 {isRecording && (
@@ -95,60 +95,60 @@ export function DriverDashboard() {
             </motion.button>
 
             {/* Simulated Live Map Preview */}
-            <div className="h-full bg-slate-800/30 rounded-[2rem] border border-slate-800 p-6 flex flex-col gap-4 overflow-hidden group">
+            <div className="h-full bg-slate-50/30 rounded-[2rem] border border-slate-100 p-6 flex flex-col gap-4 overflow-hidden group">
                 <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-bold flex items-center gap-2">
-                        <MapIcon className="w-4 h-4 text-blue-400" />
+                    <h4 className="font-black text-xs text-slate-400 flex items-center gap-2 uppercase tracking-widest">
+                        <MapIcon className="w-4 h-4 text-blue-500" />
                         خريطة المخاطر القريبة
                     </h4>
-                    <span className="text-[10px] font-bold text-slate-500">تحديث حي</span>
+                    <span className="text-[10px] font-bold text-slate-400">تحديث حي</span>
                 </div>
                 
-                <div className="relative flex-1 bg-slate-900 rounded-xl overflow-hidden border border-slate-700/50">
-                    <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
+                <div className="relative flex-1 bg-white rounded-2xl overflow-hidden border border-slate-200/50 shadow-inner">
+                    <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
                     
                     {/* Simulated Map Markers */}
                     <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
                         <div className="w-3 h-3 bg-blue-500 rounded-full animate-ping absolute"></div>
-                        <div className="w-3 h-3 bg-blue-500 rounded-full relative border-2 border-white"></div>
-                        <span className="text-[8px] font-black text-blue-400 mt-1 uppercase">موقعك</span>
+                        <div className="w-3 h-3 bg-blue-500 rounded-full relative border-2 border-white shadow-sm"></div>
+                        <span className="text-[8px] font-black text-blue-600 mt-1 uppercase bg-white/80 px-1 rounded">موقعك</span>
                     </div>
 
                     <div className="absolute top-1/4 right-1/4 flex flex-col items-center">
                         <AlertTriangle className="w-5 h-5 text-red-500 animate-bounce" />
-                        <span className="text-[8px] font-black text-red-400 mt-1">حفرة</span>
+                        <span className="text-[8px] font-black text-red-600 mt-1 bg-white/80 px-1 rounded">حفرة</span>
                     </div>
 
-                    <Navigation className="absolute bottom-10 left-10 w-8 h-8 text-amber-500/50 rotate-45" />
+                    <Navigation className="absolute bottom-10 left-10 w-8 h-8 text-amber-500/20 rotate-45" />
                 </div>
             </div>
         </div>
 
         {/* SIDEBAR: Hazards & Alerts */}
         <div className="lg:col-span-4 flex flex-col gap-6">
-            <section className="bg-slate-800/50 rounded-[2rem] p-6 border border-slate-800">
-                <h4 className="text-sm font-black text-slate-300 mb-6 flex items-center gap-2 uppercase tracking-widest">
+            <section className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm">
+                <h4 className="text-[10px] font-black text-slate-400 mb-6 flex items-center gap-2 uppercase tracking-[0.2em]">
                     <ShieldAlert className="w-4 h-4 text-amber-500" />
                     تنبيهات الطريق الحالية
                 </h4>
                 
                 <div className="space-y-4">
                     {recentHazards.map((hazard) => (
-                        <div key={hazard.id} className="p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50 flex flex-col gap-2">
+                        <div key={hazard.id} className="p-4 rounded-2xl bg-slate-50 group hover:bg-white transition-all border border-transparent hover:border-slate-100 hover:shadow-md flex flex-col gap-2">
                             <div className="flex justify-between items-center">
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
-                                    hazard.priority === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'
+                                    hazard.priority === 'high' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
                                 }`}>
                                     {hazard.priority === 'high' ? 'عالية الأولوية' : 'متوسطة'}
                                 </span>
-                                <span className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
+                                <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     {hazard.time}
                                 </span>
                             </div>
-                            <h5 className="font-bold text-slate-100">{hazard.type}</h5>
-                            <p className="text-xs text-slate-500 flex items-center gap-1">
-                                <MapIcon className="w-3 h-3" />
+                            <h5 className="font-black text-slate-800">{hazard.type}</h5>
+                            <p className="text-xs text-slate-500 font-bold flex items-center gap-1">
+                                <MapIcon className="w-3 h-3 opacity-50" />
                                 {hazard.location}
                             </p>
                         </div>
@@ -156,8 +156,8 @@ export function DriverDashboard() {
                 </div>
             </section>
 
-            <section className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-[2rem] p-6 text-slate-900 shadow-xl shadow-amber-900/20 relative overflow-hidden group">
-                <Zap className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-700" />
+            <section className="bg-gradient-to-br from-amber-400 to-amber-500 rounded-[2rem] p-7 text-white shadow-xl shadow-amber-500/10 relative overflow-hidden group">
+                <Zap className="absolute -bottom-4 -right-4 w-32 h-32 opacity-20 rotate-12 group-hover:scale-110 transition-transform duration-700" />
                 <span className="text-[10px] font-black uppercase tracking-widest opacity-80">برنامج الولاء</span>
                 <h3 className="text-2xl font-black mt-1 mb-4">أفضل منقذ طرق</h3>
                 <div className="flex items-center gap-4">
@@ -165,11 +165,11 @@ export function DriverDashboard() {
                         <span className="block text-2xl font-black">٨٥٠</span>
                         <span className="block text-[8px] font-bold uppercase">نقطة سلامة</span>
                     </div>
-                    <div className="flex-1 h-1.5 bg-slate-900/20 rounded-full">
-                        <div className="w-4/5 h-full bg-slate-900 rounded-full"></div>
+                    <div className="flex-1 h-2 bg-black/10 rounded-full overflow-hidden">
+                        <div className="w-4/5 h-full bg-white rounded-full"></div>
                     </div>
                 </div>
-                <p className="text-[10px] font-bold mt-4 opacity-80">تبقت ١٥٠ نقطة للحصول على قسيمة "وقود مجاني"</p>
+                <p className="text-[10px] font-bold mt-4 opacity-90">تبقت ١٥٠ نقطة للحصول على قسيمة "وقود مجاني"</p>
             </section>
         </div>
       </div>
@@ -177,13 +177,13 @@ export function DriverDashboard() {
       {/* Bottom Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-auto relative z-10">
         {driverStats.map((stat, i) => (
-            <div key={i} className="bg-slate-800/30 p-4 rounded-2xl border border-slate-800 flex flex-col items-center">
-                <span className="text-[10px] font-black text-slate-500 uppercase mb-1">{stat.label}</span>
-                <span className={`text-xl font-black ${stat.color}`}>{stat.value}</span>
+            <div key={i} className="bg-white p-5 rounded-2xl border border-slate-100 flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+                <span className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">{stat.label}</span>
+                <span className={`text-2xl font-black ${stat.color}`}>{stat.value}</span>
             </div>
         ))}
-        <div className="bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20 flex flex-col items-center group cursor-pointer hover:bg-amber-500/20 transition-colors">
-            <span className="text-[10px] font-black text-amber-500 uppercase mb-1">المكافآت</span>
+        <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100 flex flex-col items-center group cursor-pointer hover:bg-amber-100 transition-all shadow-sm">
+            <span className="text-[10px] font-black text-amber-600 uppercase mb-2 tracking-widest">المكافآت المستلمة</span>
             <AwardBadge />
         </div>
       </div>
