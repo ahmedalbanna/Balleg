@@ -10,10 +10,12 @@ import { NewReport } from "./domains/report/components/NewReport";
 import { TrackReport } from "./domains/report/components/TrackReport";
 import { RoleProvider, useRole } from "./domains/core/context/RoleContext";
 import { OfficialDashboard } from "./domains/official/components/OfficialDashboard";
+import { MerchantDashboard } from "./domains/merchant/components/MerchantDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
   if (currentRole?.slug === 'official') return <OfficialDashboard />;
+  if (currentRole?.slug === 'merchant') return <MerchantDashboard />;
   return <ReportHome />;
 }
 

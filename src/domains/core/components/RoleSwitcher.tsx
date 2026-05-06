@@ -1,5 +1,5 @@
 import { useRole } from "../../core/context/RoleContext";
-import { User, Shield, Briefcase, ChevronDown } from "lucide-react";
+import { User, Shield, Briefcase, ChevronDown, Store } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -10,6 +10,7 @@ export function RoleSwitcher() {
   const getIcon = (slug: string) => {
     switch (slug) {
       case 'official': return <Shield className="w-4 h-4" />;
+      case 'merchant': return <Store className="w-4 h-4" />;
       case 'expert': return <Briefcase className="w-4 h-4" />;
       default: return <User className="w-4 h-4" />;
     }

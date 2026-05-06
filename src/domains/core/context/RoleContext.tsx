@@ -62,6 +62,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           themeColor: '#0f172a',
           icon: 'Shield',
           description: 'لمتابعة البلاغات واتخاذ الإجراءات اللازمة.'
+        },
+        {
+          id: '3',
+          name: 'التاجر المحلي',
+          slug: 'merchant',
+          themeColor: '#059669',
+          icon: 'Store',
+          description: 'لأصحاب الأعمال المهتمين بتحسين بيئة محلاتهم.'
         }
       ];
       setAvailableRoles(fallback);
