@@ -5,7 +5,7 @@ import { usePermissions } from "../../core/hooks/usePermissions";
 import { RequirePermission } from "../../core/components/RequirePermission";
 import MapView from "../../locations/components/MapView";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { Report } from "../../core/services/reportApi";
 import { toast } from "sonner";
 import { mediaUtils } from "../../core/utils/media";
@@ -49,7 +49,7 @@ export function SpecialistDashboard() {
       const reportRef = doc(db, 'reports', reportId);
       await updateDoc(reportRef, {
         status: 'in_progress',
-        updatedAt: new Date().toISOString()
+        updatedAt: serverTimestamp()
       });
       toast.success('تم تحويل البلاغ إلى (تحت المعالجة)', { id: toastId });
     } catch (err) {
@@ -72,7 +72,7 @@ export function SpecialistDashboard() {
       const updatePayload: any = {
         status: 'resolved_pending_rating',
         resolutionImageUrl: afterImageUrl,
-        updatedAt: new Date().toISOString()
+        updatedAt: serverTimestamp()
       };
       
       if (internalNote) {
@@ -101,7 +101,7 @@ export function SpecialistDashboard() {
       await updateDoc(reportRef, {
         status: 'pending_operator',
         department: '', // Clear department
-        updatedAt: new Date().toISOString(),
+        updatedAt: serverTimestamp(),
         reroutedReason: internalNote || 'جهة اختصاص خاطئة'
       });
       toast.success('تم الإرجاع لغرفة العمليات للمراجعة', { id: toastId });

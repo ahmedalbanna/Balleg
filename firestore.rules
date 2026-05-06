@@ -9,7 +9,7 @@ service cloud.firestore {
 
     // --- Core Primitives ---
     function isSignedIn() { 
-      return request.auth != null && request.auth.token.email_verified == true; 
+      return request.auth != null && (request.auth.token.firebase.sign_in_provider == 'anonymous' || request.auth.token.email_verified == true); 
     }
     
     function isValidId(id) { 
@@ -26,9 +26,7 @@ service cloud.firestore {
 
     // Role lookups
     function getUserData() {
-      // NOTE: Using exists/get inside rules repeatedly can cause quota issues.
-      // Assuming users doc id matches their auth.uid
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : { 'role': 'citizen' };
     }
 
     function isAdmin() { 
@@ -69,7 +67,7 @@ service cloud.firestore {
 
     function isValidReportCreate(data) {
       return data.keys().hasAll(['userId', 'title', 'description', 'status', 'createdAt'])
-        && data.keys().size() <= 10 // Allowing type, location, department, etc. optionally but keeping limit
+        && data.keys().size() <= 20 // Allowing type, location, department, etc. optionally but keeping limit
         && isBaseReportObject(data)
         && data.userId == request.auth.uid // Must be the creator
         && data.createdAt == request.time;
@@ -80,6 +78,14 @@ service cloud.firestore {
          && (data.department == null || (data.department is string && data.department.size() <= 128))
          && (data.priority == null || (data.priority is string && data.priority.size() <= 64))
          && (data.resolutionNotes == null || (data.resolutionNotes is string && data.resolutionNotes.size() <= 2000))
+         && (data.resolutionImageUrl == null || (data.resolutionImageUrl is string && data.resolutionImageUrl.size() <= 1000))
+         && (data.internalNotes == null || (data.internalNotes is string && data.internalNotes.size() <= 2000))
+         && (data.reroutedReason == null || (data.reroutedReason is string && data.reroutedReason.size() <= 500))
+         && (data.assignedTo == null || (data.assignedTo is string && data.assignedTo.size() <= 128))
+         && (data.rating == null || (data.rating is number && data.rating >= 1 && data.rating <= 5))
+         && (data.feedback == null || (data.feedback is string && data.feedback.size() <= 1000))
+         && (data.rejectReason == null || (data.rejectReason is string && data.rejectReason.size() <= 200))
+         && (data.rejectDetails == null || (data.rejectDetails is string && data.rejectDetails.size() <= 2000))
          && (data.updatedAt == null || data.updatedAt == request.time)
          && data.userId == existing().userId; // Immutable field
     }
@@ -157,8 +163,8 @@ service cloud.firestore {
 
       allow update: if isSignedIn() && isValidId(reportId) && isValidReportUpdate(incoming()) && (
         isAdmin() ||
-        (getUserData().role == 'operator' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'department', 'priority', 'aiAnalysis', 'updatedAt', 'category'])) ||
-        (getUserData().role == 'specialist' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes', 'images', 'location'])) ||
+        (getUserData().role == 'operator' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'department', 'priority', 'aiAnalysis', 'updatedAt', 'category', 'rejectReason', 'rejectDetails'])) ||
+        (getUserData().role == 'specialist' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes', 'resolutionImageUrl', 'internalNotes', 'department', 'reroutedReason', 'images', 'location'])) ||
         (getUserData().role == 'verifier' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'department', 'priority', 'aiAnalysis', 'updatedAt', 'category'])) ||
         (getUserData().role == 'official' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes'])) ||
         (getUserData().role == 'manager' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes'])) ||
@@ -167,7 +173,7 @@ service cloud.firestore {
         (getUserData().role == 'humanitarian' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
         (getUserData().role == 'merchant' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'sponsor', 'updatedAt'])) ||
         (getUserData().role == 'telecom' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes'])) ||
-        (existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'rating', 'feedback', 'updatedAt']))
+        (existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'rating', 'feedback', 'updatedAt', 'reroutedReason', 'assignedTo', 'description']))
       );
 
       allow delete: if isAdmin() && isValidId(reportId);

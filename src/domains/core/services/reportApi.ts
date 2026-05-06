@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { db, auth } from './firebase';
-import { doc, setDoc, getDocs, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
 
 export interface Report {
   id: string;
@@ -45,28 +45,35 @@ export const reportApi = {
     const status = isDisplaced ? "pending_official" : (data.isPrivateService ? "pending_operator" : "pending_verification");
     const department = isDisplaced ? "البلدية والمنظمات الإنسانية" : (data.isPrivateService ? "خدمات خاصة" : undefined);
     
+    // Use serverTimestamp here since we need it to pass validation
     const newReport: Report = {
       id: trackingNo,
-      userId: data.isAnonymous ? "anonymous" : (auth.currentUser?.uid || "anonymous"),
+      userId: auth.currentUser?.uid || "anonymous",
+      title: (data.description || "بلاغ جديد").substring(0, 50) + ((data.description || "").length > 50 ? '...' : ''), // Add title required by rules
       description: data.description,
       type: data.type || "عام",
       imageUrl: data.imageUrl,
       status: status,
       department: department,
       priority: data.aiAnalysis?.priority || 'medium',
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp() as unknown as string, // Cast to avoid TS errors
       location: data.location || [33.5138, 36.2765],
       aiAnalysis: data.aiAnalysis || null,
       isPrivateService: data.isPrivateService || false,
     };
 
     try {
-        await setDoc(doc(db, 'reports', trackingNo), newReport);
-    } catch (e) {
+        await setDoc(doc(db, 'reports', trackingNo), {
+            // Include only what is defined to avoid undefined fields breaking Firestore rules
+            ...Object.fromEntries(Object.entries(newReport).filter(([_, v]) => v !== undefined))
+        });
+    } catch (e: any) {
+        // Use our error handler if possible, or just rethrow for UI
         console.error("Error creating report in firestore", e);
+        throw e;
     }
 
-    return { success: true, trackingNo, report: newReport };
+    return { success: true, trackingNo, report: { ...newReport, createdAt: new Date().toISOString() } };
   },
 
   async editReport(id: string, data: { description: string }) {

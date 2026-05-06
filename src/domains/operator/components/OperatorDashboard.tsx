@@ -9,7 +9,7 @@ import { notificationService } from "../../core/services/notifications";
 import { cn } from "../../core/utils/cn";
 import { toast } from "sonner";
 import MapView from "../../locations/components/MapView";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../core/services/firebase";
 
 export function OperatorDashboard() {
@@ -61,7 +61,7 @@ export function OperatorDashboard() {
       await updateDoc(reportRef, {
         status: 'pending_official',
         department: department,
-        updatedAt: new Date().toISOString()
+        updatedAt: serverTimestamp()
       });
       
       await notificationService.notifyUser(department, {
@@ -98,7 +98,7 @@ export function OperatorDashboard() {
         status: 'rejected',
         rejectReason: rejectReason,
         rejectDetails: rejectDetails,
-        updatedAt: new Date().toISOString()
+        updatedAt: serverTimestamp()
       });
       
       setReports(prev => prev.filter(r => r.id !== reportId));
