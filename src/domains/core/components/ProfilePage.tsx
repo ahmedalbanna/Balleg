@@ -34,9 +34,17 @@ export const ProfilePage: React.FC = () => {
           <div className="flex justify-between items-start mb-8">
             <div>
               <h1 className="text-3xl font-black text-slate-900 mb-1">{profile.displayName}</h1>
-              <div className="flex items-center gap-2 text-blue-600 font-bold text-sm bg-blue-50 py-1 px-3 rounded-lg w-fit">
-                <Shield size={14} />
-                {profile.role}
+              <div className="flex flex-wrap gap-2">
+                <div className="flex items-center gap-2 text-blue-600 font-bold text-sm bg-blue-50 py-1 px-3 rounded-lg w-fit">
+                  <Shield size={14} />
+                  {profile.role}
+                </div>
+                {profile.role === 'citizen' && (
+                  <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm bg-emerald-50 py-1 px-3 rounded-lg w-fit border border-emerald-100">
+                    <Star size={14} className="fill-emerald-600" />
+                    85 نقطة سمعة
+                  </div>
+                )}
               </div>
             </div>
             <button className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all">

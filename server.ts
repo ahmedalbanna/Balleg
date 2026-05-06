@@ -77,11 +77,12 @@ async function startServer() {
 
   // 2. Citizen submits report
   reportRouter.post("/create", (req, res) => {
-    const { description, type, audioUrl, imageUrl, location, aiAnalysis } = req.body;
+    const { description, type, audioUrl, imageUrl, location, aiAnalysis, userId } = req.body;
     const trackingNo = "BLG-" + Math.floor(100000 + Math.random() * 900000);
     
     const newReport = {
       id: trackingNo,
+      userId: userId || "anonymous",
       description,
       type: type || "عادي",
       audioUrl,
@@ -96,6 +97,19 @@ async function startServer() {
     reportsDatabase.push(newReport);
     console.log(`[Domain: Report] Received new report: ${trackingNo}`);
     res.json({ success: true, trackingNo, report: newReport, message: "تم تسجيل البلاغ بنجاح" });
+  });
+
+  // 2b. Edit report (Citizen)
+  reportRouter.patch("/edit/:id", (req, res) => {
+    const id = req.params.id;
+    const { description } = req.body;
+    const report = reportsDatabase.find(r => r.id === id);
+    if (!report) return res.status(404).json({ error: "البلاغ غير موجود" });
+    if (report.status !== 'pending_operator') {
+      return res.status(400).json({ error: "لا يمكن تعديل البلاغ بعد البدء في معالجته" });
+    }
+    report.description = description || report.description;
+    res.json({ success: true, report });
   });
 
   // 3. Citizen tracks report

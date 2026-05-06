@@ -39,7 +39,15 @@ export const RegisterPage: React.FC = () => {
 
       navigate('/');
     } catch (err: any) {
-      setError('حدث خطأ أثناء إنشاء الحساب. تأكد من صحة البيانات.');
+      if (err.code === 'auth/email-already-in-use') {
+        setError('هذا البريد الإلكتروني مسجل مسبقاً. حاول تسجيل الدخول بدلاً من ذلك.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('كلمة المرور ضعيفة جداً. يرجى اختيار كلمة مرور أقوى.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('البريد الإلكتروني غير صالح.');
+      } else {
+        setError('حدث خطأ أثناء إنشاء الحساب. تأكد من صحة البيانات.');
+      }
       console.error(err);
     } finally {
       setLoading(false);

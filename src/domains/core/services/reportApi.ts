@@ -1,9 +1,13 @@
 import axios from 'axios';
+import { auth } from './firebase';
 
 export interface Report {
   id: string;
+  userId?: string;
   description: string;
   type: string;
+  rating?: number;
+  priority?: string;
   audioUrl?: string;
   imageUrl?: string;
   status: 'pending_operator' | 'pending_official' | 'in_progress' | 'resolved';
@@ -23,7 +27,15 @@ export const reportApi = {
     imageUrl?: string,
     aiAnalysis?: any
   }) {
-    const res = await axios.post('/api/domain/report/create', data);
+    const res = await axios.post('/api/domain/report/create', {
+      ...data,
+      userId: auth.currentUser?.uid || "anonymous"
+    });
+    return res.data;
+  },
+
+  async editReport(id: string, data: { description: string }) {
+    const res = await axios.patch(`/api/domain/report/edit/${id}`, data);
     return res.data;
   },
 

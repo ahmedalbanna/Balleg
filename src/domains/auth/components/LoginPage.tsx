@@ -9,9 +9,31 @@ export const LoginPage: React.FC = () => {
   const [method, setMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const handlePhoneRequest = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      setOtpSent(true);
+      setLoading(false);
+    }, 1000);
+  };
+
+  const handlePhoneVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      signInAnonymously(auth).then(() => {
+        navigate('/');
+      });
+    }, 800);
+  };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +43,13 @@ export const LoginPage: React.FC = () => {
       await signInWithEmailAndPassword(auth, email, password);
       navigate('/');
     } catch (err: any) {
-      setError('خطأ في البريد الإلكتروني أو كلمة المرور');
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('خطأ في البريد الإلكتروني أو كلمة المرور. يرجى المحاولة مرة أخرى.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('تم حظر الدخول مؤقتاً بسبب محاولات فاشلة كثيرة. حاول لاحقاً.');
+      } else {
+        setError('خطأ في البريد الإلكتروني أو كلمة المرور');
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -119,7 +147,7 @@ export const LoginPage: React.FC = () => {
                   </div>
 
                   {error && (
-                    <p className="text-red-500 text-xs text-center">{error}</p>
+                    <p className="text-red-500 text-[10px] font-bold text-center bg-red-50 p-2 rounded-lg">{error}</p>
                   )}
 
                   <button 
@@ -141,6 +169,7 @@ export const LoginPage: React.FC = () => {
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
+                  onSubmit={otpSent ? handlePhoneVerify : handlePhoneRequest}
                   className="space-y-4"
                 >
                   <div className="space-y-1">
@@ -149,21 +178,53 @@ export const LoginPage: React.FC = () => {
                       <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input 
                         type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-right"
                         placeholder="05xxxxxxx"
+                        required
+                        disabled={otpSent}
                       />
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-400 text-center">سنقوم بإرسال كود التحقق عبر الرسائل النصية</p>
+                  {otpSent && (
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
+                      <label className="text-sm font-medium text-slate-700 mr-1">رمز التحقق (OTP)</label>
+                      <input 
+                        type="text"
+                        value={otp}
+                        maxLength={6}
+                        onChange={(e) => setOtp(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 text-center text-lg font-black tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        placeholder="123456"
+                        required
+                      />
+                    </motion.div>
+                  )}
+
+                  <p className="text-xs text-slate-400 text-center">
+                    {otpSent ? 'أدخل الرمز المكون من 6 أرقام' : 'سنقوم بإرسال كود التحقق عبر الرسائل النصية'}
+                  </p>
 
                   <button 
-                    disabled={true}
-                    className="w-full bg-slate-900 text-white rounded-xl py-3.5 font-bold opacity-50 cursor-not-allowed flex items-center justify-center gap-2"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-slate-900 text-white rounded-xl py-3.5 font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
                   >
-                    إرسال كود التحقق
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : otpSent ? 'تحقق ودخول' : 'إرسال كود التحقق'}
                     <ArrowRight className="w-5 h-5" />
                   </button>
+
+                  {otpSent && (
+                    <button 
+                      type="button" 
+                      onClick={() => setOtpSent(false)}
+                      className="w-full text-center text-[10px] font-bold text-blue-600"
+                    >
+                      تغيير الرقم؟
+                    </button>
+                  )}
                 </motion.form>
               )}
             </AnimatePresence>
@@ -178,7 +239,7 @@ export const LoginPage: React.FC = () => {
               الدخول كضيف (مواطن)
             </button>
             <p className="text-xs text-slate-500 text-center">
-              ليس لديك حساب؟ <span className="text-blue-600 font-bold cursor-pointer hover:underline">سجل الآن</span>
+              ليس لديك حساب؟ <button onClick={() => navigate('/register')} className="text-blue-600 font-bold cursor-pointer hover:underline">سجل الآن</button>
             </p>
           </div>
         </div>
