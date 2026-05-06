@@ -10,7 +10,7 @@ export interface Report {
   priority?: string;
   audioUrl?: string;
   imageUrl?: string;
-  status: 'pending_operator' | 'pending_official' | 'in_progress' | 'resolved';
+  status: string; // broadened to support various string states
   department?: string;
   classification?: string;
   createdAt: string;
@@ -19,6 +19,8 @@ export interface Report {
   sponsorId?: string;
   sponsorName?: string;
   sponsorDate?: string;
+  communityComments?: { text: string; author: string; createdAt: string }[];
+  [key: string]: any;
 }
 
 export const reportApi = {
