@@ -1,10 +1,22 @@
-import { Terminal, Activity, Cpu, Server, Code2, Bug, Zap, Database, Search, Filter, MessageSquare, AlertTriangle, ShieldCheck, ExternalLink, GitBranch, Github } from "lucide-react";
+import { Terminal, Activity, Cpu, Server, Code2, Bug, Zap, Database, Search, Filter, MessageSquare, AlertTriangle, ShieldCheck, ExternalLink, GitBranch, Github, ShieldAlert } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 
 export function DeveloperDashboard() {
   const [activeTab, setActiveTab] = useState("api");
+  const [logs, setLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+        const q = query(collection(db, 'audit_logs'), orderBy('createdAt', 'desc'), limit(10));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setLogs(docs);
+        }, (error) => handleFirestoreError(error, OperationType.LIST, 'audit_logs'));
+        return () => unsubscribe();
+  }, []);
 
   const apiPerformance = [
     { time: "00:00", latency: 45 },
@@ -15,10 +27,9 @@ export function DeveloperDashboard() {
     { time: "20:00", latency: 50 },
   ];
 
-  const recentLogs = [
-    { id: 1, type: "error", msg: "Failed to sync Firestore indices", time: "٢ دقيقة" },
-    { id: 2, type: "warn", msg: "High latency detected in Node-A", time: "١٤ دقيقة" },
-    { id: 3, type: "info", msg: "Deployment successful: v2.4.1", time: "١ ساعة" },
+  const simulatedErrors = [
+    { id: 1, type: "error", msg: "Failed to sync Firestore indices", time: "٢ دقيقة", details: "Index building timed out at 99%. Please retry using firebase CLI." },
+    { id: 2, type: "warn", msg: "High latency detected in Node-A", time: "١٤ دقيقة", details: "Response time exceeded 2000ms threshold for Europe-west3." },
   ];
 
   return (
@@ -113,7 +124,7 @@ export function DeveloperDashboard() {
             <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center gap-8">
                 <div className="flex items-center gap-3">
                     <GitBranch className="w-4 h-4 text-slate-400" />
-                    <span className="text-[10px] font-mono font-bold text-slate-500 tracking-tight">BRANCH: main</span>
+                    <span className="text-[10px] font-mono font-bold text-slate-500 tracking-tight">BRANCH: main (PRODUCTION-READ-ONLY)</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <Github className="w-4 h-4 text-slate-400" />
@@ -124,26 +135,39 @@ export function DeveloperDashboard() {
 
         {/* Technical Logs & Bugs */}
         <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-white rounded-[3rem] p-8 border border-slate-200 shadow-sm flex-1">
+            <div className="bg-white rounded-[3rem] p-8 border border-slate-200 shadow-sm flex-1 flex flex-col h-[400px]">
                 <div className="flex items-center justify-between mb-8">
                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Real-time System Logs</h4>
                     <Activity className="w-4 h-4 text-blue-500 animate-pulse" />
                 </div>
-                <div className="space-y-4">
-                    {recentLogs.map(log => (
+                <div className="space-y-4 overflow-y-auto flex-1 custom-scrollbar pr-2">
+                    {simulatedErrors.map(log => (
                         <div key={log.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 font-mono group hover:bg-white hover:border-blue-200 transition-all">
                             <div className="flex justify-between items-center mb-2">
                                 <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase ${
-                                    log.type === 'error' ? 'bg-rose-100 text-rose-600' : 
-                                    log.type === 'warn' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                                    log.type === 'error' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'
                                 }`}>
                                     {log.type}
                                 </span>
                                 <span className="text-[9px] text-slate-400 font-bold">{log.time}</span>
                             </div>
                             <p className="text-[10px] text-slate-600 leading-relaxed font-mono font-bold">
-                                <span className="text-slate-400 mr-2">root@belligh:~$</span>
+                                <span className="text-slate-400 mr-2">$</span>
                                 {log.msg}
+                            </p>
+                        </div>
+                    ))}
+                    {logs.map((log, idx) => (
+                         <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 font-mono group hover:bg-white hover:border-emerald-200 transition-all">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-[8px] font-black px-2 py-0.5 rounded uppercase bg-emerald-100 text-emerald-600">
+                                    AUDIT
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-bold">{new Date(log.createdAt).toLocaleTimeString()}</span>
+                            </div>
+                            <p className="text-[10px] text-slate-600 leading-relaxed font-mono font-bold">
+                                <span className="text-slate-400 mr-2">$</span>
+                                action={log.action} | entity={log.entity}
                             </p>
                         </div>
                     ))}
@@ -155,41 +179,37 @@ export function DeveloperDashboard() {
 
             <div className="bg-blue-600 rounded-[3rem] p-8 text-white relative overflow-hidden group shadow-xl shadow-blue-600/20">
                 <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform duration-700">
-                    <Bug className="w-24 h-24" />
+                    <ShieldAlert className="w-24 h-24" />
                 </div>
-                <h4 className="text-xl font-black mb-2 font-readex">الديون التقنية والنموذج</h4>
-                <p className="text-[11px] font-bold text-blue-100 leading-relaxed mb-6">
-                    نحن الآن في المرحلة التجريبية. مراجعة البلاغات البشرية ستتحول تدريجياً لذكاء اصطناعي بمجرد جمع البيانات الكافية.
+                <h4 className="text-xl font-black mb-2 font-readex">الديون التقنية</h4>
+                <p className="text-[11px] font-bold text-blue-100 leading-relaxed mb-4">
+                    تحسين أداء خوارزمية البحث الميداني (Pending).
+                    <br/>
+                    ربط نظام الإشعارات بمزود SMS (في انتظار الموافقات).
                 </p>
-                <div className="flex items-center gap-3 bg-white/20 p-4 rounded-2xl border border-white/20">
-                    <div className="flex-1">
-                        <div className="flex justify-between text-[8px] font-black uppercase mb-1">
-                            <span>Training Dataset Progress</span>
-                            <span>٤٥٪</span>
-                        </div>
-                        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                            <div className="w-[45%] h-full bg-white shadow-[0_0_10px_white]" />
-                        </div>
-                    </div>
-                </div>
+                <button className="px-4 py-2 bg-white/20 hover:bg-white/30 transition-colors rounded-xl text-[10px] font-black shadow-sm">
+                    إدارة المهام (Jira)
+                </button>
             </div>
         </div>
       </div>
 
+
       {/* Shared Components Disclaimer */}
-      <div className="mt-8 p-6 bg-white border border-slate-200 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+      <div className="mt-8 p-6 bg-white border border-slate-200 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm relative z-10">
         <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                 <Code2 className="w-6 h-6" />
             </div>
             <p className="text-[10px] font-black text-slate-400 leading-relaxed uppercase tracking-wide">
-                إطار عمل "بلّغ": استخدام مكونات تصميم موحدة لجميع الأدوار لضمان هوية العلامة التجارية.
+                إطار عمل "بلّغ": واجهات الإدارة والمراقبة للمطورين - Production Read-Only.
             </p>
         </div>
         <button className="px-6 py-2 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black hover:bg-slate-100 transition-all font-mono">
             DEV_CHANGELOG_v2.4.1
         </button>
       </div>
+
     </div>
   );
 }
