@@ -1,5 +1,5 @@
 import { useRole } from "../context/RoleContext";
-import { User, Shield, Briefcase, ChevronDown, Store, LogOut, Settings, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse, Newspaper, Signal, Hammer, Wrench, FileSearch } from "lucide-react";
+import { User, Shield, Briefcase, ChevronDown, Store, LogOut, Settings, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse, Newspaper, Signal, Hammer, Wrench, FileSearch, Terminal } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -25,6 +25,7 @@ export function RoleSwitcher() {
       case 'contractor': return <Hammer className="w-4 h-4" />;
       case 'handyman': return <Wrench className="w-4 h-4" />;
       case 'verifier': return <FileSearch className="w-4 h-4" />;
+      case 'developer': return <Terminal className="w-4 h-4" />;
       default: return <User className="w-4 h-4" />;
     }
   };

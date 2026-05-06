@@ -25,6 +25,7 @@ import { TelecomDashboard } from "./domains/telecom/components/TelecomDashboard"
 import { ContractorDashboard } from "./domains/contractor/components/ContractorDashboard";
 import { HandymanDashboard } from "./domains/handyman/components/HandymanDashboard";
 import { VerifierDashboard } from "./domains/verifier/components/VerifierDashboard";
+import { DeveloperDashboard } from "./domains/developer/components/DeveloperDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
@@ -44,6 +45,7 @@ function HomeSwitcher() {
   if (currentRole?.slug === 'contractor') return <ContractorDashboard />;
   if (currentRole?.slug === 'handyman') return <HandymanDashboard />;
   if (currentRole?.slug === 'verifier') return <VerifierDashboard />;
+  if (currentRole?.slug === 'developer') return <DeveloperDashboard />;
   return <ReportHome />;
 }
 
