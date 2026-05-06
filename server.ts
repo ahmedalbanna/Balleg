@@ -103,6 +103,25 @@ async function startServer() {
     res.json({ report });
   });
 
+  // 3. Update report status (Operator/Official action)
+  reportRouter.patch("/update/:id", (req, res) => {
+    const id = req.params.id;
+    const { status, remarks } = req.body;
+    const reportIndex = reportsDatabase.findIndex(r => r.id === id);
+    
+    if (reportIndex !== -1) {
+      reportsDatabase[reportIndex].status = status;
+      
+      // Simulate Real-time external notification (SMS/WhatsApp)
+      console.log(`[REAL-TIME NOTIFICATION] Informing citizen about status change of ${id} to ${status}`);
+      // In a real app, logic here would call Twilio/WhatsApp API
+      
+      res.json({ success: true, message: "تم تحديث حالة البلاغ بنجاح" });
+    } else {
+      res.status(404).json({ error: "Report not found" });
+    }
+  });
+
   // 4. Operator/Official fetches reports
   reportRouter.get("/all", (req, res) => {
     res.json({ reports: reportsDatabase.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) });

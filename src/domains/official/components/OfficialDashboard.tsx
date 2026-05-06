@@ -2,6 +2,7 @@ import { BarChart3, LayoutDashboard, Bell, Search, Filter, CheckCircle, Loader2 
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { reportApi, Report } from "../../core/services/reportApi";
+import { notificationService } from "../../core/services/notifications";
 
 export function OfficialDashboard() {
   const [department, setDepartment] = useState("نظافة");
@@ -30,6 +31,16 @@ export function OfficialDashboard() {
     setUpdatingId(id);
     try {
       await reportApi.updateStatus(id, s);
+      
+      // Notify about status update
+      await notificationService.notifyUser(id, { // Simulated notify (in real app, use submitter UID)
+        title: s === 'resolved' ? "تم إنجاز بلاغك بنجاح" : "بدء المعالجة الميدانية",
+        message: s === 'resolved' 
+          ? `بلاغك رقم ${id} تم حله وإغلاقه بنجاح.` 
+          : `بلاغك رقم ${id} قيد التنفيذ الميداني حالياً.`,
+        type: s === 'resolved' ? "success" : "info"
+      });
+
       setReports(prev => prev.filter(r => r.id !== id || s !== 'resolved')); // If resolved, it disappears from this view
     } catch (e) {
       console.error(e);

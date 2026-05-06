@@ -132,6 +132,15 @@ export function NewReport() {
       });
       
       if(res.success) {
+        // Create in-app notification
+        import("../../core/services/notifications").then(({ notificationService }) => {
+          notificationService.notifyUser(auth.currentUser?.uid || 'anonymous', {
+            title: "تم تسجيل بلاغك بنجاح",
+            message: `بلاغك رقم ${res.trackingNo} قيد المراجعة حالياً من قبل المشغل الاستراتيجي.`,
+            type: "success"
+          });
+        });
+
         setTrackingNo(res.trackingNo);
         setStep("success");
       }

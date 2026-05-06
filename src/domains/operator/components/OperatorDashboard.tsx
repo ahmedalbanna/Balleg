@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { aiService } from "../../core/services/ai";
+import { notificationService } from "../../core/services/notifications";
 import { cn } from "../../core/utils/cn";
 
 export function OperatorDashboard() {
@@ -39,6 +40,14 @@ export function OperatorDashboard() {
       }
       
       await reportApi.routeReport(report.id, department, classification || "عام");
+      
+      // Notify about routing
+      await notificationService.notifyUser(department, {
+        title: "بلاغ جديد موجه لقسمك",
+        message: `تم توجيه بلاغ جديد رقم ${report.id} إلى قسم ${department}.`,
+        type: "info"
+      });
+
       setReports(prev => prev.filter(r => r.id !== report.id));
     } catch (e) {
       console.error(e);

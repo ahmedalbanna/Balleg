@@ -80,6 +80,14 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow create: if isSignedIn(); // Allow creating notifications for others (e.g. system bot)
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
     match /users/{uid} {
       allow get: if isSignedIn() && isValidId(uid) && (isOwner(uid) || isAdmin());
       allow list: if isAdmin();

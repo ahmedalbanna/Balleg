@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { Shield, LogOut, User as UserIcon } from "lucide-react";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { Sidebar } from "./Sidebar";
+import { NotificationCenter } from "./NotificationCenter";
 import { useAuth } from "../context/AuthContext";
 
 export function Layout() {
@@ -33,6 +34,7 @@ export function Layout() {
           </nav>
 
           <div className="flex items-center gap-4">
+            <NotificationCenter />
             <RoleSwitcher />
             
             <div className="w-px h-6 bg-slate-200 mx-2 hidden md:block"></div>

@@ -76,6 +76,21 @@
         "ip": { "type": "string" }
       },
       "required": ["userId", "action", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app real-time notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "success", "warning", "error"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "link": { "type": "string" }
+      },
+      "required": ["userId", "title", "message", "createdAt", "read"]
     }
   },
   "firestore": {
@@ -98,6 +113,10 @@
     "/audit_logs/{logId}": {
       "schema": "AuditLog",
       "description": "Admin security logs"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
     }
   }
 }
