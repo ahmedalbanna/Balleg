@@ -1,24 +1,78 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Default Deny
     match /{document=**} {
       allow read, write: if false;
     }
 
+    // Helper Primitives
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isValidRole(data) {
-      return data.keys().hasAll(['id', 'name', 'themeColor']) &&
-             data.id is string &&
-             data.name is string &&
-             data.themeColor is string;
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Helpers
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'role', 'isActive']) &&
+             data.uid == request.auth.uid &&
+             data.role is string &&
+             data.isActive is bool &&
+             (!('email' in data) || data.email is string) &&
+             (!('phoneNumber' in data) || data.phoneNumber is string);
+    }
+
+    function isValidDepartment(data) {
+      return data.keys().hasAll(['name', 'category']) &&
+             data.name is string && data.name.size() <= 100 &&
+             data.category is string;
+    }
+
+    // Collection Rules
     match /roles/{roleId} {
       allow read: if true;
-      allow write: if false; // Only admin via console should ideally write roles for this demo
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      allow get: if isOwner(uid);
+      allow list: if false; // Users shouldn't be listable by everyone
+      
+      allow create: if isOwner(uid) && isValidUser(incoming());
+      
+      allow update: if isOwner(uid) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'profileImageUrl', 'lastLoginAt', 'updatedAt'
+        ])
+      );
+    }
+
+    match /departments/{departmentId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Controlled via backend/console in this prototype
+    }
+
+    match /citizen_verification/{phoneNumber} {
+      // OTP verification logic - very sensitive
+      // In a real app, this would be handled by a Cloud Function or Auth trigger
+      // but for this prototype we'll allow limited write if valid
+      allow create: if phoneNumber.size() >= 10 && incoming().otpCode is string;
+      allow get: if true; // Verification bypass for prototype
     }
   }
 }

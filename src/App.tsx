@@ -3,12 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./domains/core/context/AuthContext";
+import { RoleProvider, useRole } from "./domains/core/context/RoleContext";
 import { Layout } from "./domains/core/components/Layout";
+import { AuthGuard } from "./domains/core/components/AuthGuard";
+import { LoginPage } from "./domains/auth/components/LoginPage";
+import { RegisterPage } from "./domains/auth/components/RegisterPage";
 import { ReportHome } from "./domains/report/components/ReportHome";
 import { NewReport } from "./domains/report/components/NewReport";
 import { TrackReport } from "./domains/report/components/TrackReport";
-import { RoleProvider, useRole } from "./domains/core/context/RoleContext";
 import { OfficialDashboard } from "./domains/official/components/OfficialDashboard";
 import { MerchantDashboard } from "./domains/merchant/components/MerchantDashboard";
 import { DriverDashboard } from "./domains/driver/components/DriverDashboard";
@@ -30,6 +34,12 @@ import { DonorDashboard } from "./domains/donor/components/DonorDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
+  const { user } = useAuth();
+  
+  // If not logged in and trying to access root, might want to show public home
+  // but for this app the Root is the dashboard. 
+  // AuthGuard will handle redirection if needed.
+  
   if (currentRole?.slug === 'official') return <OfficialDashboard />;
   if (currentRole?.slug === 'merchant') return <MerchantDashboard />;
   if (currentRole?.slug === 'driver') return <DriverDashboard />;
@@ -48,22 +58,30 @@ function HomeSwitcher() {
   if (currentRole?.slug === 'verifier') return <VerifierDashboard />;
   if (currentRole?.slug === 'developer') return <DeveloperDashboard />;
   if (currentRole?.slug === 'donor') return <DonorDashboard />;
+  
   return <ReportHome />;
 }
 
 export default function App() {
   return (
-    <RoleProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<HomeSwitcher />} />
-            <Route path="/new" element={<NewReport />} />
-            <Route path="/track" element={<TrackReport />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </RoleProvider>
+    <AuthProvider>
+      <RoleProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            
+            <Route element={<AuthGuard><Layout /></AuthGuard>}>
+              <Route path="/" element={<HomeSwitcher />} />
+              <Route path="/new" element={<NewReport />} />
+              <Route path="/track" element={<TrackReport />} />
+            </Route>
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </RoleProvider>
+    </AuthProvider>
   );
 }
 

@@ -10,18 +10,76 @@
         "themeColor": { "type": "string" },
         "icon": { "type": "string" },
         "description": { "type": "string" },
+        "slug": { "type": "string" },
+        "category": { "type": "string", "enum": ["citizens", "business", "admin", "leadership", "community"] },
         "features": {
           "type": "array",
           "items": { "type": "string" }
         }
       },
-      "required": ["id", "name", "themeColor"]
+      "required": ["id", "name", "themeColor", "slug"]
+    },
+    "User": {
+      "title": "User",
+      "description": "System user profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "assignedSections": { "type": "array", "items": { "type": "string" } },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "lastLoginAt": { "type": "string", "format": "date-time" },
+        "profileImageUrl": { "type": "string" }
+      },
+      "required": ["uid", "role", "isActive"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Government or service department",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "parentDepartmentId": { "type": "string" },
+        "managerUid": { "type": "string" }
+      },
+      "required": ["name", "category"]
+    },
+    "CitizenVerification": {
+      "title": "Citizen Verification",
+      "description": "Temporary storage for phone verification OTPs",
+      "type": "object",
+      "properties": {
+        "phoneNumber": { "type": "string" },
+        "otpCode": { "type": "string" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "verified": { "type": "boolean" }
+      },
+      "required": ["phoneNumber", "otpCode", "expiresAt", "verified"]
     }
   },
   "firestore": {
     "/roles/{roleId}": {
       "schema": "Role",
       "description": "Collection of available app roles"
+    },
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "System users"
+    },
+    "/departments/{departmentId}": {
+      "schema": "Department",
+      "description": "Government departments"
+    },
+    "/citizen_verification/{phoneNumber}": {
+      "schema": "CitizenVerification",
+      "description": "Phone verification records"
     }
   }
 }

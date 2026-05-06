@@ -1,10 +1,12 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Shield } from "lucide-react";
+import { Shield, LogOut, User as UserIcon } from "lucide-react";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { Sidebar } from "./Sidebar";
+import { useAuth } from "../context/AuthContext";
 
 export function Layout() {
   const location = useLocation();
+  const { profile, signOut } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col font-cairo bg-[#F8FAFC] text-[#1E293B] overflow-x-hidden selection:bg-blue-100" dir="rtl">
@@ -14,8 +16,8 @@ export function Layout() {
           <h1 className="text-2xl font-black tracking-tighter text-slate-900 font-readex">بلّــــغ</h1>
         </Link>
 
-        <div className="flex items-center gap-8 text-neutral-400">
-          <nav className="hidden md:flex gap-10 text-sm font-bold">
+        <div className="flex items-center gap-6 text-neutral-400">
+          <nav className="hidden lg:flex gap-10 text-sm font-bold">
             <Link 
               to="/" 
               className={`transition-all duration-300 relative py-7 ${location.pathname === '/' ? 'text-blue-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1.5 after:bg-blue-600 after:rounded-t-full' : 'text-slate-400 hover:text-slate-600'}`}
@@ -29,8 +31,29 @@ export function Layout() {
               متابعة البلاغات
             </Link>
           </nav>
-          <div className="w-px h-6 bg-slate-200 mx-2 hidden md:block"></div>
-          <RoleSwitcher />
+
+          <div className="flex items-center gap-4">
+            <RoleSwitcher />
+            
+            <div className="w-px h-6 bg-slate-200 mx-2 hidden md:block"></div>
+            
+            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 py-1.5 px-3 rounded-2xl">
+              <div className="flex flex-col text-left items-end hidden sm:flex">
+                <span className="text-[11px] font-bold text-slate-900 leading-tight">{profile?.displayName || 'مستخدم'}</span>
+                <span className="text-[9px] text-slate-500 font-medium">@{profile?.role || 'مواطن'}</span>
+              </div>
+              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 overflow-hidden">
+                {profile?.profileImageUrl ? <img src={profile.profileImageUrl} alt="" className="w-full h-full object-cover" /> : <UserIcon size={16} />}
+              </div>
+              <button 
+                onClick={() => signOut()}
+                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                title="تسجيل الخروج"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 

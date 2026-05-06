@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { useAuth } from './AuthContext';
 
 export interface AppRole {
   id: string;
@@ -23,9 +24,20 @@ interface RoleContextType {
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: React.ReactNode }) {
+  const { profile, loading: authLoading } = useAuth();
   const [availableRoles, setAvailableRoles] = useState<AppRole[]>([]);
   const [currentRole, setCurrentRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Sync currentRole with profile.role if authenticated
+  useEffect(() => {
+    if (profile?.role && availableRoles.length > 0) {
+      const match = availableRoles.find(r => r.slug === profile.role);
+      if (match) {
+        setCurrentRole(match);
+      }
+    }
+  }, [profile, availableRoles]);
 
   useEffect(() => {
     const q = query(collection(db, 'roles'));
