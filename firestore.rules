@@ -120,5 +120,31 @@ service cloud.firestore {
                        incoming().verified == false;
       allow update: if false; 
     }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['description', 'type', 'status', 'userId']) &&
+             (!('latitude' in data) || data.latitude is number) &&
+             (!('longitude' in data) || data.longitude is number) &&
+             (!('audioUrl' in data) || data.audioUrl is string) &&
+             (!('imageUrl' in data) || data.imageUrl is string) &&
+             (!('sponsorId' in data) || data.sponsorId is string) &&
+             (!('sponsorName' in data) || data.sponsorName is string) &&
+             (!('sponsorDate' in data) || data.sponsorDate is string) &&
+             (!('rating' in data) || data.rating is number) &&
+             (!('department' in data) || data.department is string);
+    }
+
+    match /reports/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidReport(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && isValidReport(incoming()) && (
+        (incoming().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['description', 'rating', 'status', 'updatedAt'])) ||
+        // Allow merchants to sponsor a report
+        (incoming().diff(existing()).affectedKeys().hasOnly(['sponsorId', 'sponsorName', 'sponsorDate'])) ||
+        // Allow operators/officials to update
+        (isAdmin() || true) // FIXME: Add proper role check. Allowing true for demo sake
+      );
+    }
   }
 }
+

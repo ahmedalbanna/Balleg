@@ -16,6 +16,9 @@ export interface Report {
   createdAt: string;
   location?: [number, number];
   aiAnalysis?: any;
+  sponsorId?: string;
+  sponsorName?: string;
+  sponsorDate?: string;
 }
 
 export const reportApi = {
@@ -88,6 +91,16 @@ export const reportApi = {
   // 6. Official updates report status
   async updateStatus(id: string, status: string) {
     const res = await axios.post(`/api/domain/report/${id}/status`, { status });
+    return res.data;
+  },
+
+  async getMerchantReports() {
+    const res = await axios.get('/api/domain/report/merchant/all');
+    return res.data.reports as Report[];
+  },
+
+  async sponsorReport(id: string, data: { sponsorId: string, sponsorName: string, sponsorDate: string }) {
+    const res = await axios.patch(`/api/domain/report/merchant/sponsor/${id}`, data);
     return res.data;
   }
 };

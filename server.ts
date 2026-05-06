@@ -112,6 +112,23 @@ async function startServer() {
     res.json({ success: true, report });
   });
 
+  // Get all reports (for merchant)
+  reportRouter.get("/merchant/all", (req, res) => {
+    res.json({ success: true, reports: reportsDatabase });
+  });
+
+  // Sponsor report
+  reportRouter.patch("/merchant/sponsor/:id", (req, res) => {
+    const id = req.params.id;
+    const { sponsorId, sponsorName, sponsorDate } = req.body;
+    const report = reportsDatabase.find(r => r.id === id);
+    if (!report) return res.status(404).json({ error: "البلاغ غير موجود" });
+    report.sponsorId = sponsorId;
+    report.sponsorName = sponsorName;
+    report.sponsorDate = sponsorDate;
+    res.json({ success: true, report });
+  });
+
   // 3. Citizen tracks report
   reportRouter.get("/track/:id", (req, res) => {
     const trackingNo = req.params.id;
