@@ -1,9 +1,11 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Mic, Square, Camera as CameraIcon, UploadCloud, RefreshCcw, CheckCircle2, ChevronRight, AlertCircle, Loader2 } from "lucide-react";
+import { Mic, Square, Camera as CameraIcon, UploadCloud, RefreshCcw, CheckCircle2, ChevronRight, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import * as motion from "motion/react-client";
 import { cn } from "../../core/utils/cn";
 import { reportApi } from "../../core/services/reportApi";
+import { aiService } from "../../core/services/ai";
+import { mediaUtils } from "../../core/utils/media";
 
 export function NewReport() {
   const [step, setStep] = useState<"capture" | "review" | "success">("capture");
@@ -13,7 +15,7 @@ export function NewReport() {
 
   // Media states
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null); // DataURL for preview
   
   // Recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -27,7 +29,11 @@ export function NewReport() {
 
   // Submit states
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState("");
   const [trackingNo, setTrackingNo] = useState("");
+
+  // AI results
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
 
   const startRecording = async () => {
     try {
@@ -98,12 +104,33 @@ export function NewReport() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitProgress("جاري تحليل البلاغ بالذكاء الاصطناعي...");
     try {
+      // 1. AI Analysis
+      const analysis = await aiService.analyzeImageAndText(description || "بلاغ وسائط", imageSrc || undefined);
+      setAiAnalysis(analysis);
+
+      // 2. Upload Image if exists
+      let uploadedImageUrl = undefined;
+      if (imageSrc) {
+        setSubmitProgress("جاري رفع الصور...");
+        const blob = await mediaUtils.urlToBlob(imageSrc);
+        const uploadRes = await reportApi.uploadImage(blob);
+        if (uploadRes.success) {
+          uploadedImageUrl = uploadRes.imageUrl;
+        }
+      }
+
+      // 3. Create Report
+      setSubmitProgress("جاري حفظ البلاغ وتوجيهه...");
       const res = await reportApi.createReport({
-        description: description || "تسجيل صوتي مرفق",
-        type: "عام", 
-        location: [33.5138, 36.2765] // random location near Damascus
+        description: description || analysis.summary || "تم تقديم بلاغ عبر النظام",
+        type: analysis.classification || "عام", 
+        location: [33.5138, 36.2765],
+        imageUrl: uploadedImageUrl,
+        aiAnalysis: analysis
       });
+      
       if(res.success) {
         setTrackingNo(res.trackingNo);
         setStep("success");
@@ -112,6 +139,7 @@ export function NewReport() {
       console.error(error);
     } finally {
       setIsSubmitting(false);
+      setSubmitProgress("");
     }
   };
 
@@ -278,17 +306,19 @@ export function NewReport() {
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex-1 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md"
+                className="flex-1 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex flex-col items-center justify-center min-h-[64px] shadow-md"
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    جاري الإرسال...
+                    <Loader2 className="w-5 h-5 animate-spin mb-1" />
+                    <span className="text-xs opacity-90">{submitProgress}</span>
                   </>
                 ) : (
                   <>
-                    <UploadCloud className="w-5 h-5" />
-                    إرسال البلاغ
+                    <div className="flex items-center gap-2">
+                       <UploadCloud className="w-5 h-5" />
+                       إرسال البلاغ
+                    </div>
                   </>
                 )}
               </button>

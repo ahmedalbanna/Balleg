@@ -11,12 +11,31 @@ export interface Report {
   classification?: string;
   createdAt: string;
   location?: [number, number];
+  aiAnalysis?: any;
 }
 
 export const reportApi = {
   // 1. Citizen creates a report
-  async createReport(data: { description: string, type?: string, location?: [number, number] }) {
+  async createReport(data: { 
+    description: string, 
+    type?: string, 
+    location?: [number, number],
+    imageUrl?: string,
+    aiAnalysis?: any
+  }) {
     const res = await axios.post('/api/domain/report/create', data);
+    return res.data;
+  },
+
+  // 1.5 Upload Image
+  async uploadImage(file: File | Blob) {
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await axios.post('/api/domain/report/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
     return res.data;
   },
   

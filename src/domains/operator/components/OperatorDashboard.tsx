@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { aiService } from "../../core/services/ai";
+import { cn } from "../../core/utils/cn";
 
 export function OperatorDashboard() {
   const [activeTab, setActiveTab] = useState<'new' | 'processed'>('new');
@@ -144,8 +145,38 @@ export function OperatorDashboard() {
                                         <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 mb-3">
                                             <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{report.id}</span>
                                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {getTimeAgo(report.createdAt)}</span>
-                                            <span className="text-slate-400">نوع التدخيل المبدئي: {report.type}</span>
+                                            <span className="text-slate-400">نوع التدخيل: {report.type}</span>
                                         </div>
+
+                                        {report.imageUrl && (
+                                            <div className="mb-4 rounded-xl overflow-hidden border border-slate-200 w-full max-w-xs group-hover:border-indigo-200 transition-colors">
+                                                <img src={report.imageUrl} alt="Report" className="w-full h-32 object-cover" />
+                                            </div>
+                                        )}
+
+                                        {report.aiAnalysis && (
+                                            <div className="mb-4 p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                                                    <span className="text-[10px] font-black text-emerald-700 uppercase">نتائج التحليل الذكي</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {report.aiAnalysis.detectedObjects?.map((obj: string) => (
+                                                        <span key={obj} className="px-2 py-0.5 bg-white border border-emerald-100 text-emerald-700 text-[8px] font-bold rounded-lg leading-none">
+                                                            {obj}
+                                                        </span>
+                                                    ))}
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 text-[8px] font-bold rounded-lg leading-none",
+                                                        report.aiAnalysis.severity === 'high' ? "bg-red-100 text-red-700" :
+                                                        report.aiAnalysis.severity === 'medium' ? "bg-amber-100 text-amber-700" :
+                                                        "bg-blue-100 text-blue-700"
+                                                    )}>
+                                                        شدة الحالة: {report.aiAnalysis.severity === 'high' ? 'مرتفعة' : report.aiAnalysis.severity === 'medium' ? 'متوسطة' : 'عادية'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                         
                                         {/* Action Buttons for Routing */}
                                         <div className="flex flex-wrap gap-2 mt-2">

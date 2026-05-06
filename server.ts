@@ -1,6 +1,8 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import multer from "multer";
+import fs from "fs";
 
 // ---------------------------------------------------------
 // Express Server adopting Bounded Contexts (Modular Monolith)
@@ -10,7 +12,30 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
+
   app.use(express.json());
+  app.use("/uploads", express.static(uploadsDir));
+
+  // Configure Multer for file storage
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, "uploads/");
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+    }
+  });
+
+  const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  });
 
   // ---------------------------------------------------------
   // In-Memory Database for Reports (Workflow Demo)
@@ -39,9 +64,18 @@ async function startServer() {
   // Domain: "Report" Module API Routes
   const reportRouter = express.Router();
   
-  // 1. Citizen submits report
+  // 1. Image Upload Endpoint
+  reportRouter.post("/upload", upload.single("image"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No image uploaded" });
+    }
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({ success: true, imageUrl });
+  });
+
+  // 2. Citizen submits report
   reportRouter.post("/create", (req, res) => {
-    const { description, type, audioUrl, imageUrl, location } = req.body;
+    const { description, type, audioUrl, imageUrl, location, aiAnalysis } = req.body;
     const trackingNo = "BLG-" + Math.floor(100000 + Math.random() * 900000);
     
     const newReport = {
@@ -52,7 +86,8 @@ async function startServer() {
       imageUrl,
       status: "pending_operator",
       createdAt: new Date().toISOString(),
-      location: location || [33.5138, 36.2765] // Default generic location
+      location: location || [33.5138, 36.2765],
+      aiAnalysis: aiAnalysis || null
     };
     
     reportsDatabase.push(newReport);
@@ -60,12 +95,17 @@ async function startServer() {
     res.json({ success: true, trackingNo, report: newReport, message: "تم تسجيل البلاغ بنجاح" });
   });
 
-  // 2. Citizen tracks report
+  // 3. Citizen tracks report
   reportRouter.get("/track/:id", (req, res) => {
     const trackingNo = req.params.id;
     const report = reportsDatabase.find(r => r.id === trackingNo);
     if (!report) return res.status(404).json({ error: "Report not found" });
     res.json({ report });
+  });
+
+  // 4. Operator/Official fetches reports
+  reportRouter.get("/all", (req, res) => {
+    res.json({ reports: reportsDatabase.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) });
   });
 
   // 3. Operator fetches unrouted reports

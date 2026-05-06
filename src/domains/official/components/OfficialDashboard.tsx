@@ -134,7 +134,16 @@ export function OfficialDashboard() {
                                 key={report.id} className="hover:bg-slate-50/80 transition-colors group"
                             >
                                 <td className="px-6 py-4 font-mono text-sm font-bold text-slate-700">{report.id}</td>
-                                <td className="px-6 py-4 text-sm font-bold opacity-80 leading-relaxed truncate max-w-xs">{report.description}</td>
+                                <td className="px-6 py-4 text-sm font-bold opacity-80 leading-relaxed max-w-xs transition-all">
+                                    <div className="flex flex-col gap-2">
+                                        <p className="line-clamp-2">{report.description}</p>
+                                        {report.imageUrl && (
+                                            <div className="w-20 h-20 rounded-lg overflow-hidden border border-slate-100 shadow-sm hover:scale-110 transition-transform cursor-pointer">
+                                                <img src={report.imageUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="px-6 py-4 text-xs font-bold text-indigo-600">
                                     <span className="bg-indigo-50 px-2 py-1 rounded text-[10px] uppercase">{report.classification || report.type}</span>
                                 </td>
