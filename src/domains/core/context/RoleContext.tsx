@@ -36,7 +36,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         const slug = data.slug;
         
         if (['citizen', 'displaced', 'driver'].includes(slug)) category = 'citizens';
-        else if (['merchant', 'telecom'].includes(slug)) category = 'business';
+        else if (['merchant', 'telecom', 'contractor'].includes(slug)) category = 'business';
         else if (['operator', 'specialist', 'official'].includes(slug)) category = 'admin';
         else if (['manager', 'admin', 'council'].includes(slug)) category = 'leadership';
         else if (['neighborhood_council', 'humanitarian', 'journalist'].includes(slug)) category = 'community';
@@ -176,6 +176,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Signal',
             description: 'لتحسين خدمة العملاء، رصد أعطال الأبراج، وبناء سمعة "الشركة المستجيبة" تقنياً.',
             category: 'business'
+          },
+          {
+            id: '15',
+            name: 'مقاول الصيانة',
+            slug: 'contractor',
+            themeColor: '#7c2d12',
+            icon: 'Hammer',
+            description: 'لشركات المقاولات لمتابعة عقود الصيانة، جدولة الفرق الميدانية، وتحسين السمعة عبر سرعة التنفيذ.',
+            category: 'business'
           }
         ];
       }
@@ -314,6 +323,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             themeColor: '#0ea5e9',
             icon: 'Signal',
             description: 'لتحسين خدمة العملاء، رصد أعطال الأبراج، وبناء سمعة "الشركة المستجيبة" تقنياً.',
+            category: 'business'
+          },
+          {
+            id: '15',
+            name: 'مقاول الصيانة',
+            slug: 'contractor',
+            themeColor: '#7c2d12',
+            icon: 'Hammer',
+            description: 'لشركات المقاولات لمتابعة عقود الصيانة، جدولة الفرق الميدانية، وتحسين السمعة عبر سرعة التنفيذ.',
             category: 'business'
           }
         ];
