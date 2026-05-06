@@ -47,7 +47,6 @@ function HomeSwitcher() {
   if (currentRole?.slug === 'operator') return <OperatorDashboard />;
   if (currentRole?.slug === 'specialist') return <SpecialistDashboard />;
   if (currentRole?.slug === 'manager') return <ManagerDashboard />;
-  if (currentRole?.slug === 'admin') return <AdminDashboard />;
   if (currentRole?.slug === 'council') return <CouncilDashboard />;
   if (currentRole?.slug === 'neighborhood_council') return <NeighborhoodDashboard />;
   if (currentRole?.slug === 'humanitarian') return <HumanitarianDashboard />;
