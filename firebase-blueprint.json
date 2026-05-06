@@ -1,122 +1,115 @@
 {
   "entities": {
-    "Role": {
-      "title": "Role",
-      "description": "App role configuration for different target audiences",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "themeColor": { "type": "string" },
-        "icon": { "type": "string" },
-        "description": { "type": "string" },
-        "slug": { "type": "string" },
-        "category": { "type": "string", "enum": ["citizens", "business", "admin", "leadership", "community"] },
-        "features": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      },
-      "required": ["id", "name", "themeColor", "slug"]
-    },
     "User": {
       "title": "User",
-      "description": "System user profile",
+      "description": "User profile containing role and basic info.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
         "email": { "type": "string" },
-        "phoneNumber": { "type": "string" },
-        "displayName": { "type": "string" },
+        "name": { "type": "string" },
         "role": { "type": "string" },
-        "departmentId": { "type": "string" },
-        "assignedSections": { "type": "array", "items": { "type": "string" } },
-        "isActive": { "type": "boolean" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "nationalId": { "type": "string" }
+      },
+      "required": ["email", "role", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "A citizen report.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "department": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
-        "lastLoginAt": { "type": "string", "format": "date-time" },
-        "profileImageUrl": { "type": "string" }
+        "type": { "type": "string" },
+        "location": { "type": "string" },
+        "images": { "type": "array" }
       },
-      "required": ["uid", "role", "isActive"]
-    },
-    "Department": {
-      "title": "Department",
-      "description": "Government or service department",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "category": { "type": "string" },
-        "parentDepartmentId": { "type": "string" },
-        "managerUid": { "type": "string" }
-      },
-      "required": ["name", "category"]
-    },
-    "CitizenVerification": {
-      "title": "Citizen Verification",
-      "description": "Temporary storage for phone verification OTPs",
-      "type": "object",
-      "properties": {
-        "phoneNumber": { "type": "string" },
-        "otpCode": { "type": "string" },
-        "expiresAt": { "type": "string", "format": "date-time" },
-        "verified": { "type": "boolean" }
-      },
-      "required": ["phoneNumber", "otpCode", "expiresAt", "verified"]
+      "required": ["userId", "title", "description", "status", "createdAt"]
     },
     "AuditLog": {
       "title": "Audit Log",
-      "description": "System-wide activity logs for security and monitoring",
+      "description": "System audit logs.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "action": { "type": "string" },
         "details": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "path": { "type": "string" },
-        "ip": { "type": "string" }
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "action", "timestamp"]
+      "required": ["action", "createdAt"]
     },
     "Notification": {
       "title": "Notification",
-      "description": "In-app real-time notification",
+      "description": "User notifications.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "title": { "type": "string" },
         "message": { "type": "string" },
-        "type": { "type": "string", "enum": ["info", "success", "warning", "error"] },
         "read": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "link": { "type": "string" }
       },
-      "required": ["userId", "title", "message", "createdAt", "read"]
+      "required": ["userId", "title", "message", "read", "createdAt"]
+    },
+    "Role": {
+      "title": "Role",
+      "description": "System roles metadata.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "slug"]
+    },
+    "Clarification": {
+      "title": "Clarification",
+      "description": "Clarifications requested by journalists, councils or neighborhoods.",
+      "type": "object",
+      "properties": {
+        "reportId": { "type": "string" },
+        "text": { "type": "string" },
+        "requestedBy": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "response": { "type": "string" }
+      },
+      "required": ["reportId", "text", "requestedBy", "status", "createdAt"]
     }
   },
   "firestore": {
-    "/roles/{roleId}": {
-      "schema": "Role",
-      "description": "Collection of available app roles"
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles."
     },
-    "/users/{uid}": {
-      "schema": "User",
-      "description": "System users"
-    },
-    "/departments/{departmentId}": {
-      "schema": "Department",
-      "description": "Government departments"
-    },
-    "/citizen_verification/{phoneNumber}": {
-      "schema": "CitizenVerification",
-      "description": "Phone verification records"
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Citizen reports."
     },
     "/audit_logs/{logId}": {
-      "schema": "AuditLog",
-      "description": "Admin security logs"
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable system audit logs."
     },
     "/notifications/{notificationId}": {
-      "schema": "Notification",
-      "description": "User notifications"
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Notifications for users."
+    },
+    "/roles/{roleId}": {
+      "schema": { "$ref": "#/entities/Role" },
+      "description": "Available roles in the platform."
+    },
+    "/clarifications/{clarificationId}": {
+      "schema": { "$ref": "#/entities/Clarification" },
+      "description": "Requests for clarification."
     }
   }
 }

@@ -1,6 +1,8 @@
 import { Headset, Inbox, CheckCircle2, XCircle, Forward, Clock, Filter, Search, MoreHorizontal, Loader2, Sparkles, MapPin, X, ShieldCheck, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
+import { usePermissions } from "../../core/hooks/usePermissions";
+import { RequirePermission } from "../../core/components/RequirePermission";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { aiService } from "../../core/services/ai";
 import { notificationService } from "../../core/services/notifications";
@@ -20,7 +22,14 @@ export function OperatorDashboard() {
   const [rejectDetails, setRejectDetails] = useState("");
   const [selectedMapLocation, setSelectedMapLocation] = useState<[number, number] | null>(null);
 
+  const { hasPermission } = usePermissions();
+
   useEffect(() => {
+    if (!hasPermission('report:read_all')) {
+      setLoading(false);
+      return;
+    }
+    
     import("firebase/firestore").then(({ collection, query, where, onSnapshot }) => {
        const q = query(collection(db, 'reports'), where('status', '==', 'pending_operator'));
        const unsubscribe = onSnapshot(q, (snapshot) => {

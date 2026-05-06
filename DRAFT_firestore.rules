@@ -1,0 +1,210 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} { 
+      allow read, write: if false; 
+    }
+
+    // --- Core Primitives ---
+    function isSignedIn() { 
+      return request.auth != null && request.auth.token.email_verified == true; 
+    }
+    
+    function isValidId(id) { 
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function incoming() { 
+      return request.resource.data; 
+    }
+    
+    function existing() { 
+      return resource.data; 
+    }
+
+    // Role lookups
+    function getUserData() {
+      // NOTE: Using exists/get inside rules repeatedly can cause quota issues.
+      // Assuming users doc id matches their auth.uid
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() { 
+      return isSignedIn() && (getUserData().role == 'admin' || getUserData().role == 'developer' || getUserData().role == 'manager'); 
+    }
+    
+    // --- Validation Blueprints ---
+
+    // User Validation
+    function isBaseUserObject(data) {
+      return data.email is string && data.email.size() <= 100
+        && data.role is string && data.role.size() <= 64;
+    }
+
+    function isValidUserCreate(data) {
+      // Must not allow shadow fields. Enforce exact key count and contents.
+      return data.keys().hasAll(['email', 'role', 'createdAt', 'name'])
+        && data.keys().size() <= 6 // Allows phone/nationalId as optional
+        && isBaseUserObject(data)
+        && data.createdAt == request.time;
+    }
+
+    function isValidUserUpdate(data) {
+      // Validate types if they exist
+      return isBaseUserObject(data)
+        && (data.phone == null || (data.phone is string && data.phone.size() <= 20))
+        && (data.name == null || (data.name is string && data.name.size() <= 100))
+        && (data.updatedAt == null || data.updatedAt == request.time);
+    }
+    
+    // Report Validation
+    function isBaseReportObject(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.userId is string && data.userId.size() <= 128
+        && data.status is string && data.status.size() <= 64;
+    }
+
+    function isValidReportCreate(data) {
+      return data.keys().hasAll(['userId', 'title', 'description', 'status', 'createdAt'])
+        && data.keys().size() <= 10 // Allowing type, location, department, etc. optionally but keeping limit
+        && isBaseReportObject(data)
+        && data.userId == request.auth.uid // Must be the creator
+        && data.createdAt == request.time;
+    }
+
+    function isValidReportUpdate(data) {
+       return isBaseReportObject(data)
+         && (data.department == null || (data.department is string && data.department.size() <= 128))
+         && (data.priority == null || (data.priority is string && data.priority.size() <= 64))
+         && (data.resolutionNotes == null || (data.resolutionNotes is string && data.resolutionNotes.size() <= 2000))
+         && (data.updatedAt == null || data.updatedAt == request.time)
+         && data.userId == existing().userId; // Immutable field
+    }
+
+    // Notification Validation
+    function isValidNotificationCreate(data) {
+      return data.keys().hasAll(['userId', 'title', 'message', 'read', 'createdAt'])
+        && data.keys().size() <= 8
+        && data.userId is string && data.userId.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.message is string && data.message.size() <= 2000
+        && data.read is bool
+        && data.createdAt == request.time;
+    }
+
+    function isValidNotificationUpdate(data) {
+      return data.read is bool
+        && (data.updatedAt == null || data.updatedAt == request.time)
+        && data.userId == existing().userId; // Immutable
+    }
+
+    // Audit Log Validation
+    function isValidAuditLogCreate(data) {
+      return data.keys().hasAll(['action', 'createdAt'])
+        && data.keys().size() <= 5
+        && data.action is string && data.action.size() <= 200
+        && data.createdAt == request.time;
+    }
+
+    // Clarification Validation
+    function isValidClarificationCreate(data) {
+      return data.keys().hasAll(['reportId', 'text', 'requestedBy', 'status', 'createdAt'])
+        && data.keys().size() <= 6
+        && data.reportId is string && data.reportId.size() <= 128
+        && data.text is string && data.text.size() <= 2000
+        && data.requestedBy is string && data.requestedBy.size() <= 128
+        && data.status is string && data.status.size() <= 64
+        && data.createdAt == request.time;
+    }
+
+    function isValidClarificationUpdate(data) {
+      return data.status is string && data.status.size() <= 64
+        && (data.response == null || (data.response is string && data.response.size() <= 2000))
+        && (data.updatedAt == null || data.updatedAt == request.time)
+        && data.reportId == existing().reportId;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Users
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || getUserData().role in ['operator', 'specialist', 'official', 'council', 'verifier', 'humanitarian', 'journalist', 'neighborhood_council', 'donor']); 
+      allow list: if isSignedIn() && getUserData().role in ['admin', 'manager', 'operator', 'council']; 
+      
+      allow create: if isSignedIn() 
+                    && request.auth.uid == userId 
+                    && isValidId(userId)
+                    && isValidUserCreate(incoming())
+                    && (incoming().role == 'citizen' || incoming().role in ['citizen', 'merchant', 'driver', 'displaced']); 
+      
+      allow update: if isSignedIn() && isValidId(userId) && isValidUserUpdate(incoming()) && (
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'nationalId', 'updatedAt'])) ||
+        isAdmin()
+      );
+    }
+
+    // 2. Reports
+    match /reports/{reportId} {
+      allow get: if isSignedIn() && isValidId(reportId) && (existing().userId == request.auth.uid || getUserData().role != 'citizen');
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || getUserData().role != 'citizen');
+
+      allow create: if isSignedIn() 
+                    && isValidId(reportId)
+                    && isValidReportCreate(incoming());
+
+      allow update: if isSignedIn() && isValidId(reportId) && isValidReportUpdate(incoming()) && (
+        isAdmin() ||
+        (getUserData().role == 'operator' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'department', 'priority', 'aiAnalysis', 'updatedAt', 'category'])) ||
+        (getUserData().role == 'specialist' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes', 'images', 'location'])) ||
+        (getUserData().role == 'verifier' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'department', 'priority', 'aiAnalysis', 'updatedAt', 'category'])) ||
+        (getUserData().role == 'official' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes'])) ||
+        (getUserData().role == 'manager' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes'])) ||
+        (getUserData().role == 'contractor' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes'])) ||
+        (getUserData().role == 'handyman' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes'])) ||
+        (getUserData().role == 'humanitarian' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+        (getUserData().role == 'merchant' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'sponsor', 'updatedAt'])) ||
+        (getUserData().role == 'telecom' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'resolutionNotes'])) ||
+        (existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'rating', 'feedback', 'updatedAt']))
+      );
+
+      allow delete: if isAdmin() && isValidId(reportId);
+    }
+
+    // 3. Notifications
+    match /notifications/{notificationId} {
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && isValidId(notificationId) && isValidNotificationCreate(incoming());
+      
+      allow update: if isSignedIn() && isValidId(notificationId) && isValidNotificationUpdate(incoming())
+                    && existing().userId == request.auth.uid 
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'updatedAt']);
+    }
+
+    // 4. Audit Logs
+    match /audit_logs/{logId} {
+      allow get, list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(logId) && isValidAuditLogCreate(incoming());
+      allow update, delete: if false; 
+    }
+
+    // 5. Roles
+    match /roles/{roleId} {
+      allow get, list: if true; 
+      allow create, update, delete: if isAdmin() && isValidId(roleId);
+    }
+
+    // 6. Clarifications
+    match /clarifications/{clarificationId} {
+      allow get: if isSignedIn() && getUserData().role != 'citizen';
+      allow list: if isSignedIn() && getUserData().role != 'citizen';
+      allow create: if isSignedIn() && isValidId(clarificationId) && isValidClarificationCreate(incoming());
+      allow update: if isSignedIn() && isValidId(clarificationId) && isValidClarificationUpdate(incoming())
+                    && (isAdmin() || getUserData().role in ['manager', 'official', 'operator'])
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['response', 'status', 'updatedAt']);
+    }
+  }
+}

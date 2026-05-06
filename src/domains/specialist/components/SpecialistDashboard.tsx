@@ -1,6 +1,8 @@
 import { HardHat, Map, Users, CheckCircle2, AlertCircle, Clock, Navigation, TrendingUp, BarChart3, ChevronLeft, Forward, Camera as CameraIcon, PenTool, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
+import { usePermissions } from "../../core/hooks/usePermissions";
+import { RequirePermission } from "../../core/components/RequirePermission";
 import MapView from "../../locations/components/MapView";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
@@ -19,7 +21,12 @@ export function SpecialistDashboard() {
   // For demo, we are showing the "النظافة والمخلفات" department.
   const specialistDept = "النظافة والمخلفات";
 
+  const { hasPermission } = usePermissions();
+
   useEffect(() => {
+    if (!hasPermission('report:read_department')) {
+      return;
+    }
     const q = query(
       collection(db, 'reports'),
       where('department', '==', specialistDept),

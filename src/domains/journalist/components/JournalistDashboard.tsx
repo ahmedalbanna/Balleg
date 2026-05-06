@@ -1,6 +1,8 @@
 import { Newspaper, TrendingUp, Clock, Share2, FileVideo, Download, Filter, Search, MoreVertical, MessageSquare, ThumbsUp, AlertCircle, ExternalLink, ShieldCheck, FolderPlus, Send, RotateCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
+import { usePermissions } from "../../core/hooks/usePermissions";
+import { RequirePermission } from "../../core/components/RequirePermission";
 import { collection, query, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { Report } from "../../core/services/reportApi";
@@ -23,7 +25,13 @@ export function JournalistDashboard() {
   // Investigation folders (Local state for prototype)
   const [investigationFolder, setInvestigationFolder] = useState<string[]>([]);
 
+  const { hasPermission } = usePermissions();
+
   useEffect(() => {
+    if (!hasPermission('report:read_all')) {
+      setLoading(false);
+      return;
+    }
     const q = query(collection(db, 'reports'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
