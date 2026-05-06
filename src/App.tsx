@@ -16,6 +16,7 @@ import { DisplacedDashboard } from "./domains/displaced/components/DisplacedDash
 import { OperatorDashboard } from "./domains/operator/components/OperatorDashboard";
 import { SpecialistDashboard } from "./domains/specialist/components/SpecialistDashboard";
 import { ManagerDashboard } from "./domains/manager/components/ManagerDashboard";
+import { AdminDashboard } from "./domains/admin/components/AdminDashboard";
 
 function HomeSwitcher() {
   const { currentRole } = useRole();
@@ -26,6 +27,7 @@ function HomeSwitcher() {
   if (currentRole?.slug === 'operator') return <OperatorDashboard />;
   if (currentRole?.slug === 'specialist') return <SpecialistDashboard />;
   if (currentRole?.slug === 'manager') return <ManagerDashboard />;
+  if (currentRole?.slug === 'admin') return <AdminDashboard />;
   return <ReportHome />;
 }
 

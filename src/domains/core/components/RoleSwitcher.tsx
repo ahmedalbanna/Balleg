@@ -16,6 +16,7 @@ export function RoleSwitcher() {
       case 'operator': return <Headset className="w-4 h-4" />;
       case 'specialist': return <HardHat className="w-4 h-4" />;
       case 'manager': return <BarChart3 className="w-4 h-4" />;
+      case 'admin': return <Briefcase className="w-4 h-4" />;
       default: return <User className="w-4 h-4" />;
     }
   };

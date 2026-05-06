@@ -15,6 +15,7 @@ export function Sidebar() {
       case 'operator': return <Headset className="w-5 h-5" />;
       case 'specialist': return <HardHat className="w-5 h-5" />;
       case 'manager': return <BarChart3 className="w-5 h-5" />;
+      case 'admin': return <Briefcase className="w-5 h-5" />;
       default: return <User className="w-5 h-5" />;
     }
   };

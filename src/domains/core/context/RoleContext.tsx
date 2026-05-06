@@ -100,6 +100,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             themeColor: '#334155',
             icon: 'BarChart3',
             description: 'للإشراف على أداء القسم، تحليل مؤشرات الاستجابة، وإدارة الموارد البشرية والميدانية.'
+          },
+          {
+            id: '9',
+            name: 'مدير النظام العام',
+            slug: 'admin',
+            themeColor: '#0f172a',
+            icon: 'Briefcase',
+            description: 'السلطة التنفيذية العليا للإشراف الشامل على أداء المديريات والقطاعات الخدمية.'
           }
         ];
       }
@@ -177,6 +185,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           themeColor: '#334155',
           icon: 'BarChart3',
           description: 'للإشراف على أداء القسم، تحليل مؤشرات الاستجابة، وإدارة الموارد البشرية والميدانية.'
+        },
+        {
+          id: '9',
+          name: 'مدير النظام العام',
+          slug: 'admin',
+          themeColor: '#0f172a',
+          icon: 'Briefcase',
+          description: 'السلطة التنفيذية العليا للإشراف الشامل على أداء المديريات والقطاعات الخدمية.'
         }
       ];
       setAvailableRoles(fallback);
