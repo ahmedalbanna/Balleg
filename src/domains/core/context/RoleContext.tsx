@@ -37,7 +37,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         
         if (['citizen', 'displaced', 'driver'].includes(slug)) category = 'citizens';
         else if (['merchant', 'telecom', 'contractor', 'handyman'].includes(slug)) category = 'business';
-        else if (['operator', 'specialist', 'official'].includes(slug)) category = 'admin';
+        else if (['operator', 'specialist', 'official', 'verifier'].includes(slug)) category = 'admin';
         else if (['manager', 'admin', 'council'].includes(slug)) category = 'leadership';
         else if (['neighborhood_council', 'humanitarian', 'journalist'].includes(slug)) category = 'community';
 
@@ -194,6 +194,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Wrench',
             description: 'للفنيين والمتاجر المحلية لتقديم خدمات الإصلاح المنزلي والترويج الجغرافي للمنتجات.',
             category: 'business'
+          },
+          {
+            id: '17',
+            name: 'فريق التحقق',
+            slug: 'verifier',
+            themeColor: '#475569',
+            icon: 'FileSearch',
+            description: 'لمراجعة البلاغات يدوياً، التحقق من الصور والملفات، وتصنيفها أولياً لضمان جودة البيانات.',
+            category: 'admin'
           }
         ];
       }
@@ -351,6 +360,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'Wrench',
             description: 'للفنيين والمتاجر المحلية لتقديم خدمات الإصلاح المنزلي والترويج الجغرافي للمنتجات.',
             category: 'business'
+          },
+          {
+            id: '17',
+            name: 'فريق التحقق',
+            slug: 'verifier',
+            themeColor: '#475569',
+            icon: 'FileSearch',
+            description: 'لمراجعة البلاغات يدوياً، التحقق من الصور والملفات، وتصنيفها أولياً لضمان جودة البيانات.',
+            category: 'admin'
           }
         ];
       setAvailableRoles(fallback);
