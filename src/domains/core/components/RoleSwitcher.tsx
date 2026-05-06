@@ -1,5 +1,5 @@
 import { useRole } from "../context/RoleContext";
-import { User, Shield, Briefcase, ChevronDown, Store, LogOut, Settings, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse } from "lucide-react";
+import { User, Shield, Briefcase, ChevronDown, Store, LogOut, Settings, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse, Newspaper } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -20,6 +20,7 @@ export function RoleSwitcher() {
       case 'council': return <Landmark className="w-4 h-4" />;
       case 'neighborhood_council': return <Users className="w-4 h-4" />;
       case 'humanitarian': return <HeartPulse className="w-4 h-4" />;
+      case 'journalist': return <Newspaper className="w-4 h-4" />;
       default: return <User className="w-4 h-4" />;
     }
   };

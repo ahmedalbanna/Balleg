@@ -158,6 +158,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             icon: 'HeartPulse',
             description: 'للمنظمات الدولية والمحلية لتوجيه التدخلات وحل مشكلات البنية التحتية والنزوح.',
             category: 'community'
+          },
+          {
+            id: '13',
+            name: 'الصحافة والنشطاء',
+            slug: 'journalist',
+            themeColor: '#701a75',
+            icon: 'Newspaper',
+            description: 'للوصول إلى البيانات الموثقة، رصد القضايا الأكثر تأثيراً، وكشف فجوات الأداء الخدمي.',
+            category: 'community'
           }
         ];
       }
@@ -273,11 +282,20 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           },
           {
             id: '12',
-            name: 'المنظمات الإنسانية',
+            name: 'الالمنظمات الإنسانية',
             slug: 'humanitarian',
             themeColor: '#0284c7',
             icon: 'HeartPulse',
             description: 'للمنظمات الدولية والمحلية لتوجيه التدخلات وحل مشكلات البنية التحتية والنزوح.',
+            category: 'community'
+          },
+          {
+            id: '13',
+            name: 'الصحافة والنشطاء',
+            slug: 'journalist',
+            themeColor: '#701a75',
+            icon: 'Newspaper',
+            description: 'للوصول إلى البيانات الموثقة، رصد القضايا الأكثر تأثيراً، وكشف فجوات الأداء الخدمي.',
             category: 'community'
           }
         ];

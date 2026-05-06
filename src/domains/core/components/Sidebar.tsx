@@ -1,5 +1,5 @@
 import { useRole } from "../context/RoleContext";
-import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse } from "lucide-react";
+import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse, Newspaper } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "../utils/cn";
 
@@ -19,6 +19,7 @@ export function Sidebar() {
       case 'council': return <Landmark className="w-5 h-5" />;
       case 'neighborhood_council': return <Users className="w-5 h-5" />;
       case 'humanitarian': return <HeartPulse className="w-5 h-5" />;
+      case 'journalist': return <Newspaper className="w-5 h-5" />;
       default: return <User className="w-5 h-5" />;
     }
   };
