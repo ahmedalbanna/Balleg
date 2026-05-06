@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { auth } from './firebase';
+import { db, auth } from './firebase';
+import { doc, setDoc, getDocs, collection, query, where } from 'firebase/firestore';
 
 export interface Report {
   id: string;
@@ -20,6 +21,8 @@ export interface Report {
   sponsorName?: string;
   sponsorDate?: string;
   communityComments?: { text: string; author: string; createdAt: string }[];
+  isPrivateService?: boolean;
+  bids?: { handymanId: string, handymanName: string, price: string, timeEstimate: string, status: string, createdAt: string }[];
   [key: string]: any;
 }
 
@@ -32,13 +35,38 @@ export const reportApi = {
     imageUrl?: string,
     aiAnalysis?: any,
     isAnonymous?: boolean,
-    role?: string
+    role?: string,
+    isPrivateService?: boolean
   }) {
-    const res = await axios.post('/api/domain/report/create', {
-      ...data,
-      userId: data.isAnonymous ? "anonymous" : (auth.currentUser?.uid || "anonymous")
-    });
-    return res.data;
+    // We hit AI/Upload via axis, but we can write the document straight to Firebase.
+    // Ensure we have a tracking number.
+    const trackingNo = "BLG-" + Math.floor(100000 + Math.random() * 900000);
+    const isDisplaced = data.role === "displaced";
+    const status = isDisplaced ? "pending_official" : "pending_operator";
+    const department = isDisplaced ? "البلدية والمنظمات الإنسانية" : (data.isPrivateService ? "خدمات خاصة" : undefined);
+    
+    const newReport: Report = {
+      id: trackingNo,
+      userId: data.isAnonymous ? "anonymous" : (auth.currentUser?.uid || "anonymous"),
+      description: data.description,
+      type: data.type || "عام",
+      imageUrl: data.imageUrl,
+      status: status,
+      department: department,
+      priority: data.aiAnalysis?.priority || 'medium',
+      createdAt: new Date().toISOString(),
+      location: data.location || [33.5138, 36.2765],
+      aiAnalysis: data.aiAnalysis || null,
+      isPrivateService: data.isPrivateService || false,
+    };
+
+    try {
+        await setDoc(doc(db, 'reports', trackingNo), newReport);
+    } catch (e) {
+        console.error("Error creating report in firestore", e);
+    }
+
+    return { success: true, trackingNo, report: newReport };
   },
 
   async editReport(id: string, data: { description: string }) {
@@ -59,8 +87,9 @@ export const reportApi = {
   },
   
   async getMyReports(userId: string) {
-    const res = await axios.get(`/api/domain/report/user/${userId}`);
-    return res.data;
+    const q = query(collection(db, 'reports'), where('userId', '==', userId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
   
   // 2. Citizen tracks a report

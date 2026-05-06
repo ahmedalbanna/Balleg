@@ -113,9 +113,16 @@ export function TrackReport() {
       case "resolved_pending_rating":
         return <Star className="w-6 h-6 text-blue-500 animate-bounce" />;
       case "resolved":
+      case "تم الإنجاز":
         return <CheckCircle2 className="w-6 h-6 text-emerald-500" />;
       case "in_progress":
+      case "قيد التنفيذ - الفني في الموقع":
+      case "تم التكليف - جاري الجدولة":
+      case "الفريق في الطريق للموقع":
+      case "جاري العمل والترميم":
         return <Activity className="w-6 h-6 text-indigo-500 animate-pulse" />;
+      case "assigned":
+        return <CheckCircle2 className="w-6 h-6 text-emerald-500" />;
       case "rejected":
         return <FileWarning className="w-6 h-6 text-red-500" />;
       default:
@@ -130,7 +137,10 @@ export function TrackReport() {
       'in_progress': 'جاري المعالجة الميدانية',
       'resolved_pending_rating': 'تم الإنجاز - بانتظار تقييمك',
       'resolved': 'مُغلق (مكتمل)',
-      'rejected': 'تم رفض البلاغ'
+      'rejected': 'تم رفض البلاغ',
+      'assigned': 'تم التعاقد مع فني',
+      'قيد التنفيذ - الفني في الموقع': 'قيد التنفيذ - الفني في الموقع',
+      'تم الإنجاز': 'مُغلق (مكتمل)'
     };
     return map[status] || status;
   };
@@ -226,7 +236,7 @@ export function TrackReport() {
             )}
 
             {/* Citizen Feedback Section */}
-            {report.status === 'resolved_pending_rating' && !feedbackSuccess && (
+            {(report.status === 'resolved_pending_rating' || report.status === 'تم الإنجاز') && !feedbackSuccess && (
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -315,6 +325,50 @@ export function TrackReport() {
                     <h4 className="text-lg font-black text-emerald-900 mb-1">شكراً لمساهمتك</h4>
                     <p className="text-xs text-emerald-700 font-bold opacity-80">تم إغلاق البلاغ بنجاح، ملاحظاتك ستؤخذ بعين الاعتبار لتحسين خدماتنا.</p>
                 </motion.div>
+            )}
+
+            {/* Handyman Bids Section for Private Services */}
+            {report.isPrivateService && report.bids && report.bids.length > 0 && !report.assignedTo && (
+                <div className="mt-8 bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100">
+                    <h4 className="font-bold text-slate-900 text-sm mb-4">عروض الفنيين المتاحة</h4>
+                    <div className="space-y-4">
+                        {report.bids.map((bid, idx) => (
+                            <div key={idx} className="bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm flex items-center justify-between">
+                                <div>
+                                    <p className="font-black text-slate-900 text-sm">{bid.handymanName}</p>
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <span className="text-[10px] bg-slate-50 text-slate-600 px-2 py-1 rounded-md border border-slate-100">السعر التقريبي: {bid.price}</span>
+                                        <span className="text-[10px] bg-slate-50 text-slate-600 px-2 py-1 rounded-md border border-slate-100">الوقت المتوقع: {bid.timeEstimate}</span>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={async () => {
+                                        try {
+                                            await updateDoc(doc(db, 'reports', report.id), {
+                                                assignedTo: bid.handymanId,
+                                                status: 'assigned',
+                                                updatedAt: new Date().toISOString()
+                                            });
+                                            toast.success("تم اختيار الفني بنجاح!");
+                                        } catch (e) {
+                                            toast.error("حدث خطأ أثناء الموافقة.");
+                                        }
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-600/20 transition-all"
+                                >
+                                    قبول العرض
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {report.isPrivateService && report.assignedTo && (
+                <div className="mt-8 bg-emerald-50/50 p-6 rounded-3xl border border-emerald-100 text-center">
+                    <h4 className="font-bold text-slate-900 text-sm mb-2">تم الاتفاق مع الفني</h4>
+                    <p className="text-xs text-slate-600">الفني حالياً يعمل على إنجاز طلبك.</p>
+                </div>
             )}
 
           </motion.div>

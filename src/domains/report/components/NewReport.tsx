@@ -17,6 +17,7 @@ export function NewReport() {
   // Text state
   const [description, setDescription] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isPrivateService, setIsPrivateService] = useState(false);
 
   // Media states
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -150,7 +151,8 @@ export function NewReport() {
         imageUrl: uploadedImageUrl,
         aiAnalysis: analysis,
         isAnonymous: isAnonymous,
-        role: currentRole?.slug
+        role: currentRole?.slug,
+        isPrivateService: isPrivateService
       });
       
       if(res.success) {
@@ -206,7 +208,7 @@ export function NewReport() {
             </div>
 
             {currentRole?.slug === 'displaced' && (
-              <div onClick={() => setIsAnonymous(!isAnonymous)} className={cn("p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between", isAnonymous ? "bg-slate-900 border-slate-900" : "bg-white border-slate-200 hover:border-slate-300")}>
+              <div onClick={() => setIsAnonymous(!isAnonymous)} className={cn("p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between mt-4", isAnonymous ? "bg-slate-900 border-slate-900" : "bg-white border-slate-200 hover:border-slate-300")}>
                   <div className="flex items-center gap-3">
                       <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", isAnonymous ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500")}>
                           <EyeOff className="w-5 h-5" />
@@ -221,6 +223,21 @@ export function NewReport() {
                   </div>
               </div>
             )}
+
+            <div onClick={() => setIsPrivateService(!isPrivateService)} className={cn("p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between mt-4", isPrivateService ? "bg-indigo-900 border-indigo-900" : "bg-white border-slate-200 hover:border-slate-300")}>
+                  <div className="flex items-center gap-3">
+                      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", isPrivateService ? "bg-indigo-800 text-white" : "bg-indigo-50 text-indigo-500")}>
+                          <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <div>
+                          <h4 className={cn("font-bold text-sm", isPrivateService ? "text-white" : "text-slate-800")}>أريد خدمة خاصة (عطل داخل المنزل)</h4>
+                          <p className={cn("text-xs font-bold mt-1", isPrivateService ? "text-indigo-200" : "text-slate-500")}>سيوجه الطلب للفنيين المحليين المستقلين بدلاً من البلدية.</p>
+                      </div>
+                  </div>
+                  <div className={cn("w-12 h-6 rounded-full p-1 flex items-center transition-colors", isPrivateService ? "bg-indigo-500 justify-end" : "bg-slate-200 justify-start")}>
+                      <div className="w-4 h-4 bg-white rounded-full"></div>
+                  </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Photo Area */}
