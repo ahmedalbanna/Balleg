@@ -1,12 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default Deny
+    // 0. Global Safety Net
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper Primitives
+    // --- Helper Primitives ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -27,27 +27,43 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // Validation Helpers
-    function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'role', 'isActive']) &&
-             data.uid == request.auth.uid &&
-             data.role is string &&
-             data.isActive is bool &&
-             (!('email' in data) || data.email is string) &&
-             (!('phoneNumber' in data) || data.phoneNumber is string);
-    }
-
-    function isValidDepartment(data) {
-      return data.keys().hasAll(['name', 'category']) &&
-             data.name is string && data.name.size() <= 100 &&
-             data.category is string;
-    }
-
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Collection Rules
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'role', 'isActive']) &&
+             data.uid == request.auth.uid &&
+             data.role is string && data.role.size() <= 64 &&
+             data.isActive is bool &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 128)) &&
+             (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 20)) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('departmentId' in data) || (data.departmentId is string && data.departmentId.size() <= 100)) &&
+             (!('profileImageUrl' in data) || (data.profileImageUrl is string && data.profileImageUrl.size() <= 512)) &&
+             (!('updatedAt' in data) || data.updatedAt == request.time) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('lastLoginAt' in data) || data.lastLoginAt is timestamp);
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['userId', 'action', 'timestamp']) &&
+             data.keys().size() <= 7 &&
+             data.userId == request.auth.uid &&
+             data.action is string && data.action.size() <= 64 &&
+             data.timestamp == request.time &&
+             (!('details' in data) || (data.details is string && data.details.size() <= 2000)) &&
+             (!('path' in data) || (data.path is string && data.path.size() <= 256));
+    }
+
+    // --- Collection Rules ---
+
     match /roles/{roleId} {
       allow read: if true;
       allow write: if false;
@@ -60,33 +76,41 @@ service cloud.firestore {
 
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isSignedIn(); // System logs itself
+      allow create: if isSignedIn() && isValidId(logId) && isValidAuditLog(incoming());
+      allow update, delete: if false;
     }
 
     match /users/{uid} {
-      allow get: if isOwner(uid);
-      allow list: if false; // Users shouldn't be listable by everyone
-      
-      allow create: if isOwner(uid) && isValidUser(incoming());
-      
-      allow update: if isOwner(uid) && isValidUser(incoming()) && (
+      allow get: if isSignedIn() && isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isOwner(uid) && isValidId(uid) && isValidUser(incoming()) && 
+                       incoming().createdAt == request.time;
+
+      allow update: if isOwner(uid) && isValidId(uid) && isValidUser(incoming()) && (
+        // Action: Self Profile Update
         incoming().diff(existing()).affectedKeys().hasOnly([
-          'displayName', 'profileImageUrl', 'lastLoginAt', 'updatedAt'
-        ])
-      );
+          'displayName', 'profileImageUrl', 'lastLoginAt', 'updatedAt', 'email', 'phoneNumber'
+        ]) &&
+        incoming().role == existing().role &&
+        incoming().isActive == existing().isActive
+      ) || isAdmin();
+      
+      allow delete: if isAdmin();
     }
 
     match /departments/{departmentId} {
       allow read: if isSignedIn();
-      allow write: if false; // Controlled via backend/console in this prototype
+      allow write: if isAdmin();
     }
 
     match /citizen_verification/{phoneNumber} {
-      // OTP verification logic - very sensitive
-      // In a real app, this would be handled by a Cloud Function or Auth trigger
-      // but for this prototype we'll allow limited write if valid
-      allow create: if phoneNumber.size() >= 10 && incoming().otpCode is string;
-      allow get: if true; // Verification bypass for prototype
+      // Very strict for phone verification
+      allow get: if false; 
+      allow create: if isSignedIn() && incoming().phoneNumber == phoneNumber && 
+                       incoming().keys().hasAll(['phoneNumber', 'otpCode', 'verified']) &&
+                       incoming().verified == false;
+      allow update: if false; 
     }
   }
 }
