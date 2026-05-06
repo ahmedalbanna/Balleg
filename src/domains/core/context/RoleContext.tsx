@@ -108,6 +108,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
             themeColor: '#0f172a',
             icon: 'Briefcase',
             description: 'السلطة التنفيذية العليا للإشراف الشامل على أداء المديريات والقطاعات الخدمية.'
+          },
+          {
+            id: '10',
+            name: 'المجلس المحلي',
+            slug: 'council',
+            themeColor: '#1e293b',
+            icon: 'Landmark',
+            description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.'
           }
         ];
       }
@@ -193,6 +201,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           themeColor: '#0f172a',
           icon: 'Briefcase',
           description: 'السلطة التنفيذية العليا للإشراف الشامل على أداء المديريات والقطاعات الخدمية.'
+        },
+        {
+          id: '10',
+          name: 'المجلس المحلي',
+          slug: 'council',
+          themeColor: '#1e293b',
+          icon: 'Landmark',
+          description: 'السلطة التشريعية والرقابية لمراقبة أداء التنفيذيين وضمان الشفافية ومساءلة المقصرين.'
         }
       ];
       setAvailableRoles(fallback);
