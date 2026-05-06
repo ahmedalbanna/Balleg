@@ -1,0 +1,9 @@
+{
+  "name": "بلّغ - Balleg",
+  "description": "منصة ذكية للإبلاغ المرئي والصوتي عن المشكلات (بيئية، صحية، الخ) بتجربة فاخرة.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
