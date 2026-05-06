@@ -20,7 +20,7 @@ export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeReports: 42,
-    departmentsCount: 8,
+    satisfactionRate: '4.8/5',
     systemHealth: '100%'
   });
 
@@ -51,7 +51,7 @@ export const AdminDashboard: React.FC = () => {
       {/* Header Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard icon={<Users className="text-blue-500" />} label="إجمالي المستخدمين" value={stats.totalUsers.toString()} color="blue" />
-        <StatCard icon={<Building2 className="text-purple-500" />} label="الأقسام المفعلة" value={stats.departmentsCount.toString()} color="purple" />
+        <StatCard icon={<Star className="text-amber-500 fill-amber-500" />} label="معدل الرضا العام" value={stats.satisfactionRate} color="amber" />
         <StatCard icon={<ShieldCheck className="text-green-500" />} label="بلاغات نشطة" value={stats.activeReports.toString()} color="green" />
         <StatCard icon={<Activity className="text-orange-500" />} label="حالة النظام" value={stats.systemHealth} color="orange" />
       </div>

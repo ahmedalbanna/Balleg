@@ -45,6 +45,11 @@ export const reportApi = {
     return res.data;
   },
 
+  async submitFeedback(id: string, data: { rating: number, feedback?: string }) {
+    const res = await axios.patch(`/api/domain/report/feedback/${id}`, data);
+    return res.data;
+  },
+  
   // 3. Operator fetches unrouted/pending reports
   async getPendingOperator() {
     const res = await axios.get('/api/domain/report/operator/pending');

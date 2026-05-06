@@ -111,10 +111,10 @@ async function startServer() {
     
     if (reportIndex !== -1) {
       reportsDatabase[reportIndex].status = status;
+      if (remarks) reportsDatabase[reportIndex].remarks = remarks;
       
       // Simulate Real-time external notification (SMS/WhatsApp)
       console.log(`[REAL-TIME NOTIFICATION] Informing citizen about status change of ${id} to ${status}`);
-      // In a real app, logic here would call Twilio/WhatsApp API
       
       res.json({ success: true, message: "تم تحديث حالة البلاغ بنجاح" });
     } else {
@@ -122,7 +122,28 @@ async function startServer() {
     }
   });
 
-  // 4. Operator/Official fetches reports
+  // 4. Submit Citizen Feedback
+  reportRouter.patch("/feedback/:id", (req, res) => {
+    const id = req.params.id;
+    const { rating, feedback } = req.body;
+    const reportIndex = reportsDatabase.findIndex(r => r.id === id);
+    
+    if (reportIndex !== -1) {
+      if (reportsDatabase[reportIndex].status !== 'resolved') {
+        return res.status(400).json({ error: "لا يمكن تقييم بلاغ غير منجز" });
+      }
+      
+      reportsDatabase[reportIndex].rating = rating;
+      reportsDatabase[reportIndex].feedback = feedback;
+      reportsDatabase[reportIndex].feedbackAt = new Date().toISOString();
+      
+      res.json({ success: true, message: "شكراً لتقييمك، تم استلام ملاحظاتك بنجاح" });
+    } else {
+      res.status(404).json({ error: "Report not found" });
+    }
+  });
+
+  // 5. Operator/Official fetches reports
   reportRouter.get("/all", (req, res) => {
     res.json({ reports: reportsDatabase.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) });
   });
