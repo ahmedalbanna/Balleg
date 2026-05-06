@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, handleFirestoreError, OperationType } from '../services/firebase';
 import { useAuth } from './AuthContext';
 
 export interface AppRole {
@@ -413,6 +413,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       setAvailableRoles(fallback);
       if (!currentRole) setCurrentRole(fallback[0]);
       setIsLoading(false);
+      handleFirestoreError(error, OperationType.LIST, 'roles');
     });
 
     return () => unsubscribe();

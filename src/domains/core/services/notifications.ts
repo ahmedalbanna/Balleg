@@ -1,5 +1,5 @@
 import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, doc, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
-import { db, auth } from './firebase';
+import { db, auth, handleFirestoreError, OperationType } from './firebase';
 
 export interface AppNotification {
   id: string;
@@ -41,6 +41,8 @@ export const notificationService = {
         ...doc.data()
       })) as AppNotification[];
       callback(notifications);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'notifications');
     });
   },
 

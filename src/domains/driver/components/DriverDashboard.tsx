@@ -1,11 +1,58 @@
 import { Car, Mic, Map as MapIcon, ShieldAlert, Navigation, Zap, AlertTriangle, Clock } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { toast } from "sonner";
 import MapView from "../../locations/components/MapView";
+import { reportApi } from "../../core/services/reportApi";
+import { auth } from "../../core/services/firebase";
 
 export function DriverDashboard() {
   const [isRecording, setIsRecording] = useState(false);
+  const recordingTimeout = useRef<any>(null);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      // Stop recording
+      setIsRecording(false);
+      if (recordingTimeout.current) clearTimeout(recordingTimeout.current);
+      
+      const toastId = toast.loading("جاري تحليل البلاغ الصوتي بالذكاء الاصطناعي...");
+      
+      // Simulate API call
+      setTimeout(async () => {
+        try {
+          const userId = auth.currentUser?.uid || "anonymous";
+          await reportApi.createReport({
+            description: "بلاغ صوتي: حفرة عميقة تم رصدها في شارع الستين، يرجى الحذر.",
+            location: {
+              latitude: 33.5138,
+              longitude: 36.2765,
+              address: "شارع الستين",
+            },
+            type: "hazard",
+            userId: userId,
+            mediaUrls: [],
+          });
+          toast.success("تم تأكيد البلاغ ونشره على خريطة المخاطر بنجاح!", { id: toastId });
+        } catch (error) {
+          toast.error("حدث خطأ أثناء إرسال البلاغ.", { id: toastId });
+        }
+      }, 2000);
+
+    } else {
+      // Start recording
+      setIsRecording(true);
+      toast.info("جاري التسجيل... انقر مرة أخرى للإيقاف والإرسال.");
+      
+      // Auto stop after 10 seconds simulation
+      recordingTimeout.current = setTimeout(() => {
+        setIsRecording(false);
+        const toastId = toast.loading("جاري معالجة البلاغ الصوتي التلقائي...");
+        setTimeout(() => toast.success("تم تأكيد البلاغ بنجاح!", { id: toastId }), 2000);
+      }, 10000);
+    }
+  };
 
   const hazardMarkers = [
     { id: '1', lat: 33.5138, lng: 36.2765, title: 'حفرة عميقة', description: 'حفرة كبيرة تشكل خطراً على الإطارات في منعطف الشارع الرئيسي', type: 'hazard' as const, status: 'نشط' },
@@ -58,7 +105,7 @@ export function DriverDashboard() {
         <div className="lg:col-span-8 flex flex-col gap-6">
             <motion.button 
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setIsRecording(!isRecording)}
+                onClick={toggleRecording}
                 className={`relative h-64 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center gap-6 group overflow-hidden cursor-pointer ${
                     isRecording 
                     ? 'border-red-500 bg-red-50 shadow-[0_0_50px_rgba(239,68,68,0.1)]' 

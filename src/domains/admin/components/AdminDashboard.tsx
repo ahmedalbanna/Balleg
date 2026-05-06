@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin } from 'lucide-react';
 import { collection, query, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../core/services/firebase';
+import { db, handleFirestoreError, OperationType } from '../../core/services/firebase';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, BarChart, Bar, Legend 
@@ -40,6 +40,8 @@ export const AdminDashboard: React.FC = () => {
       setUsers(userData);
       setStats(prev => ({ ...prev, totalUsers: userData.length }));
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'users');
     });
 
     // Fetch Backend Analytics

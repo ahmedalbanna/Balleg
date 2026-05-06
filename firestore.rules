@@ -81,7 +81,7 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid && 
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow create: if isSignedIn(); // Allow creating notifications for others (e.g. system bot)

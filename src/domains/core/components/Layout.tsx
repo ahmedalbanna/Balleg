@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Shield, LogOut, User as UserIcon } from "lucide-react";
+import { Toaster } from "sonner";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { Sidebar } from "./Sidebar";
 import { NotificationCenter } from "./NotificationCenter";
@@ -11,6 +12,7 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col font-cairo bg-[#F8FAFC] text-[#1E293B] overflow-x-hidden selection:bg-blue-100" dir="rtl">
+      <Toaster position="top-center" richColors />
       <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 sm:px-12 shrink-0 sticky top-0 z-50">
         <Link to="/" className="flex items-center gap-3 group">
           <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl pb-1 shadow-lg shadow-blue-600/20 group-hover:scale-105 transition-transform">ب</div>
