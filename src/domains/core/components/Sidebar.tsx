@@ -9,17 +9,30 @@ export function Sidebar() {
 
   if (!currentRole) return null;
 
-  const menuItems = [
-    { name: 'لوحة القيادة', icon: <LayoutDashboard className="w-5 h-5" />, path: '/' },
-    { name: 'التقارير والبلاغات', icon: <FileText className="w-5 h-5" />, path: '/reports' },
-    { name: 'المهمات الموكلة', icon: <CheckSquare className="w-5 h-5" />, path: '/tasks' },
-    { name: 'الخريطة التفاعلية', icon: <MapPin className="w-5 h-5" />, path: '/map' },
-    { name: 'الإشعارات التنبيهية', icon: <Bell className="w-5 h-5" />, path: '/notifications' },
-    { name: 'سجل النشاطات', icon: <Activity className="w-5 h-5" />, path: '/activities' },
-    { name: 'الرسائل الفورية', icon: <MessageSquare className="w-5 h-5" />, path: '/messages' },
-    { name: 'الملف الشخصي', icon: <User className="w-5 h-5" />, path: '/profile' },
-    { name: 'الإعدادات العامة', icon: <Settings className="w-5 h-5" />, path: '/settings' },
-  ];
+  const getMenuItems = () => {
+    if (currentRole.slug === 'citizen') {
+      return [
+        { name: 'الرئيسية', icon: <LayoutDashboard className="w-5 h-5" />, path: '/' },
+        { name: 'بلاغاتي', icon: <FileText className="w-5 h-5" />, path: '/reports/my' },
+        { name: 'تقديم بلاغ', icon: <Activity className="w-5 h-5" />, path: '/new' },
+        { name: 'تتبع بلاغ', icon: <MapPin className="w-5 h-5" />, path: '/track' },
+        { name: 'الملف الشخصي', icon: <User className="w-5 h-5" />, path: '/profile' },
+      ];
+    }
+    return [
+      { name: 'لوحة القيادة', icon: <LayoutDashboard className="w-5 h-5" />, path: '/' },
+      { name: 'التقارير والبلاغات', icon: <FileText className="w-5 h-5" />, path: '/reports' },
+      { name: 'المهمات الموكلة', icon: <CheckSquare className="w-5 h-5" />, path: '/tasks' },
+      { name: 'الخريطة التفاعلية', icon: <MapPin className="w-5 h-5" />, path: '/map' },
+      { name: 'الإشعارات التنبيهية', icon: <Bell className="w-5 h-5" />, path: '/notifications' },
+      { name: 'سجل النشاطات', icon: <Activity className="w-5 h-5" />, path: '/activities' },
+      { name: 'الرسائل الفورية', icon: <MessageSquare className="w-5 h-5" />, path: '/messages' },
+      { name: 'الملف الشخصي', icon: <User className="w-5 h-5" />, path: '/profile' },
+      { name: 'الإعدادات العامة', icon: <Settings className="w-5 h-5" />, path: '/settings' },
+    ];
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <aside className="w-72 bg-white border-l border-slate-100 hidden md:flex flex-col h-[calc(100vh-80px)] sticky top-20 z-40 shrink-0">

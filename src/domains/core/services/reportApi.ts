@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { db, auth } from './firebase';
-import { doc, setDoc, getDocs, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
 
 export interface Report {
   id: string;
@@ -14,7 +14,7 @@ export interface Report {
   status: string; // broadened to support various string states
   department?: string;
   classification?: string;
-  createdAt: string;
+  createdAt: any;
   location?: [number, number];
   aiAnalysis?: any;
   sponsorId?: string;
@@ -47,14 +47,15 @@ export const reportApi = {
     
     const newReport: Report = {
       id: trackingNo,
-      userId: data.isAnonymous ? "anonymous" : (auth.currentUser?.uid || "anonymous"),
+      userId: auth.currentUser?.uid || "anonymous",
+      isAnonymous: data.isAnonymous || false,
       description: data.description,
       type: data.type || "عام",
       imageUrl: data.imageUrl,
       status: status,
       department: department,
       priority: data.aiAnalysis?.priority || 'medium',
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
       location: data.location || [33.5138, 36.2765],
       aiAnalysis: data.aiAnalysis || null,
       isPrivateService: data.isPrivateService || false,
@@ -70,8 +71,9 @@ export const reportApi = {
   },
 
   async editReport(id: string, data: { description: string }) {
-    const res = await axios.patch(`/api/domain/report/edit/${id}`, data);
-    return res.data;
+    const reportRef = doc(db, 'reports', id);
+    await setDoc(reportRef, { description: data.description, updatedAt: serverTimestamp() }, { merge: true });
+    return { success: true };
   },
 
   // 1.5 Upload Image
@@ -99,8 +101,9 @@ export const reportApi = {
   },
 
   async submitFeedback(id: string, data: { rating: number, feedback?: string }) {
-    const res = await axios.patch(`/api/domain/report/feedback/${id}`, data);
-    return res.data;
+    const reportRef = doc(db, 'reports', id);
+    await setDoc(reportRef, { rating: data.rating, feedback: data.feedback, updatedAt: serverTimestamp() }, { merge: true });
+    return { success: true };
   },
   
   // 3. Operator fetches unrouted/pending reports

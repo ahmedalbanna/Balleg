@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight } from 'lucide-react';
-import { collection, query, getDocs, doc, updateDoc, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../core/services/firebase';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
@@ -143,10 +143,10 @@ export const AdminDashboard: React.FC = () => {
         role: newUserForm.role,
         departmentId: newUserForm.department,
         isActive: true,
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
       }).catch(async (err) => {
          // fallback if updateDoc fails because it doesn't exist, we should use setDoc but wait, import setDoc first
-         const { setDoc } = await import('firebase/firestore');
+         const { setDoc, serverTimestamp } = await import('firebase/firestore');
          await setDoc(doc(db, 'users', newUid), {
             uid: newUid,
             displayName: newUserForm.displayName,
@@ -154,7 +154,7 @@ export const AdminDashboard: React.FC = () => {
             role: newUserForm.role,
             departmentId: newUserForm.department,
             isActive: true,
-            createdAt: new Date().toISOString()
+            createdAt: serverTimestamp()
          });
       });
       toast.success('تم إنشاء الحساب بنجاح', { id: toastId });

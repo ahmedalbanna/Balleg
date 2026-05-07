@@ -39,7 +39,7 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'role', 'isActive']) &&
-             data.uid == request.auth.uid &&
+             (data.uid == request.auth.uid || isAdmin()) &&
              data.role is string && data.role.size() <= 64 &&
              data.isActive is bool &&
              (!('email' in data) || (data.email is string && data.email.size() <= 128)) &&
@@ -54,10 +54,11 @@ service cloud.firestore {
 
     function isValidAuditLog(data) {
       return data.keys().hasAll(['userId', 'action', 'timestamp']) &&
-             data.keys().size() <= 7 &&
+             data.keys().size() <= 8 &&
              data.userId == request.auth.uid &&
              data.action is string && data.action.size() <= 64 &&
              data.timestamp is timestamp &&
+             (!('userEmail' in data) || (data.userEmail is string && data.userEmail.size() <= 256)) &&
              (!('details' in data) || (data.details is string && data.details.size() <= 2000)) &&
              (!('path' in data) || (data.path is string && data.path.size() <= 256));
     }
@@ -92,17 +93,17 @@ service cloud.firestore {
       allow get: if isSignedIn() && isValidId(uid) && (isOwner(uid) || isAdmin());
       allow list: if isAdmin();
 
-      allow create: if isOwner(uid) && isValidId(uid) && isValidUser(incoming()) && 
+      allow create: if (isOwner(uid) || isAdmin()) && isValidId(uid) && isValidUser(incoming()) && 
                        incoming().createdAt is timestamp;
 
-      allow update: if isOwner(uid) && isValidId(uid) && isValidUser(incoming()) && (
+      allow update: if (isOwner(uid) && isValidId(uid) && isValidUser(incoming()) && (
         // Action: Self Profile Update
         incoming().diff(existing()).affectedKeys().hasOnly([
           'displayName', 'profileImageUrl', 'lastLoginAt', 'updatedAt', 'email', 'phoneNumber'
         ]) &&
         incoming().role == existing().role &&
         incoming().isActive == existing().isActive
-      ) || isAdmin();
+      )) || isAdmin();
       
       allow delete: if isAdmin();
     }
@@ -126,19 +127,33 @@ service cloud.firestore {
              (!('latitude' in data) || data.latitude is number) &&
              (!('longitude' in data) || data.longitude is number) &&
              (!('audioUrl' in data) || data.audioUrl is string) &&
-             (!('imageUrl' in data) || data.imageUrl is string) &&
+             (!('imageUrl' in data) || (data.imageUrl is string || data.imageUrl == null)) &&
              (!('sponsorId' in data) || data.sponsorId is string) &&
              (!('sponsorName' in data) || data.sponsorName is string) &&
              (!('sponsorDate' in data) || data.sponsorDate is string) &&
              (!('rating' in data) || data.rating is number) &&
-             (!('department' in data) || data.department is string);
+             (!('department' in data) || (data.department is string || data.department == null)) &&
+             (!('feedback' in data) || data.feedback is string) &&
+             (!('reroutedReason' in data) || data.reroutedReason is string) &&
+             (!('assignedTo' in data) || data.assignedTo is string) &&
+             (!('bids' in data) || data.bids is list) &&
+             (!('resolutionImageUrl' in data) || data.resolutionImageUrl is string) &&
+             (!('rejectReason' in data) || data.rejectReason is string) &&
+             (!('rejectDetails' in data) || data.rejectDetails is string) &&
+             (!('priority' in data) || data.priority is string) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('aiAnalysis' in data) || data.aiAnalysis is map || data.aiAnalysis == null) &&
+             (!('location' in data) || data.location is list) &&
+             (!('id' in data) || data.id is string) &&
+             (!('isPrivateService' in data) || data.isPrivateService is bool) &&
+             (!('isAnonymous' in data) || data.isAnonymous is bool);
     }
 
     match /reports/{reportId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isValidReport(incoming()) && incoming().userId == request.auth.uid;
       allow update: if isSignedIn() && isValidReport(incoming()) && (
-        (incoming().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['description', 'rating', 'status', 'updatedAt'])) ||
+        (incoming().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['description', 'rating', 'feedback', 'status', 'updatedAt', 'reroutedReason', 'assignedTo'])) ||
         // Allow merchants to sponsor a report
         (incoming().diff(existing()).affectedKeys().hasOnly(['sponsorId', 'sponsorName', 'sponsorDate'])) ||
         // Allow operators/officials to update
