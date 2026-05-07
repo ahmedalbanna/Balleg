@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Search, ChevronRight, Activity, Clock, CheckCircle2, RotateCw, Star, MessageSquareCode, Send, Loader2, MapPin, SearchX, UploadCloud, FileWarning } from "lucide-react";
 import * as motion from "motion/react-client";
 import { cn } from "../../core/utils/cn";
@@ -10,7 +10,10 @@ import { toast } from "sonner";
 import { Report } from "../../core/services/reportApi";
 
 export function TrackReport() {
-  const [trackingNo, setTrackingNo] = useState("");
+  const [searchParams] = useSearchParams();
+  const initialNo = searchParams.get('no') || "";
+
+  const [trackingNo, setTrackingNo] = useState(initialNo);
   const [isSearching, setIsSearching] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +27,13 @@ export function TrackReport() {
 
   // Re-open trigger
   const [showReopenPrompt, setShowReopenPrompt] = useState(false);
+
+  // Initial auto-search
+  useEffect(() => {
+    if (initialNo) {
+      performSearch(initialNo);
+    }
+  }, [initialNo]);
 
   // Subscribe to live report data
   useEffect(() => {
@@ -42,16 +52,15 @@ export function TrackReport() {
     };
   }, [report?.id]);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!trackingNo.trim()) return;
+  const performSearch = async (trackingId: string) => {
+    if (!trackingId.trim()) return;
 
     setIsSearching(true);
     setError(null);
     setFeedbackSuccess(false);
     setReport(null);
     try {
-      const docRef = doc(db, 'reports', trackingNo.trim());
+      const docRef = doc(db, 'reports', trackingId.trim());
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         setReport({ id: docSnap.id, ...docSnap.data() } as Report);
@@ -64,6 +73,11 @@ export function TrackReport() {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    performSearch(trackingNo);
   };
 
   const handleRatingSelect = (s: number) => {

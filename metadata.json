@@ -3,7 +3,8 @@
   "description": "منصة ذكية للإبلاغ المرئي والصوتي عن المشكلات (بيئية، صحية، الخ) بتجربة فاخرة.",
   "requestFramePermissions": [
     "camera",
-    "microphone"
+    "microphone",
+    "geolocation"
   ],
   "majorCapabilities": []
 }

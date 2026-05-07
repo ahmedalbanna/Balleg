@@ -17,8 +17,9 @@ export function MyReports() {
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Simulated reputation logic
-  const reputationScore = 85; 
+  // Dynamic reputation logic based on resolved reports
+  const resolvedCount = reports.filter(r => r.status === 'resolved').length;
+  const reputationScore = Math.min(100, 50 + (resolvedCount * 10)); 
 
   useEffect(() => {
     const fetchMyReports = async () => {

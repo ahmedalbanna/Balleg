@@ -9,13 +9,24 @@ export function BottomNav() {
 
   const themeColor = currentRole?.themeColor || '#3b82f6';
 
-  const navItems = [
-    { icon: LayoutDashboard, label: "الرئيسية", path: "/" },
-    { icon: Search, label: "متابعة", path: "/track" },
-    { icon: PlusSquare, label: "بلاغ", path: "/new" },
-    { icon: FileText, label: "بلاغاتي", path: "/reports/my" },
-    { icon: User, label: "حسابي", path: "/profile" },
-  ];
+  const getNavItems = () => {
+    if (currentRole?.slug === 'citizen') {
+      return [
+        { icon: LayoutDashboard, label: "الرئيسية", path: "/" },
+        { icon: Search, label: "تتبع", path: "/track" },
+        { icon: PlusSquare, label: "جديد", path: "/new" },
+        { icon: FileText, label: "سجلي", path: "/reports/my" },
+        { icon: User, label: "حسابي", path: "/profile" },
+      ];
+    }
+    return [
+      { icon: LayoutDashboard, label: "لوحتي", path: "/" },
+      { icon: Bell, label: "تنبيهات", path: "/" }, // Placeholder for now
+      { icon: User, label: "حسابي", path: "/profile" },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-100 flex items-center justify-around px-2 z-50 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
