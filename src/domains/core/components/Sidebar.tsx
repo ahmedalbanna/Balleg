@@ -75,14 +75,19 @@ export function Sidebar() {
                       className={cn(
                         "w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden text-right cursor-pointer",
                         currentRole.id === role.id 
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                          ? "text-white shadow-lg" 
                           : "hover:bg-slate-50 text-slate-600"
                       )}
+                      style={currentRole.id === role.id ? { 
+                        backgroundColor: currentRole.themeColor,
+                        boxShadow: `0 10px 15px -3px ${currentRole.themeColor}33`
+                      } : {}}
                     >
                       <div className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-sm",
-                        currentRole.id === role.id ? "bg-white/20 text-white" : "bg-white border border-slate-100 text-slate-400 group-hover:text-blue-600"
-                      )}>
+                        currentRole.id === role.id ? "bg-white/20 text-white" : "bg-white border border-slate-100 text-slate-400 group-hover:text-slate-900"
+                      )}
+                      >
                         {getIcon(role.slug)}
                       </div>
                       
@@ -108,7 +113,10 @@ export function Sidebar() {
       <div className="mt-auto p-6 border-t border-slate-100 space-y-4 bg-white">
         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
             <div className="flex items-center gap-2 text-slate-800 font-bold text-sm mb-1">
-                <Info className="w-4 h-4 text-blue-600" />
+                <Info 
+                  className="w-4 h-4" 
+                  style={{ color: currentRole.themeColor }}
+                />
                 <span>عن الدور الحالي</span>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed">

@@ -6,11 +6,16 @@ import { useAuth } from '../context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
+import { useRole } from '../context/RoleContext';
+
 export const NotificationCenter: React.FC = () => {
   const { user } = useAuth();
+  const { currentRole } = useRole();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const themeColor = currentRole?.themeColor || '#3b82f6';
 
   useEffect(() => {
     if (!user) return;
@@ -58,7 +63,8 @@ export const NotificationCenter: React.FC = () => {
                 <h3 className="text-lg font-black text-slate-900">الإشعارات</h3>
                 <button 
                   onClick={handleMarkAllRead}
-                  className="text-xs font-bold text-blue-600 hover:underline"
+                  className="text-xs font-bold hover:underline"
+                  style={{ color: themeColor }}
                 >
                   تحديد الكل كمقروء
                 </button>
@@ -75,9 +81,15 @@ export const NotificationCenter: React.FC = () => {
                     {notifications.map((n) => (
                       <div 
                         key={n.id}
-                        className={`p-5 hover:bg-slate-50 transition-colors relative group ${!n.read ? 'bg-blue-50/30' : ''}`}
+                        className={`p-5 hover:bg-slate-50 transition-colors relative group`}
+                        style={!n.read ? { backgroundColor: `${themeColor}08` } : {}}
                       >
-                        {!n.read && <div className="absolute right-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-full" />}
+                        {!n.read && (
+                          <div 
+                            className="absolute right-0 top-0 bottom-0 w-1 rounded-r-full" 
+                            style={{ backgroundColor: themeColor }}
+                          />
+                        )}
                         <div className="flex justify-between items-start mb-1">
                           <h4 className={`text-sm font-bold ${!n.read ? 'text-slate-900' : 'text-slate-600'}`}>{n.title}</h4>
                           <span className="text-[10px] text-slate-400 font-bold">

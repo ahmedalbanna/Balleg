@@ -64,7 +64,7 @@ export function RoleSwitcher() {
     return acc;
   }, {} as Record<string, typeof availableRoles>);
 
-  if (!currentRole) return null;
+  const themeColor = currentRole?.themeColor || '#3b82f6';
 
   return (
     <div className="relative">
@@ -72,7 +72,7 @@ export function RoleSwitcher() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 py-2 px-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 group cursor-pointer"
       >
-        <Layers className="w-4 h-4 text-blue-400" />
+        <Layers className="w-4 h-4" style={{ color: themeColor }} />
         <span className="text-[11px] font-bold hidden sm:inline">محاكي الأدوار (اختبار)</span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -92,7 +92,10 @@ export function RoleSwitcher() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">دليل الواجهات</p>
                   <h4 className="text-lg font-black text-slate-900">اختر دوراً للمحاكاة</h4>
                 </div>
-                <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: `${themeColor}15`, color: themeColor }}
+                >
                   <Layers className="w-5 h-5" />
                 </div>
               </div>
@@ -116,9 +119,13 @@ export function RoleSwitcher() {
                               }}
                               className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all ${
                                   currentRole.id === role.id 
-                                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                                  ? 'text-white shadow-lg' 
                                   : 'hover:bg-slate-50 text-slate-600'
                               }`}
+                              style={currentRole.id === role.id ? { 
+                                backgroundColor: themeColor,
+                                boxShadow: `0 8px 12px -2px ${themeColor}33`
+                              } : {}}
                             >
                               <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
                                   currentRole.id === role.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
