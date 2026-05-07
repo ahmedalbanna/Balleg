@@ -32,6 +32,11 @@ export const AdminDashboard: React.FC = () => {
   const [rerouteDepartment, setRerouteDepartment] = useState("");
   const [rerouteReason, setRerouteReason] = useState("");
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [newUserMsg, setNewUserMsg] = useState("");
+  const [newUserForm, setNewUserForm] = useState({ displayName: '', email: '', role: 'official', department: '' });
+
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeReports: 0,
@@ -122,6 +127,49 @@ export const AdminDashboard: React.FC = () => {
       handleFirestoreError(err, OperationType.UPDATE, 'reports');
     }
   };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const toastId = toast.loading('جاري إضافة المستخدم...');
+      // Note: In a real app, you would create the Auth user here via Cloud Functions 
+      // or a secondary Firebase App instance to avoid logging out the current admin.
+      // Here we just add the profile to the users collection.
+      const newUid = 'usr_' + Date.now().toString(36);
+      await updateDoc(doc(db, 'users', newUid), {
+        uid: newUid,
+        displayName: newUserForm.displayName,
+        email: newUserForm.email,
+        role: newUserForm.role,
+        departmentId: newUserForm.department,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      }).catch(async (err) => {
+         // fallback if updateDoc fails because it doesn't exist, we should use setDoc but wait, import setDoc first
+         const { setDoc } = await import('firebase/firestore');
+         await setDoc(doc(db, 'users', newUid), {
+            uid: newUid,
+            displayName: newUserForm.displayName,
+            email: newUserForm.email,
+            role: newUserForm.role,
+            departmentId: newUserForm.department,
+            isActive: true,
+            createdAt: new Date().toISOString()
+         });
+      });
+      toast.success('تم إنشاء الحساب بنجاح', { id: toastId });
+      setIsAddUserModalOpen(false);
+      setNewUserForm({ displayName: '', email: '', role: 'official', department: '' });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'users');
+    }
+  };
+
+  const filteredUsers = users.filter(u => 
+    u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.role?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleExport = () => {
       toast.success("تم تصدير التقرير بنجاح (Simulation)");
@@ -366,11 +414,13 @@ export const AdminDashboard: React.FC = () => {
                   <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input 
                     type="text" 
-                    placeholder="بحث بالمستخدمين..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="بحث بالمستخدمين... (الاسم، الدور، الايميل)"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pr-12 pl-4 text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                   />
                 </div>
-                <button className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 w-fit">
+                <button onClick={() => setIsAddUserModalOpen(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-black flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 w-fit">
                   <Plus size={18} />
                   إضافة حساب موظف
                 </button>
@@ -388,7 +438,13 @@ export const AdminDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {users.map((user) => (
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-slate-400 font-bold text-sm">
+                          لا توجد نتائج مطابقة للبحث
+                        </td>
+                      </tr>
+                    ) : filteredUsers.map((user) => (
                       <tr key={user.uid} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="py-3 px-6">
                           <div className="flex items-center gap-3">
@@ -518,6 +574,92 @@ export const AdminDashboard: React.FC = () => {
                         إلغاء
                     </button>
                 </div>
+           </motion.div>
+        </div>
+      )}
+
+      {isAddUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
+           {/* Backdrop */}
+           <motion.div 
+              initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setIsAddUserModalOpen(false)}
+           />
+           {/* Modal */}
+           <motion.div
+              initial={{scale:0.95, opacity:0, y:20}} animate={{scale:1, opacity:1, y:0}} exit={{scale:0.95, opacity:0, y:20}}
+              className="relative bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl border border-slate-100"
+           >
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
+                   <Plus className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 mb-2">إضافة حساب موظف جديد</h3>
+                <p className="text-xs font-bold text-slate-500 mb-6">قم بإدخال بيانات الموظف والصلاحيات ليتمكن من الدخول للمنظومة.</p>
+
+                <form onSubmit={handleAddUser} className="space-y-4 font-bold text-sm">
+                    <div>
+                        <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الاسم الكامل</label>
+                        <input
+                            required
+                            value={newUserForm.displayName}
+                            onChange={(e) => setNewUserForm({...newUserForm, displayName: e.target.value})}
+                            placeholder="مثال: صالح عبدالله"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">البريد الإلكتروني</label>
+                        <input
+                            required
+                            type="email"
+                            value={newUserForm.email}
+                            onChange={(e) => setNewUserForm({...newUserForm, email: e.target.value})}
+                            placeholder="employee@city.gov.sa"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-left dir-ltr"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الدور البرمجي</label>
+                            <select 
+                                value={newUserForm.role}
+                                onChange={(e) => setNewUserForm({...newUserForm, role: e.target.value})}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                            >
+                                <option value="official">مسؤول جهة (Official)</option>
+                                <option value="operator">موظف استجابة (Operator)</option>
+                                <option value="manager">مدير قسم (Manager)</option>
+                                <option value="council">مجلس بلدي (Council)</option>
+                                <option value="specialist">مهندس/أخصائي (Specialist)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الجهة التابع لها</label>
+                            <select 
+                                value={newUserForm.department}
+                                onChange={(e) => setNewUserForm({...newUserForm, department: e.target.value})}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                            >
+                                <option value="">بدون جهة (عام)</option>
+                                <option value="النظافة والمخلفات">النظافة والمخلفات</option>
+                                <option value="الإنارة والكهرباء">الإنارة والكهرباء</option>
+                                <option value="الطرق والجسور">الطرق والجسور</option>
+                                <option value="الصرف الصحي والمياه">الصرف الصحي والمياه</option>
+                                <option value="الشرطة والمطافئ">الشرطة والمطافئ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-8 pt-4">
+                        <button type="submit" className="flex-1 bg-blue-600 text-white rounded-xl py-3 text-sm font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition">
+                            أضف الحساب
+                        </button>
+                        <button type="button" onClick={() => setIsAddUserModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 text-sm font-black hover:bg-slate-200 transition">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
            </motion.div>
         </div>
       )}
