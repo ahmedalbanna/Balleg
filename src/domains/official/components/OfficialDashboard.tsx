@@ -4,55 +4,59 @@ import { useState, useEffect } from "react";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { notificationService } from "../../core/services/notifications";
 import { cn } from "../../core/utils/cn";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
+import { toast } from "sonner";
+import { useAuth } from "../../core/context/AuthContext";
 
 export function OfficialDashboard() {
-  const [department, setDepartment] = useState("نظافة");
+  const { userProfile } = useAuth();
+  const [department, setDepartment] = useState(userProfile?.departmentId || "النظافة والمخلفات");
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string|null>(null);
 
   useEffect(() => {
-    fetchReports();
-    const interval = setInterval(fetchReports, 5000); // Polling for demo
-    return () => clearInterval(interval);
-  }, [department]);
+    if (userProfile?.departmentId && department === "النظافة والمخلفات") {
+      setDepartment(userProfile.departmentId);
+    }
+  }, [userProfile]);
 
-  const fetchReports = async () => {
-    try {
-      const data = await reportApi.getDepartmentReports(department);
-      // Sort by priority then date
+  useEffect(() => {
+    setLoading(true);
+    const q = query(
+      collection(db, 'reports'),
+      where('department', '==', department),
+      where('status', 'in', ['pending_official', 'in_progress'])
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
       const priorityWeights: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
-      const sorted = (data || []).sort((a: Report, b: Report) => {
+      const sorted = docs.sort((a, b) => {
         const wA = priorityWeights[a.priority || 'low'] || 1;
         const wB = priorityWeights[b.priority || 'low'] || 1;
         if (wA !== wB) return wB - wA;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return new Date(b.createdAt?.toDate ? b.createdAt.toDate() : b.createdAt).getTime() - new Date(a.createdAt?.toDate ? a.createdAt.toDate() : a.createdAt).getTime();
       });
       setReports(sorted);
       setLoading(false);
-    } catch (e) {
-      console.error(e);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'reports');
       setLoading(false);
-    }
-  };
+    });
+
+    return () => unsubscribe();
+  }, [department]);
 
   const handleUpdateStatus = async (id: string, s: string) => {
     setUpdatingId(id);
     try {
       await reportApi.updateStatus(id, s);
-      
-      // Notify about status update
-      await notificationService.notifyUser(id, { // Simulated notify (in real app, use submitter UID)
-        title: s === 'resolved' ? "تم إنجاز بلاغك بنجاح" : "بدء المعالجة الميدانية",
-        message: s === 'resolved' 
-          ? `بلاغك رقم ${id} تم حله وإغلاقه بنجاح.` 
-          : `بلاغك رقم ${id} قيد التنفيذ الميداني حالياً.`,
-        type: s === 'resolved' ? "success" : "info"
-      });
-
-      setReports(prev => prev.filter(r => r.id !== id || s !== 'resolved')); // If resolved, it disappears from this view
+      toast.success(s === 'resolved' ? "تم إنجاز البلاغ بنجاح" : "تم بدء العمل على البلاغ");
     } catch (e) {
       console.error(e);
+      toast.error('حدث خطأ أثناء تحديث حالة البلاغ');
     } finally {
       setUpdatingId(null);
     }
@@ -84,10 +88,12 @@ export function OfficialDashboard() {
               onChange={(e) => { setDepartment(e.target.value); setLoading(true); }}
               className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg px-2 py-1 font-bold shadow-sm outline-none"
             >
-                <option value="نظافة">قطاع النظافة</option>
-                <option value="طرق">قطاع الطرق والمواصلات</option>
-                <option value="مياه">مؤسسة المياه</option>
-                <option value="كهرباء">الكهرباء والطاقة</option>
+                <option value="النظافة والمخلفات">النظافة والمخلفات</option>
+                <option value="الإنارة والكهرباء">الإنارة والكهرباء</option>
+                <option value="الطرق والجسور">الطرق والجسور</option>
+                <option value="الصرف الصحي والمياه">الصرف الصحي والمياه</option>
+                <option value="التشجير والمرافق">التشجير والمرافق</option>
+                <option value="الشرطة والمطافئ">الشرطة والمطافئ</option>
             </select>
           </div>
         </div>

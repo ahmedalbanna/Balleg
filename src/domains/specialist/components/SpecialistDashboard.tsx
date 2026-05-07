@@ -7,8 +7,10 @@ import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/f
 import { Report } from "../../core/services/reportApi";
 import { toast } from "sonner";
 import { mediaUtils } from "../../core/utils/media";
+import { useAuth } from "../../core/context/AuthContext";
 
 export function SpecialistDashboard() {
+  const { userProfile } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedTask, setSelectedTask] = useState<Report | null>(null);
   const [internalNote, setInternalNote] = useState("");
@@ -16,8 +18,8 @@ export function SpecialistDashboard() {
   const [afterImageUrl, setAfterImageUrl] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // For demo, we are showing the "النظافة والمخلفات" department.
-  const specialistDept = "النظافة والمخلفات";
+  // We are showing the user's assigned department, or fallback
+  const specialistDept = userProfile?.departmentId || "النظافة والمخلفات";
 
   useEffect(() => {
     const q = query(

@@ -120,14 +120,16 @@ export const reportApi = {
 
   // 5. Official fetches their department's reports
   async getDepartmentReports(department: string) {
-    const res = await axios.get(`/api/domain/report/official/${department}`);
-    return res.data.reports as Report[];
+    const q = query(collection(db, 'reports'), where('department', '==', department), where('status', 'in', ['pending_official', 'in_progress']));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Report));
   },
 
   // 6. Official updates report status
   async updateStatus(id: string, status: string) {
-    const res = await axios.post(`/api/domain/report/${id}/status`, { status });
-    return res.data;
+    const reportRef = doc(db, 'reports', id);
+    await setDoc(reportRef, { status, updatedAt: serverTimestamp() }, { merge: true });
+    return { success: true };
   },
 
   async getMerchantReports() {
