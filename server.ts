@@ -277,19 +277,28 @@ async function startServer() {
 
   // Domain: "AI" Module API Routes
   const aiRouter = express.Router();
-  aiRouter.post("/classify", async (req, res) => {
-    const { text } = req.body;
+  aiRouter.post("/analyze", async (req, res) => {
+    const { text, hasImage } = req.body;
     const OLLAMA_HOST = "http://185.190.140.93:11434";
     const MODEL = "qwen2.5:1.5b";
 
     if (!text) {
-      return res.status(400).json({ error: "Text is required for classification" });
+      return res.status(400).json({ error: "Text is required for analysis" });
     }
 
     try {
-      const prompt = `صنّف البلاغ التالي إلى أحد هذه الأصناف: (طرق، نظافة، كهرباء، مياه، إنساني، طارئ). 
-      أريد الإجابة بكلمة واحدة فقط تمثل الصنف.
-      البلاغ: "${text}"`;
+      const prompt = `أنت مساعد ذكي لتحليل بلاغات المواطنين. قم بتحليل البلاغ التالي وأعد النتيجة بصيغة JSON حصراً.
+      البلاغ: "${text}"
+      ${hasImage ? "(ملاحظة: هذا البلاغ يحتوي على صورة مرفقة)" : ""}
+
+      يجب أن يحتوي الـ JSON على الحقول التالية:
+      1. classification: أحد الأصناف (طرق، نظافة، كهرباء، مياه، إنساني، طارئ)
+      2. severity: (low, medium, high)
+      3. priority: (critical, high, medium, low)
+      4. summary: ملخص قصير جداً للبلاغ باللغة العربية.
+      5. detectedObjects: قائمة بكلمات مفتاحية للأشياء في البلاغ.
+
+      مهم جداً: أعد JSON فقط دون أي نص إضافي.`;
 
       const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
         method: "POST",
@@ -299,18 +308,57 @@ async function startServer() {
           prompt: prompt,
           stream: false,
           options: {
-            temperature: 0.1
+            temperature: 0.1,
+            format: "json" // Ensure JSON output if supported by model/ollama
           }
         }),
       });
 
       const data: any = await response.json();
-      const classification = data.response.trim();
+      let result;
+      try {
+        // Find JSON block if model decided to add fluff
+        const textResponse = data.response;
+        const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+        result = JSON.parse(jsonMatch ? jsonMatch[0] : textResponse);
+      } catch (e) {
+        // Fallback if parsing fails
+        result = {
+          classification: "عام",
+          severity: "medium",
+          priority: "medium",
+          summary: text.substring(0, 50) + "...",
+          detectedObjects: []
+        };
+      }
       
-      res.json({ success: true, classification });
+      res.json({ success: true, ...result });
     } catch (error: any) {
       console.error("[Domain: AI] Ollama Error:", error.message);
       res.status(500).json({ success: false, error: "فشل الاتصال بمحرك الذكاء الاصطناعي" });
+    }
+  });
+
+  aiRouter.post("/classify", async (req, res) => {
+    // Legacy endpoint for backward compatibility
+    const { text } = req.body;
+    const OLLAMA_HOST = "http://185.190.140.93:11434";
+    const MODEL = "qwen2.5:1.5b";
+
+    try {
+      const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          prompt: `صنف بكلمة واحدة فقط: ${text}`,
+          stream: false,
+        }),
+      });
+      const data: any = await response.json();
+      res.json({ success: true, classification: data.response.trim() });
+    } catch (error) {
+      res.status(500).json({ success: false });
     }
   });
 

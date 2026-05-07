@@ -9,12 +9,12 @@ export function RoleSwitcher() {
   const { profile } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  // In production/real scenario, only Admins or Developers can switch roles globally
+  // In production/real scenario, only Admins can switch roles globally
   // Citizens or regular employees should NOT see this switcher
-  const canSwitchRoles = profile?.role === 'admin' || profile?.role === 'developer';
+  const canSwitchRoles = profile?.role === 'admin';
 
   if (!canSwitchRoles && profile?.role !== 'citizen') {
-    // If not admin/dev, but authenticated, we just show the current role status without switching capability
+    // If not admin, but authenticated, we just show the current role status without switching capability
     return (
       <div className="flex items-center gap-2 py-2 px-4 bg-blue-50 text-blue-700 rounded-2xl border border-blue-100 shadow-sm">
         <Shield className="w-4 h-4" />
@@ -73,7 +73,7 @@ export function RoleSwitcher() {
         className="flex items-center gap-2 py-2 px-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 group cursor-pointer"
       >
         <Layers className="w-4 h-4" style={{ color: themeColor }} />
-        <span className="text-[11px] font-bold hidden sm:inline">محاكي الأدوار (اختبار)</span>
+        <span className="text-[11px] font-bold hidden sm:inline">تبديل الأدوار</span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 

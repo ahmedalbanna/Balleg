@@ -1,18 +1,33 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Shield, Building2, Calendar, MapPin, Camera, Star } from 'lucide-react';
+import { User, Mail, Phone, Shield, Building2, Calendar, MapPin, Camera, Star, LogOut, Settings, Bell, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useRole } from '../context/RoleContext';
+import { cn } from '../utils/cn';
 
 export const ProfilePage: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
+  const { currentRole } = useRole();
 
   if (!profile) return null;
 
+  const themeColor = currentRole?.themeColor || '#3b82f6';
+
   return (
-    <div className="max-w-4xl mx-auto p-6" dir="rtl">
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
-        <div className="h-48 bg-gradient-to-l from-blue-600 to-indigo-700 relative">
-          <div className="absolute -bottom-16 right-10">
+    <div className="max-w-4xl mx-auto p-4 md:p-6" dir="rtl">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm"
+      >
+        {/* Cover Header */}
+        <div 
+          className="h-40 md:h-48 relative transition-colors duration-500"
+          style={{ 
+            background: `linear-gradient(to left, ${themeColor}, ${themeColor}dd)` 
+          }}
+        >
+          <div className="absolute -bottom-16 right-1/2 translate-x-1/2 md:translate-x-0 md:right-10">
             <div className="relative group">
               <div className="w-32 h-32 rounded-3xl bg-white p-1 shadow-xl">
                  <div className="w-full h-full rounded-[1.25rem] bg-slate-100 flex items-center justify-center overflow-hidden">
@@ -23,86 +38,137 @@ export const ProfilePage: React.FC = () => {
                   )}
                 </div>
               </div>
-              <button className="absolute bottom-2 left-2 p-2 bg-white rounded-xl shadow-lg border border-slate-100 text-blue-600 hover:scale-110 transition-transform">
+              <button 
+                className="absolute bottom-2 left-2 p-2 bg-white rounded-xl shadow-lg border border-slate-100 transition-transform active:scale-90"
+                style={{ color: themeColor }}
+              >
                 <Camera size={16} />
               </button>
             </div>
           </div>
         </div>
 
-        <div className="pt-20 p-10">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 mb-1">{profile.displayName}</h1>
-              <div className="flex flex-wrap gap-2">
-                <div className="flex items-center gap-2 text-blue-600 font-bold text-sm bg-blue-50 py-1 px-3 rounded-lg w-fit">
+        {/* Profile Content */}
+        <div className="pt-20 p-6 md:p-10">
+          <div className="flex flex-col md:flex-row justify-between items-center md:items-start mb-10 text-center md:text-right">
+            <div className="mb-6 md:mb-0">
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-2">{profile.displayName}</h1>
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                <div 
+                  className="flex items-center gap-2 font-bold text-xs md:text-sm py-1.5 px-3 rounded-xl w-fit"
+                  style={{ backgroundColor: `${themeColor}10`, color: themeColor }}
+                >
                   <Shield size={14} />
-                  {profile.role}
+                  {currentRole?.name || profile.role}
                 </div>
                 {profile.role === 'citizen' && (
-                  <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm bg-emerald-50 py-1 px-3 rounded-lg w-fit border border-emerald-100">
+                  <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs md:text-sm bg-emerald-50 py-1.5 px-3 rounded-xl w-fit border border-emerald-100">
                     <Star size={14} className="fill-emerald-600" />
                     85 نقطة سمعة
                   </div>
                 )}
               </div>
             </div>
-            <button className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all">
-              تعديل الملف الشخصي
-            </button>
+            <div className="flex gap-3 w-full md:w-auto">
+              <button 
+                className="flex-1 md:flex-none px-6 py-3 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/10"
+              >
+                تعديل الحساب
+              </button>
+              <button 
+                onClick={() => signOut()}
+                className="px-4 py-3 bg-red-50 text-red-600 rounded-2xl text-sm font-bold hover:bg-red-100 transition-all active:scale-95 border border-red-100 flex items-center gap-2"
+              >
+                <LogOut size={18} />
+                <span className="hidden sm:inline">خروج</span>
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest px-1">المعلومات الشخصية</h3>
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">المعلومات الأساسية</h3>
+                <Settings size={14} className="text-slate-300" />
+              </div>
               
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
-                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 text-slate-400">
-                  <Mail size={18} />
+              <div className="group p-4 bg-slate-50 hover:bg-white transition-all rounded-2xl border border-slate-100 flex items-center gap-4 hover:shadow-md hover:shadow-slate-200/50">
+                <div 
+                  className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 transition-colors"
+                  style={{ color: themeColor }}
+                >
+                  <Mail size={20} />
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400">البريد الإلكتروني</p>
-                  <p className="text-sm font-bold text-slate-900">{profile.email || 'غير متوفر'}</p>
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-slate-400 mb-0.5">البريد الإلكتروني</p>
+                  <p className="text-sm font-bold text-slate-900 truncate max-w-[200px]">{profile.email || 'غير متوفر'}</p>
                 </div>
+                <ChevronRight size={14} className="text-slate-300" />
               </div>
 
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
-                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 text-slate-400">
-                  <Phone size={18} />
+              <div className="group p-4 bg-slate-50 hover:bg-white transition-all rounded-2xl border border-slate-100 flex items-center gap-4 hover:shadow-md hover:shadow-slate-200/50">
+                <div 
+                  className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 transition-colors"
+                  style={{ color: themeColor }}
+                >
+                  <Phone size={20} />
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400">رقم الهاتف</p>
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-slate-400 mb-0.5">رقم الهاتف</p>
                   <p className="text-sm font-bold text-slate-900" dir="ltr">{profile.phoneNumber || '+967 7xxxxxxx'}</p>
                 </div>
+                <ChevronRight size={14} className="text-slate-300" />
               </div>
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest px-1">معلومات العمل</h3>
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">تفاصيل العمل</h3>
+                <Building2 size={14} className="text-slate-300" />
+              </div>
               
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
-                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 text-slate-400">
-                  <Building2 size={18} />
+                <div 
+                  className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 transition-colors"
+                  style={{ color: themeColor }}
+                >
+                  <MapPin size={20} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400">القسم / الإدارة</p>
-                  <p className="text-sm font-bold text-slate-900">{profile.departmentId || 'المواطنة الرقمية'}</p>
+                  <p className="text-[10px] font-bold text-slate-400 mb-0.5">المنطقة / الفرع</p>
+                  <p className="text-sm font-bold text-slate-900">{profile.departmentId || 'المقر الرئيسي'}</p>
                 </div>
               </div>
 
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
-                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 text-slate-400">
-                  <Calendar size={18} />
+                <div 
+                  className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 transition-colors"
+                  style={{ color: themeColor }}
+                >
+                  <Calendar size={20} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400">تاريخ الانضمام</p>
+                  <p className="text-[10px] font-bold text-slate-400 mb-0.5">تاريخ الانضمام</p>
                   <p className="text-sm font-bold text-slate-900">مارس 2024</p>
                 </div>
               </div>
             </div>
           </div>
+
+          <div className="mt-10 pt-10 border-t border-slate-100 flex items-center justify-center">
+            <button 
+              onClick={() => signOut()}
+              className="md:hidden flex items-center gap-3 text-red-500 font-bold text-sm bg-red-50/50 px-8 py-4 rounded-3xl active:scale-95 transition-all w-full"
+            >
+              <LogOut size={20} />
+              تسجيل الخروج من المنظومة
+            </button>
+            <p className="hidden md:block text-[11px] text-slate-400 font-medium">
+              سياسة الخصوصية • شروط الاستخدام • نسخة ٢.٤.٠
+            </p>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

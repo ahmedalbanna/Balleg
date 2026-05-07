@@ -5,6 +5,7 @@ import { notificationService, AppNotification } from '../services/notifications'
 import { useAuth } from '../context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { cn } from '../utils/cn';
 
 import { useRole } from '../context/RoleContext';
 
@@ -53,14 +54,27 @@ export const NotificationCenter: React.FC = () => {
               onClick={() => setIsOpen(false)}
             />
             <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute left-0 top-full mt-4 w-96 bg-white rounded-[2rem] border border-slate-200 shadow-2xl z-50 overflow-hidden"
+              initial={window.innerWidth < 768 ? { opacity: 0, y: '20%' } : { opacity: 0, y: 10, scale: 0.95 }}
+              animate={window.innerWidth < 768 ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, scale: 1 }}
+              exit={window.innerWidth < 768 ? { opacity: 0, y: '20%' } : { opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className={cn(
+                "bg-white z-50 shadow-2xl flex flex-col overflow-hidden",
+                "fixed inset-0", // Mobile: Full screen
+                "md:absolute md:inset-auto md:left-0 md:top-full md:mt-4 md:w-96 md:rounded-[2rem] md:border md:border-slate-200" // Desktop: Popover
+              )}
               dir="rtl"
             >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <h3 className="text-lg font-black text-slate-900">الإشعارات</h3>
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setIsOpen(false)}
+                    className="md:hidden p-2 -mr-2 text-slate-400 hover:text-slate-900"
+                  >
+                    <X size={20} />
+                  </button>
+                  <h3 className="text-lg font-black text-slate-900">الإشعارات</h3>
+                </div>
                 <button 
                   onClick={handleMarkAllRead}
                   className="text-xs font-bold hover:underline"
@@ -70,7 +84,7 @@ export const NotificationCenter: React.FC = () => {
                 </button>
               </div>
 
-              <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+              <div className="flex-1 overflow-y-auto custom-scrollbar md:max-h-[400px]">
                 {notifications.length === 0 ? (
                   <div className="p-12 text-center text-slate-400">
                     <Bell className="w-12 h-12 mx-auto mb-4 opacity-10" />
@@ -81,7 +95,7 @@ export const NotificationCenter: React.FC = () => {
                     {notifications.map((n) => (
                       <div 
                         key={n.id}
-                        className={`p-5 hover:bg-slate-50 transition-colors relative group`}
+                        className={`p-5 md:p-5 hover:bg-slate-50 transition-colors relative group`}
                         style={!n.read ? { backgroundColor: `${themeColor}08` } : {}}
                       >
                         {!n.read && (
@@ -117,7 +131,7 @@ export const NotificationCenter: React.FC = () => {
                 )}
               </div>
 
-              <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
+              <div className="p-4 md:p-4 bg-slate-50 border-t border-slate-100 text-center shrink-0">
                 <button className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
                   عرض كل التنبيهات
                 </button>

@@ -1,111 +1,55 @@
 import { useRole } from "../context/RoleContext";
-import { User, Shield, Store, Briefcase, LayoutDashboard, Settings, Info, Car, Home, Headset, HardHat, BarChart3, Landmark, Users, HeartPulse, Newspaper, Signal, Hammer, Wrench, FileSearch, Terminal, Globe2 } from "lucide-react";
-import { motion } from "motion/react";
+import { User, Settings, LayoutDashboard, FileText, Bell, CheckSquare, Activity, MessageSquare, MapPin } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "../utils/cn";
-import { Link } from "react-router-dom";
 
 export function Sidebar() {
-  const { currentRole, setCurrentRole, availableRoles } = useRole();
-
-  const getIcon = (slug: string) => {
-    switch (slug) {
-      case 'official': return <Shield className="w-5 h-5" />;
-      case 'merchant': return <Store className="w-5 h-5" />;
-      case 'driver': return <Car className="w-5 h-5" />;
-      case 'displaced': return <Home className="w-5 h-5" />;
-      case 'operator': return <Headset className="w-5 h-5" />;
-      case 'specialist': return <HardHat className="w-5 h-5" />;
-      case 'manager': return <BarChart3 className="w-5 h-5" />;
-      case 'admin': return <Briefcase className="w-5 h-5" />;
-      case 'council': return <Landmark className="w-5 h-5" />;
-      case 'neighborhood_council': return <Users className="w-5 h-5" />;
-      case 'humanitarian': return <HeartPulse className="w-5 h-5" />;
-      case 'journalist': return <Newspaper className="w-5 h-5" />;
-      case 'telecom': return <Signal className="w-5 h-5" />;
-      case 'contractor': return <Hammer className="w-5 h-5" />;
-      case 'handyman': return <Wrench className="w-5 h-5" />;
-      case 'verifier': return <FileSearch className="w-5 h-5" />;
-      case 'developer': return <Terminal className="w-5 h-5" />;
-      case 'donor': return <Globe2 className="w-5 h-5" />;
-      default: return <User className="w-5 h-5" />;
-    }
-  };
-
-  const categoryMap = {
-    citizens: "المواطنون والمجتمع",
-    business: "قطاع الأعمال",
-    community: "المجتمع المدني",
-    admin: "الوحدات التنفيذية",
-    leadership: "القيادة والرقابة"
-  };
-
-  const groupedRoles = availableRoles.reduce((acc, role) => {
-    const cat = role.category || 'citizens';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(role);
-    return acc;
-  }, {} as Record<string, typeof availableRoles>);
+  const { currentRole } = useRole();
+  const location = useLocation();
 
   if (!currentRole) return null;
 
+  const menuItems = [
+    { name: 'لوحة القيادة', icon: <LayoutDashboard className="w-5 h-5" />, path: '/' },
+    { name: 'التقارير والبلاغات', icon: <FileText className="w-5 h-5" />, path: '/reports' },
+    { name: 'المهمات الموكلة', icon: <CheckSquare className="w-5 h-5" />, path: '/tasks' },
+    { name: 'الخريطة التفاعلية', icon: <MapPin className="w-5 h-5" />, path: '/map' },
+    { name: 'الإشعارات التنبيهية', icon: <Bell className="w-5 h-5" />, path: '/notifications' },
+    { name: 'سجل النشاطات', icon: <Activity className="w-5 h-5" />, path: '/activities' },
+    { name: 'الرسائل الفورية', icon: <MessageSquare className="w-5 h-5" />, path: '/messages' },
+    { name: 'الملف الشخصي', icon: <User className="w-5 h-5" />, path: '/profile' },
+    { name: 'الإعدادات العامة', icon: <Settings className="w-5 h-5" />, path: '/settings' },
+  ];
+
   return (
     <aside className="w-72 bg-white border-l border-slate-100 hidden md:flex flex-col h-[calc(100vh-80px)] sticky top-20 z-40 shrink-0">
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">محاكاة الواجهات (للاختبار)</h3>
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-6 px-4">
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-3">القائمة الرئيسية</h3>
         
-        <div className="space-y-8">
-          {(Object.keys(categoryMap) as Array<keyof typeof categoryMap>).map((catKey) => {
-            const roles = groupedRoles[catKey];
-            if (!roles || roles.length === 0) return null;
-
-            return (
-              <div key={catKey} className="space-y-3">
-                <div className="flex items-center gap-2 px-2">
-                  <div className="w-1 h-3 bg-slate-200 rounded-full"></div>
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                    {categoryMap[catKey]}
-                  </h4>
+        <div className="space-y-1">
+          {menuItems.map((item, index) => {
+             const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+             return (
+              <Link
+                key={index}
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm group",
+                  isActive 
+                    ? "bg-slate-50 text-slate-900 font-bold" 
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                )}
+                style={isActive ? {
+                  color: currentRole.themeColor,
+                  backgroundColor: `${currentRole.themeColor}10`
+                } : {}}
+              >
+                <div style={isActive ? { color: currentRole.themeColor } : {}} className={cn(!isActive && "group-hover:text-slate-900 transition-colors")}>
+                  {item.icon}
                 </div>
-                
-                <div className="space-y-2">
-                  {roles.map((role) => (
-                    <button
-                      key={role.id}
-                      onClick={() => setCurrentRole(role)}
-                      className={cn(
-                        "w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden text-right cursor-pointer",
-                        currentRole.id === role.id 
-                          ? "text-white shadow-lg" 
-                          : "hover:bg-slate-50 text-slate-600"
-                      )}
-                      style={currentRole.id === role.id ? { 
-                        backgroundColor: currentRole.themeColor,
-                        boxShadow: `0 10px 15px -3px ${currentRole.themeColor}33`
-                      } : {}}
-                    >
-                      <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center transition-colors shadow-sm",
-                        currentRole.id === role.id ? "bg-white/20 text-white" : "bg-white border border-slate-100 text-slate-400 group-hover:text-slate-900"
-                      )}
-                      >
-                        {getIcon(role.slug)}
-                      </div>
-                      
-                      <div className="flex-1">
-                        <div className="text-sm font-black">{role.name}</div>
-                      </div>
-
-                      {currentRole.id === role.id && (
-                        <motion.div 
-                          layoutId="active-indicator"
-                          className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-l-full"
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
+                {item.name}
+              </Link>
+            )
           })}
         </div>
       </div>
@@ -113,30 +57,12 @@ export function Sidebar() {
       <div className="mt-auto p-6 border-t border-slate-100 space-y-4 bg-white">
         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
             <div className="flex items-center gap-2 text-slate-800 font-bold text-sm mb-1">
-                <Info 
-                  className="w-4 h-4" 
-                  style={{ color: currentRole.themeColor }}
-                />
-                <span>عن الدور الحالي</span>
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: currentRole.themeColor }} />
+                <span>عن {currentRole.name}</span>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed">
                 {currentRole.description}
             </p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-            <Link to="/" className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-100">
-                <LayoutDashboard className="w-4 h-4" />
-                <span className="text-[9px] font-black uppercase tracking-tighter">الرئيسية</span>
-            </Link>
-            <Link to="/profile" className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-100">
-                <User className="w-4 h-4" />
-                <span className="text-[9px] font-black uppercase tracking-tighter">الملف</span>
-            </Link>
-            <button className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-100">
-                <Settings className="w-4 h-4" />
-                <span className="text-[9px] font-black uppercase tracking-tighter">الاعدادات</span>
-            </button>
         </div>
       </div>
     </aside>

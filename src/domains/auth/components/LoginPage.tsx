@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Phone, Lock, ArrowRight, Shield, User, Store, Car, Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
-import { auth } from '../../core/services/firebase';
+import { signInWithEmailAndPassword, signInAnonymously, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { getDoc, doc } from 'firebase/firestore';
+import { auth, db } from '../../core/services/firebase';
 import { useNavigate } from 'react-router-dom';
 
 export const LoginPage: React.FC = () => {
@@ -14,25 +15,61 @@ export const LoginPage: React.FC = () => {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const navigate = useNavigate();
 
-  const handlePhoneRequest = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container-login', {
+        size: 'invisible'
+      });
+    }
+  }, []);
+
+  const handlePhoneRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!phone.startsWith('+')) {
+      setError('يرجى إدخال رقم هاتف بالصيغة الدولية (+966...)');
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      const appVerifier = window.recaptchaVerifier;
+      const result = await signInWithPhoneNumber(auth, phone, appVerifier);
+      setConfirmationResult(result);
       setOtpSent(true);
+    } catch (err: any) {
+      handleAuthError(err);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
-  const handlePhoneVerify = (e: React.FormEvent) => {
+  const handlePhoneVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!confirmationResult) return;
     setLoading(true);
-    setTimeout(() => {
-      signInAnonymously(auth).then(() => {
+    setError(null);
+    try {
+      const result = await confirmationResult.confirm(otp);
+      const user = result.user;
+      
+      // Check if user has a profile
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        // Force them to register if no profile
+        setError('لا يوجد حساب مسجل بهذا الرقم. يرجى إنشاء حساب جديد.');
+        await auth.signOut();
+      } else {
         navigate('/');
-      });
-    }, 800);
+      }
+    } catch (err: any) {
+      setError('كود التحقق غير صحيح أو انتهت صلاحيته.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -43,14 +80,7 @@ export const LoginPage: React.FC = () => {
       await signInWithEmailAndPassword(auth, email, password);
       navigate('/');
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError('خطأ في البريد الإلكتروني أو كلمة المرور. يرجى المحاولة مرة أخرى.');
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('تم حظر الدخول مؤقتاً بسبب محاولات فاشلة كثيرة. حاول لاحقاً.');
-      } else {
-        setError('خطأ في البريد الإلكتروني أو كلمة المرور');
-      }
-      console.error(err);
+      handleAuthError(err);
     } finally {
       setLoading(false);
     }
@@ -68,8 +98,24 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const handleAuthError = (err: any) => {
+    console.error(err);
+    if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      setError('خطأ في البريد الإلكتروني أو كلمة المرور. يرجى المحاولة مرة أخرى.');
+    } else if (err.code === 'auth/too-many-requests') {
+      setError('تم حظر الدخول مؤقتاً بسبب محاولات فاشلة كثيرة. حاول لاحقاً.');
+    } else if (err.code === 'auth/invalid-phone-number') {
+      setError('رقم الهاتف غير صالح. يرجى إدخال رقم بالصيغة الدولية.');
+    } else if (err.code === 'auth/unauthorized-domain') {
+      setError('النطاق الحالي غير مصرح به في فايربيس (إعدادات Auth -> Authorized Domains).');
+    } else {
+      setError('حدث خطأ. يرجى المحاولة مرة أخرى.');
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 relative overflow-hidden" dir="rtl">
+      <div id="recaptcha-container-login"></div>
       {/* Background accents */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[100px]" />
@@ -93,15 +139,17 @@ export const LoginPage: React.FC = () => {
 
             <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
               <button 
-                onClick={() => setMethod('email')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${method === 'email' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => { setMethod('email'); setOtpSent(false); setError(null); }}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${method === 'email' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
+                <Mail className="w-4 h-4" />
                 البريد الإلكتروني
               </button>
               <button 
-                onClick={() => setMethod('phone')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${method === 'phone' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => { setMethod('phone'); setOtpSent(false); setError(null); }}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${method === 'phone' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
+                <Phone className="w-4 h-4" />
                 رقم الهاتف
               </button>
             </div>
@@ -147,7 +195,7 @@ export const LoginPage: React.FC = () => {
                   </div>
 
                   {error && (
-                    <p className="text-red-500 text-[10px] font-bold text-center bg-red-50 p-2 rounded-lg">{error}</p>
+                    <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2 rounded-lg border border-red-100">{error}</p>
                   )}
 
                   <button 
@@ -173,15 +221,15 @@ export const LoginPage: React.FC = () => {
                   className="space-y-4"
                 >
                   <div className="space-y-1">
-                    <label className="text-sm font-medium text-slate-700 mr-1">رقم الهاتف</label>
+                    <label className="text-sm font-medium text-slate-700 mr-1">رقم الهاتف (بالصيغة الدولية)</label>
                     <div className="relative">
                       <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input 
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-right"
-                        placeholder="05xxxxxxx"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-left dir-ltr disabled:opacity-50"
+                        placeholder="+966xxxxxxxxx"
                         required
                         disabled={otpSent}
                       />
@@ -203,9 +251,13 @@ export const LoginPage: React.FC = () => {
                     </motion.div>
                   )}
 
-                  <p className="text-xs text-slate-400 text-center">
+                  <p className="text-xs text-slate-400 text-center font-medium">
                     {otpSent ? 'أدخل الرمز المكون من 6 أرقام' : 'سنقوم بإرسال كود التحقق عبر الرسائل النصية'}
                   </p>
+
+                  {error && (
+                    <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2 rounded-lg border border-red-100">{error}</p>
+                  )}
 
                   <button 
                     type="submit"
@@ -219,10 +271,10 @@ export const LoginPage: React.FC = () => {
                   {otpSent && (
                     <button 
                       type="button" 
-                      onClick={() => setOtpSent(false)}
-                      className="w-full text-center text-[10px] font-bold text-blue-600"
+                      onClick={() => { setOtpSent(false); setOtp(''); }}
+                      className="w-full text-center text-xs font-bold text-blue-600 hover:text-blue-700"
                     >
-                      تغيير الرقم؟
+                      تغيير الرقم أو إعادة الإرسال؟
                     </button>
                   )}
                 </motion.form>
@@ -233,12 +285,13 @@ export const LoginPage: React.FC = () => {
           <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
              <button 
               onClick={handleGuestLogin}
-              className="w-full py-3 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 font-medium hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full py-3 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <User className="w-5 h-5" />
               الدخول كضيف (مواطن)
             </button>
-            <p className="text-xs text-slate-500 text-center">
+            <p className="text-xs text-slate-500 text-center font-medium">
               ليس لديك حساب؟ <button onClick={() => navigate('/register')} className="text-blue-600 font-bold cursor-pointer hover:underline">سجل الآن</button>
             </p>
           </div>
