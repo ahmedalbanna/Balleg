@@ -182,7 +182,8 @@ export function NewReport() {
     setSubmitProgress("جاري تحليل البلاغ بالذكاء الاصطناعي...");
     try {
       // 1. AI Analysis
-      const analysis = await aiService.analyzeReport(description || "بلاغ وسائط", imageSrc || undefined);
+      const rawAnalysis = await aiService.analyzeReport(description || "بلاغ وسائط", imageSrc || undefined);
+      const analysis = { ...rawAnalysis, classification: aiAnalysis?.classification || rawAnalysis.classification };
       setAiAnalysis(analysis);
 
       // 2. Upload Image if exists
@@ -276,6 +277,33 @@ export function NewReport() {
                     placeholder="اكتب وصفاً مختصراً للمشكلة أو اترك الذكاء الاصطناعي يستنتجها من الصورة/الصوت..."
                     className="w-full bg-transparent border-none outline-none resize-none h-28 p-5 text-sm font-bold text-slate-700 placeholder:text-slate-400"
                 />
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-[10px] uppercase font-black text-slate-400 pl-1">تصنيف البلاغ (اختياري)</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  { id: 'عام', label: 'عام' },
+                  { id: 'شكوى شبكة اتصالات', label: 'شبكة اتصالات' },
+                  { id: 'نظافة عامة', label: 'نظافة' },
+                  { id: 'صرف صحي', label: 'صرف صحي' },
+                  { id: 'إنارة شوارع', label: 'إنارة' },
+                  { id: 'طرق وحفر', label: 'طرق' }
+                ].map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setAiAnalysis(prev => ({ ...prev, classification: cat.id }))}
+                    className={cn(
+                      "px-4 py-2.5 rounded-xl border text-[10px] font-black transition-all",
+                      aiAnalysis?.classification === cat.id 
+                        ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                        : "bg-white border-slate-200 text-slate-600 hover:border-blue-200"
+                    )}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

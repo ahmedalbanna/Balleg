@@ -19,8 +19,8 @@ export function TelecomDashboard() {
     const q = query(collection(db, 'reports'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
-      // Filter only telecom reports
-      const telecomReports = docs.filter(r => r.department?.includes('اتصالات') || r.department?.includes('الاتصالات') || r.type === 'telecom');
+      // Filter reports classified as telecom network complaints by citizens
+      const telecomReports = docs.filter(r => r.type === 'شكوى شبكة اتصالات');
       setReports(telecomReports);
       setLoading(false);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'reports'));
@@ -231,11 +231,10 @@ export function TelecomDashboard() {
     
                     <div className="space-y-3 mb-8">
                         <label className="block text-[10px] uppercase font-black text-slate-400 mb-2 pl-1">تحديث الحالة إلى:</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={() => handleUpdateStatus('تم الاستلام')} className="px-4 py-3 rounded-xl border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50 transition-colors">تم الاستلام والمراجعة</button>
-                            <button onClick={() => handleUpdateStatus('قيد الفحص الفني')} className="px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 text-xs font-black text-amber-700 hover:bg-amber-100 transition-colors">إرسال فريق فني للتحقق</button>
-                            <button onClick={() => handleUpdateStatus('بانتظار تأكيد العميل')} className="px-4 py-3 rounded-xl border border-sky-200 bg-sky-50 text-xs font-black text-sky-700 hover:bg-sky-100 transition-colors">استعادة الخدمة مؤقتاً</button>
-                            <button onClick={() => handleUpdateStatus('تم الحل نهائياً')} className="px-4 py-3 rounded-xl border border-green-200 bg-green-50 text-xs font-black text-green-700 hover:bg-green-100 transition-colors">تم معالجة الخلل (إغلاق)</button>
+                        <div className="grid grid-cols-1 gap-3">
+                            <button onClick={() => handleUpdateStatus('تم الاستلام')} className="px-4 py-3 rounded-xl border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50 transition-colors">تم الاستلام</button>
+                            <button onClick={() => handleUpdateStatus('قيد الفحص')} className="px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 text-xs font-black text-amber-700 hover:bg-amber-100 transition-colors">قيد الفحص</button>
+                            <button onClick={() => handleUpdateStatus('resolved')} className="px-4 py-3 rounded-xl border border-green-200 bg-green-50 text-xs font-black text-green-700 hover:bg-green-100 transition-colors">تم الحل</button>
                         </div>
                     </div>
     
