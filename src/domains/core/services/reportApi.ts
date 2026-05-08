@@ -26,6 +26,7 @@ export interface Report {
   rejectReason?: string;
   rejectDetails?: string;
   rejectAudioUrl?: string;
+  infoRequestedAt?: string;
   sponsorId?: string;
   sponsorName?: string;
   sponsorDate?: string;

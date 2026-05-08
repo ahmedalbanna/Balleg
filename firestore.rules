@@ -124,6 +124,7 @@ service cloud.firestore {
 
     function isValidReport(data) {
       return data.keys().hasAll(['description', 'type', 'status', 'userId']) &&
+             data.status in ['pending_verification', 'pending_operator', 'in_progress', 'resolved', 'rejected', 'needs_info', 'ignored'] &&
              (!('latitude' in data) || data.latitude is number) &&
              (!('longitude' in data) || data.longitude is number) &&
              (!('audioUrl' in data) || data.audioUrl is string) &&
@@ -145,6 +146,7 @@ service cloud.firestore {
              (!('rejectReason' in data) || data.rejectReason is string) &&
              (!('rejectDetails' in data) || data.rejectDetails is string) &&
              (!('rejectAudioUrl' in data) || data.rejectAudioUrl is string) &&
+             (!('infoRequestedAt' in data) || (data.infoRequestedAt is string || data.infoRequestedAt == null)) &&
              (!('priority' in data) || data.priority is string) &&
              (!('createdAt' in data) || data.createdAt is timestamp) &&
              (!('aiAnalysis' in data) || data.aiAnalysis is map || data.aiAnalysis == null) &&
@@ -164,9 +166,9 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         isAdmin() ||
         (isOwner(existing().userId) && isValidReport(incoming()) && (
-          (existing().status in ['pending_verification', 'pending_operator'] &&
+          (existing().status in ['pending_verification', 'pending_operator', 'needs_info'] &&
             incoming().diff(existing()).affectedKeys().hasOnly([
-              'description', 'imageUrl', 'audioUrl', 'location', 'isAnonymous', 'updatedAt', 'aiAnalysis'
+              'description', 'imageUrl', 'audioUrl', 'location', 'isAnonymous', 'updatedAt', 'aiAnalysis', 'status'
             ])
           ) ||
           // Feedback Action (48h limit)
@@ -179,7 +181,7 @@ service cloud.firestore {
         )) ||
         // Official/Operator updates
         (isValidReport(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly([
-          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'rejectAudioUrl', 'updatedAt', 'assignedTo', 'resolvedAt', 'operatorComment'
+          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'rejectAudioUrl', 'infoRequestedAt', 'updatedAt', 'assignedTo', 'resolvedAt', 'operatorComment'
         ]))
       );
 

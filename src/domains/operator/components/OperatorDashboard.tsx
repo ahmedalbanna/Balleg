@@ -175,28 +175,41 @@ export function OperatorDashboard() {
       }
 
       const reportRef = doc(db, 'reports', reportId);
+      const isMissingInfo = rejectReason === "معلومات ناقصة";
+      
       await updateDoc(reportRef, {
-        status: 'rejected',
+        status: isMissingInfo ? 'needs_info' : 'rejected',
         rejectReason: rejectReason,
         rejectDetails: rejectDetails,
         rejectAudioUrl: uploadedAudioUrl,
+        infoRequestedAt: isMissingInfo ? new Date().toISOString() : null,
         updatedAt: new Date().toISOString()
       });
       
       const report = reports.find(r => r.id === reportId);
       if (report && report.userId && report.userId !== "anonymous") {
-        await notificationService.notifyUser(report.userId, {
-          title: "تم رفض البلاغ",
-          message: `نعتذر، تم رفض بلاغك رقم ${reportId}. السبب: ${rejectReason}. ${rejectDetails}`,
-          type: "error"
-        });
+        if (isMissingInfo) {
+          await notificationService.notifyUser(report.userId, {
+            title: "مطلوب إضافة معلومات للبلاغ",
+            message: `يرجى تعديل البلاغ رقم ${reportId} وإضافة المعلومات المطلوبة خلال 48 ساعة لتفادي إغلاقه.`,
+            type: "warning"
+          });
+        } else {
+          await notificationService.notifyUser(report.userId, {
+            title: "تم رفض البلاغ",
+            message: `نعتذر، تم رفض بلاغك رقم ${reportId}. السبب: ${rejectReason}. ${rejectDetails}`,
+            type: "error"
+          });
+        }
       }
 
       setReports(prev => prev.filter(r => r.id !== reportId));
       setRejectingId(null);
       setRejectReason("");
       setRejectDetails("");
-      toast.success("تم رفض البلاغ", { id: toastId });
+      setRejectAudioBlob(null);
+      toast.success(isMissingInfo ? "تم طلب معلومات إضافية من المواطن" : "تم رفض البلاغ", { id: toastId });
+      handlePreviewReport(null);
     } catch (e) {
       console.error(e);
       toast.error("حدث خطأ أثناء الرفض");
