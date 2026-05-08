@@ -148,9 +148,10 @@ export function NewReport() {
     setIsSubmitting(true);
     
     // Limits check
-    if (currentRole?.slug === 'displaced' || currentRole?.slug === 'citizen') {
+    const currentUserId = auth.currentUser?.uid;
+    if (currentUserId && (currentRole?.slug === 'displaced' || currentRole?.slug === 'citizen')) {
       try {
-        const myReports = await reportApi.getMyReports(auth.currentUser?.uid || 'anonymous');
+        const myReports = await reportApi.getMyReports(currentUserId);
         const openReports = myReports.filter((r: any) => ['pending_verification', 'pending_operator', 'pending_official', 'in_progress'].includes(r.status));
         if (openReports.length >= 3) {
           toast.error("عذراً، لديك ٣ بلاغات مفتوحة حالياً. يرجى الانتظار حتى معالجتها لتتمكن من تقديم بلاغ جديد.");

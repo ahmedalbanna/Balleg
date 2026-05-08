@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { db, auth } from './firebase';
+import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { doc, setDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
 
 export interface Report {
@@ -51,20 +51,24 @@ export const reportApi = {
       isAnonymous: data.isAnonymous || false,
       description: data.description,
       type: data.type || "عام",
-      imageUrl: data.imageUrl,
       status: status,
-      department: department,
       priority: data.aiAnalysis?.priority || 'medium',
       createdAt: serverTimestamp(),
-      location: data.location || [33.5138, 36.2765],
-      aiAnalysis: data.aiAnalysis || null,
       isPrivateService: data.isPrivateService || false,
     };
+    
+    // Add optional fields
+    if (data.imageUrl) newReport.imageUrl = data.imageUrl;
+    if (department) newReport.department = department;
+    if (data.location) newReport.location = data.location;
+    if (data.aiAnalysis) newReport.aiAnalysis = data.aiAnalysis;
 
     try {
         await setDoc(doc(db, 'reports', trackingNo), newReport);
     } catch (e) {
         console.error("Error creating report in firestore", e);
+        handleFirestoreError(e, OperationType.CREATE, `reports/${trackingNo}`);
+        throw e;
     }
 
     return { success: true, trackingNo, report: newReport };

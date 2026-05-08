@@ -150,8 +150,11 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidReport(incoming()) && incoming().userId == request.auth.uid;
+      allow read: if true;
+      allow create: if isValidReport(incoming()) && (
+        (isSignedIn() && incoming().userId == request.auth.uid) || 
+        (!isSignedIn() && incoming().userId == "anonymous")
+      );
       allow update: if isSignedIn() && isValidReport(incoming()) && (
         (incoming().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['description', 'rating', 'feedback', 'status', 'updatedAt', 'reroutedReason', 'assignedTo'])) ||
         // Allow merchants to sponsor a report
