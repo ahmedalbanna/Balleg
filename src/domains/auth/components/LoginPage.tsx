@@ -55,11 +55,14 @@ export const LoginPage: React.FC = () => {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
       
-      // Check if user has a profile
+      // Check if user has a profile and is active
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.exists()) {
         // Force them to register if no profile
         setError('لا يوجد حساب مسجل بهذا الرقم. يرجى إنشاء حساب جديد.');
+        await auth.signOut();
+      } else if (userDoc.data().isActive === false) {
+        setError('هذا الحساب معطل حالياً. يرجى مراجعة الإدارة.');
         await auth.signOut();
       } else {
         navigate('/');
@@ -77,8 +80,17 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate('/');
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const user = result.user;
+      
+      // Check if user is active
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists() && userDoc.data().isActive === false) {
+        setError('هذا الحساب معطل حالياً. يرجى مراجعة الإدارة.');
+        await auth.signOut();
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       handleAuthError(err);
     } finally {

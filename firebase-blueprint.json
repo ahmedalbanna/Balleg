@@ -47,7 +47,8 @@
         "name": { "type": "string" },
         "category": { "type": "string" },
         "parentDepartmentId": { "type": "string" },
-        "managerUid": { "type": "string" }
+        "managerUid": { "type": "string" },
+        "isActive": { "type": "boolean" }
       },
       "required": ["name", "category"]
     },
@@ -168,9 +169,26 @@
         "reviewedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["neighborhoodId", "neighborhoodName", "title", "content", "status", "createdAt"]
+    },
+    "SystemSettings": {
+      "title": "System Settings",
+      "description": "Global application configurations and timeouts",
+      "type": "object",
+      "properties": {
+        "evaluationTimeoutHours": { "type": "number" },
+        "emergencyProcessingTimeoutHours": { "type": "number" },
+        "standardProcessingTimeoutHours": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["evaluationTimeoutHours", "emergencyProcessingTimeoutHours"]
     }
   },
   "firestore": {
+    "/settings/global": {
+      "schema": "SystemSettings",
+      "description": "Global application configuration"
+    },
     "/neighborhood_dissatisfaction_reports/{reportId}": {
       "schema": "NeighborhoodDissatisfactionReport",
       "description": "Community dissatisfaction reports for the General Manager"

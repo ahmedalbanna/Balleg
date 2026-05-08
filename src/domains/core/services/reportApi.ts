@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { doc, setDoc, getDocs, deleteDoc, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { logActivity } from './audit';
 
 export interface Report {
   id: string;
@@ -81,6 +82,7 @@ export const reportApi = {
 
     try {
         await setDoc(doc(db, 'reports', trackingNo), newReport);
+        await logActivity('إنشاء بلاغ', `تم إنشاء بلاغ جديد برقم ${trackingNo}`, `reports/${trackingNo}`);
     } catch (e) {
         console.error("Error creating report in firestore", e);
         handleFirestoreError(e, OperationType.CREATE, `reports/${trackingNo}`);
@@ -94,6 +96,7 @@ export const reportApi = {
     const reportRef = doc(db, 'reports', id);
     const updateData: any = { ...data, updatedAt: serverTimestamp() };
     await setDoc(reportRef, updateData, { merge: true });
+    await logActivity('تعديل بلاغ', `تم تعديل بيانات البلاغ ${id}`, `reports/${id}`);
     return { success: true };
   },
 
@@ -101,6 +104,7 @@ export const reportApi = {
     const reportRef = doc(db, 'reports', id);
     try {
       await deleteDoc(reportRef);
+      await logActivity('حذف بلاغ', `تم حذف البلاغ برقم ${id}`, `reports/${id}`);
       return { success: true };
     } catch (e) {
       console.error("Error deleting report in firestore", e);
@@ -183,6 +187,7 @@ export const reportApi = {
         updateData.resolvedAt = serverTimestamp();
     }
     await setDoc(reportRef, updateData, { merge: true });
+    await logActivity('تحديث حالة بلاغ', `تغيير حالة البلاغ ${id} إلى ${status}`, `reports/${id}`);
     return { success: true };
   },
 

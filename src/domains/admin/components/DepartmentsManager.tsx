@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../core/services/firebase';
+import { logActivity } from '../../core/services/audit';
 import { Building2, Plus, Edit2, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import { cn } from '../../core/utils/cn';
 
 interface Department {
   id: string;
@@ -11,6 +13,7 @@ interface Department {
   type: string;
   parentDepartmentId?: string;
   managerUid?: string;
+  isActive?: boolean;
 }
 
 export const DepartmentsManager: React.FC = () => {
@@ -24,23 +27,19 @@ export const DepartmentsManager: React.FC = () => {
   const [type, setType] = useState('');
   const [parentDepartmentId, setParentDepartmentId] = useState('');
   const [managerUid, setManagerUid] = useState('');
-
-  const fetchDepartments = async () => {
-    try {
-      setLoading(true);
-      const q = query(collection(db, 'departments'));
-      const snapshot = await getDocs(q);
-      const depts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Department));
-      setDepartments(depts);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.LIST, 'departments');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
-    fetchDepartments();
+    const q = query(collection(db, 'departments'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const depts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Department));
+      setDepartments(depts);
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'departments');
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleSave = async () => {
@@ -56,6 +55,7 @@ export const DepartmentsManager: React.FC = () => {
       const payload: Partial<Department> = {
         name,
         type,
+        isActive: isEdit ? isActive : true,
       };
 
       if (parentDepartmentId) payload.parentDepartmentId = parentDepartmentId;
@@ -64,10 +64,15 @@ export const DepartmentsManager: React.FC = () => {
       await setDoc(doc(db, 'departments', deptId), payload, { merge: true });
       toast.success(isEdit ? 'تم تحديث القطاع بنجاح' : 'تم إضافة القطاع بنجاح');
       
+      await logActivity(
+        isEdit ? 'تعديل قطاع' : 'إضافة قطاع', 
+        `${isEdit ? 'تم تحديث' : 'تم إضافة'} القطاع المدعو: ${name}`, 
+        `departments/${deptId}`
+      );
+      
       setIsAdding(false);
       setEditingDept(null);
       resetForm();
-      fetchDepartments();
     } catch (error) {
       toast.error('حدث خطأ أثناء الحفظ');
       handleFirestoreError(error, OperationType.WRITE, 'departments');
@@ -80,7 +85,7 @@ export const DepartmentsManager: React.FC = () => {
     try {
       await deleteDoc(doc(db, 'departments', id));
       toast.success('تم حذف القطاع');
-      fetchDepartments();
+      await logActivity('حذف قطاع', `تم حذف القطاع برقم المعرف ${id}`, `departments/${id}`);
     } catch (err) {
       toast.error('حدث خطأ أثناء الحذف');
       handleFirestoreError(err, OperationType.DELETE, 'departments');
@@ -92,6 +97,7 @@ export const DepartmentsManager: React.FC = () => {
     setType('');
     setParentDepartmentId('');
     setManagerUid('');
+    setIsActive(true);
   };
 
   const startEdit = (dept: Department) => {
@@ -100,7 +106,24 @@ export const DepartmentsManager: React.FC = () => {
     setType(dept.type);
     setParentDepartmentId(dept.parentDepartmentId || '');
     setManagerUid(dept.managerUid || '');
+    setIsActive(dept.isActive !== false);
     setIsAdding(true);
+  };
+
+  const toggleDeptStatus = async (dept: Department) => {
+    try {
+      await setDoc(doc(db, 'departments', dept.id), { 
+        isActive: !dept.isActive 
+      }, { merge: true });
+      toast.success(dept.isActive ? 'تم تعطيل القطاع' : 'تم تفعيل القطاع');
+      await logActivity(
+        dept.isActive ? 'تعطيل قطاع' : 'تفعيل قطاع', 
+        `تم ${dept.isActive ? 'تعطيل' : 'تفعيل'} القطاع: ${dept.name}`, 
+        `departments/${dept.id}`
+      );
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'departments');
+    }
   };
 
   const getParentName = (parentId?: string) => {
@@ -186,6 +209,16 @@ export const DepartmentsManager: React.FC = () => {
                 placeholder="مثال: nX8...uid"
               />
             </div>
+            <div className="flex items-center gap-3 pt-4">
+              <input 
+                type="checkbox" 
+                id="dept-active"
+                checked={isActive} 
+                onChange={e => setIsActive(e.target.checked)} 
+                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+              />
+              <label htmlFor="dept-active" className="text-sm font-bold text-slate-700 cursor-pointer">القطاع نشط ويعمل حالياً</label>
+            </div>
           </div>
           <div className="flex gap-3 justify-end">
             <button 
@@ -221,6 +254,7 @@ export const DepartmentsManager: React.FC = () => {
                 <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">اسم التنظيم</th>
                 <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">المستوى</th>
                 <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">المرجعية</th>
+                <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">الحالة</th>
                 <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">إجراءات</th>
               </tr>
             </thead>
@@ -245,6 +279,17 @@ export const DepartmentsManager: React.FC = () => {
                       <div className={`w-2 h-2 rounded-full ${!dept.parentDepartmentId ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
                       <span className="text-xs font-bold text-slate-600">{getParentName(dept.parentDepartmentId)}</span>
                     </div>
+                  </td>
+                  <td className="py-4 px-4">
+                     <button 
+                       onClick={() => toggleDeptStatus(dept)}
+                       className={cn(
+                        "px-2 py-1 rounded-md text-[10px] font-black uppercase transition-all",
+                        dept.isActive !== false ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"
+                       )}
+                     >
+                       {dept.isActive !== false ? 'نشط' : 'معطل'}
+                     </button>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-2">

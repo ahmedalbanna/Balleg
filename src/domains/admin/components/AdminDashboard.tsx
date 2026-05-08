@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow, Database, MessageCircle, Send, MessageSquare } from 'lucide-react';
-import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp, orderBy } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../../core/services/firebase';
+import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow, Database, MessageCircle, Send, MessageSquare, UserCheck, UserX, Trash2, Settings, Save } from 'lucide-react';
+import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp, orderBy, limit, setDoc } from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from '../../core/services/firebase';
+import { logActivity } from '../../core/services/audit';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, BarChart, Bar, Legend 
@@ -37,11 +38,17 @@ interface NeighborhoodDissatisfactionReport {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'alerts' | 'departments' | 'logs' | 'flow' | 'schema'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'alerts' | 'departments' | 'logs' | 'flow' | 'schema' | 'settings'>('analytics');
   const [users, setUsers] = useState<UserData[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [clarifications, setClarifications] = useState<any[]>([]);
   const [neighborhoodReports, setNeighborhoodReports] = useState<NeighborhoodDissatisfactionReport[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [systemSettings, setSystemSettings] = useState({
+    evaluationTimeoutHours: 48,
+    emergencyProcessingTimeoutHours: 24,
+    standardProcessingTimeoutHours: 72
+  });
   const [loading, setLoading] = useState(true);
   
   const [reroutingReportId, setReroutingReportId] = useState<string | null>(null);
@@ -54,7 +61,14 @@ export const AdminDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [newUserMsg, setNewUserMsg] = useState("");
-  const [newUserForm, setNewUserForm] = useState({ displayName: '', email: '', role: 'official', department: '' });
+  const [newUserForm, setNewUserForm] = useState({ 
+    displayName: '', 
+    email: '', 
+    role: 'official', 
+    department: '',
+    permissions: [] as string[]
+  });
+  const [availableDepartments, setAvailableDepartments] = useState<any[]>([]);
 
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -117,11 +131,42 @@ export const AdminDashboard: React.FC = () => {
       setStats(prev => ({ ...prev, dissatisfactionReports: docs.filter(d => d.status === 'pending').length }));
     });
 
+    // Fetch departments
+    const qDepts = query(collection(db, 'departments'), where('isActive', '!=', false));
+    const unsubDepts = onSnapshot(qDepts, (snapshot) => {
+      setAvailableDepartments(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    // Fetch audit logs
+    const qLogs = query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(50));
+    const unsubLogs = onSnapshot(qLogs, (snapshot) => {
+      setAuditLogs(snapshot.docs.map(d => ({ 
+        id: d.id, 
+        ...d.data(),
+        timestamp: d.data().timestamp?.toDate ? d.data().timestamp.toDate() : d.data().timestamp 
+      })));
+    });
+
+    // Fetch system settings
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'global'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setSystemSettings({
+          evaluationTimeoutHours: data.evaluationTimeoutHours || 48,
+          emergencyProcessingTimeoutHours: data.emergencyProcessingTimeoutHours || 24,
+          standardProcessingTimeoutHours: data.standardProcessingTimeoutHours || 72
+        });
+      }
+    });
+
     return () => {
       unsubUsers();
       unsubReports();
       unsubClarify();
       unsubNeighborhood();
+      unsubDepts();
+      unsubLogs();
+      unsubSettings();
     };
   }, []);
 
@@ -135,6 +180,27 @@ export const AdminDashboard: React.FC = () => {
       toast.success("تم تأكيد مراجعة تقرير عدم الرضا");
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, 'neighborhood_dissatisfaction_reports');
+    }
+  };
+
+  const handleUpdateSettings = async () => {
+    try {
+      const toastId = toast.loading('جاري حفظ الإعدادات...');
+      await setDoc(doc(db, 'settings', 'global'), {
+        ...systemSettings,
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser?.uid
+      }, { merge: true });
+      
+      await logActivity(
+        'تعديل إعدادات النظام',
+        `تحديث المهلات الزمنية: تقييم (${systemSettings.evaluationTimeoutHours}س)، طوارئ (${systemSettings.emergencyProcessingTimeoutHours}س)`,
+        'settings/global'
+      );
+      
+      toast.success('تم حفظ إعدادات النظام بنجاح', { id: toastId });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'settings/global');
     }
   };
 
@@ -153,6 +219,11 @@ export const AdminDashboard: React.FC = () => {
         updatedAt: new Date().toISOString()
       });
       toast.success(currentStatus ? 'تم تعطيل الحساب' : 'تم تفعيل الحساب', { id: toastId });
+      await logActivity(
+        currentStatus ? 'تعطيل مستخدم' : 'تفعيل مستخدم',
+        `تم ${currentStatus ? 'تعطيل' : 'تفعيل'} حساب المستخدم ${uid}`,
+        `users/${uid}`
+      );
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'users');
     }
@@ -169,6 +240,7 @@ export const AdminDashboard: React.FC = () => {
         updatedAt: new Date().toISOString()
       });
       toast.success('تم التوجيه بنجاح', { id: toastId });
+      await logActivity('توجيه إجباري', `تم إعادة توجيه البلاغ ${reportId} إلى ${rerouteDepartment}`, `reports/${reportId}`);
       setReroutingReportId(null);
       setRerouteDepartment("");
       setRerouteReason("");
@@ -191,10 +263,11 @@ export const AdminDashboard: React.FC = () => {
         email: newUserForm.email,
         role: newUserForm.role,
         departmentId: newUserForm.department,
+        permissions: newUserForm.permissions,
         isActive: true,
         createdAt: serverTimestamp()
       }).catch(async (err) => {
-         // fallback if updateDoc fails because it doesn't exist, we should use setDoc but wait, import setDoc first
+         // fallback if updateDoc fails because it doesn't exist
          const { setDoc, serverTimestamp } = await import('firebase/firestore');
          await setDoc(doc(db, 'users', newUid), {
             uid: newUid,
@@ -202,13 +275,15 @@ export const AdminDashboard: React.FC = () => {
             email: newUserForm.email,
             role: newUserForm.role,
             departmentId: newUserForm.department,
+            permissions: newUserForm.permissions,
             isActive: true,
             createdAt: serverTimestamp()
          });
       });
+      await logActivity('إنشاء حساب', `تم إنشاء حساب جديد للموظف ${newUserForm.displayName} بدور ${newUserForm.role}`, `users/${newUid}`);
       toast.success('تم إنشاء الحساب بنجاح', { id: toastId });
       setIsAddUserModalOpen(false);
-      setNewUserForm({ displayName: '', email: '', role: 'official', department: '' });
+      setNewUserForm({ displayName: '', email: '', role: 'official', department: '', permissions: [] });
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'users');
     }
@@ -305,10 +380,15 @@ export const AdminDashboard: React.FC = () => {
   const delayedList = reports.filter(r => {
       if (r.status.startsWith('resolved')) return false;
       const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
-      return diffMs > 7 * 24 * 60 * 60 * 1000;
+      return diffMs > (systemSettings.standardProcessingTimeoutHours || 72) * 60 * 60 * 1000;
   });
 
   const criticalList = reports.filter(r => r.priority === 'critical' && !r.status.startsWith('resolved'));
+  
+  const emergencyViolations = criticalList.filter(r => {
+      const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
+      return diffMs > (systemSettings.emergencyProcessingTimeoutHours || 24) * 60 * 60 * 1000;
+  });
 
   return (
     <div className="space-y-8 p-6 max-w-7xl mx-auto w-full" dir="rtl">
@@ -355,7 +435,7 @@ export const AdminDashboard: React.FC = () => {
 
       <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
         <div className="flex border-b border-slate-100 p-3 overflow-x-auto gap-2 bg-slate-50/50">
-          {['analytics', 'alerts', 'clarifications', 'users', 'departments', 'flow', 'schema', 'logs'].map((tab) => (
+          {['analytics', 'alerts', 'clarifications', 'users', 'departments', 'flow', 'schema', 'logs', 'settings'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -371,6 +451,7 @@ export const AdminDashboard: React.FC = () => {
               {tab === 'flow' && <Workflow className="w-4 h-4" />}
               {tab === 'schema' && <Database className="w-4 h-4" />}
               {tab === 'logs' && <Activity className="w-4 h-4" />}
+              {tab === 'settings' && <Settings className="w-4 h-4" />}
               
               {tab === 'analytics' ? 'المؤشرات والخرائط' : 
                tab === 'alerts' ? 'التنبيهات والمساءلة' :
@@ -378,7 +459,8 @@ export const AdminDashboard: React.FC = () => {
                tab === 'users' ? 'إدارة الوصول' : 
                tab === 'departments' ? 'الهيكل التنظيمي' :
                tab === 'flow' ? 'دورات العمل' : 
-               tab === 'schema' ? 'هيكل النظام (DB)' : 'سجل التدقيق'}
+               tab === 'schema' ? 'هيكل النظام (DB)' : 
+               tab === 'logs' ? 'سجل التدقيق' : 'إعدادات المنصة'}
             </button>
           ))}
         </div>
@@ -468,36 +550,52 @@ export const AdminDashboard: React.FC = () => {
                     <h3 className="text-lg font-black text-rose-900 mb-2 flex items-center gap-2">
                         <AlertCircle className="w-6 h-6" /> بلاغات حرجة تتطلب تدخلاً (Critical)
                     </h3>
-                    <p className="text-xs text-rose-700 font-bold mb-6">هذه البلاغات صنفت حرجة ويجب معالجتها فوراً (مثل: حرائق، انهيارات، أعطال شبكة رئيسية).</p>
+                    <div className="flex items-center gap-2 mb-6">
+                        <p className="text-xs text-rose-700 font-bold">هذه البلاغات صنفت حرجة ويجب معالجتها فوراً.</p>
+                        {emergencyViolations.length > 0 && (
+                            <span className="bg-rose-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                انتهاك مهلة الطوارئ ({emergencyViolations.length})
+                            </span>
+                        )}
+                    </div>
 
                     <div className="space-y-3">
                         {criticalList.length === 0 && <p className="text-sm font-black text-rose-300 text-center py-4">لا توجد حالات حرجة حالياً</p>}
-                        {criticalList.map(r => (
-                            <div key={r.id} className="bg-white p-4 rounded-2xl border border-rose-100 flex flex-col md:flex-row gap-4 justify-between md:items-center">
-                                <div>
-                                    <p className="text-sm font-black text-slate-900">{r.description}</p>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-1">
-                                        الحالة: {r.status} / القطاع: {r.department || 'غير مصنف'}
-                                    </p>
+                        {criticalList.map(r => {
+                            const isViolated = (new Date().getTime() - new Date(r.createdAt).getTime()) > (systemSettings.emergencyProcessingTimeoutHours || 24) * 60 * 60 * 1000;
+                            return (
+                                <div key={r.id} className={cn(
+                                    "bg-white p-4 rounded-2xl border flex flex-col md:flex-row gap-4 justify-between md:items-center transition-all",
+                                    isViolated ? "border-rose-300 border-2 shadow-lg shadow-rose-600/10" : "border-rose-100"
+                                )}>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-black text-slate-900">{r.description}</p>
+                                            {isViolated && <span className="text-[8px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded font-black">متجاوز للمهلة</span>}
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 font-bold mt-1">
+                                            الحالة: {r.status} / القطاع: {r.department || 'غير مصنف'}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                         <button onClick={() => setReroutingReportId(r.id)} className="bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition flex items-center gap-2">
+                                             <ArrowLeftRight className="w-4 h-4" /> إعادة توجيه طارئ
+                                         </button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2">
-                                     <button onClick={() => setReroutingReportId(r.id)} className="bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition flex items-center gap-2">
-                                         <ArrowLeftRight className="w-4 h-4" /> إعادة توجيه طارئ
-                                     </button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
                 <div className="bg-amber-50 rounded-[2rem] p-6 border border-amber-100">
                     <h3 className="text-lg font-black text-amber-900 mb-2 flex items-center gap-2">
-                        <Clock className="w-6 h-6" /> بلاغات متأخرة جداً (+7 أيام)
+                        <Clock className="w-6 h-6" /> بلاغات متأخرة (تجاوز {systemSettings.standardProcessingTimeoutHours} ساعة)
                     </h3>
-                    <p className="text-xs text-amber-700 font-bold mb-6">مساءلة الأقسام: هذه القائمة تتطلب مراجعة من المركز.</p>
+                    <p className="text-xs text-amber-700 font-bold mb-6">مساءلة الأقسام: هذه القائمة تجاوزت المهلة القياسية المحددة في النظام.</p>
 
                     <div className="space-y-3">
-                        {delayedList.length === 0 && <p className="text-sm font-black text-amber-300 text-center py-4">لا يوجد تقاعس تتجاوز مدته 7 أيام</p>}
+                        {delayedList.length === 0 && <p className="text-sm font-black text-amber-300 text-center py-4">لا يوجد تقاعس يتجاوز المهلة</p>}
                         {delayedList.map(r => (
                             <div key={r.id} className="bg-white p-4 rounded-2xl border border-amber-100 flex flex-col md:flex-row gap-4 justify-between md:items-center">
                                 <div>
@@ -640,11 +738,22 @@ export const AdminDashboard: React.FC = () => {
                         <td className="py-3 px-6 text-center">
                           <div className="flex items-center justify-center gap-2">
                              <button 
-                              onClick={() => toggleUserStatus(user.uid, user.isActive)}
+                              onClick={() => {
+                                if (user.isActive && user.email === auth.currentUser?.email) {
+                                  toast.error("لا يمكنك تعطيل حسابك الخاص لضمان استمرارية الوصول");
+                                  return;
+                                }
+                                toggleUserStatus(user.uid, user.isActive);
+                              }}
                               title={user.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
-                              className={`p-2 rounded-xl border transition-all ${user.isActive ? 'text-rose-500 border-rose-100 hover:bg-rose-50' : 'text-emerald-600 border-emerald-100 hover:bg-emerald-50'}`}
+                              className={cn(
+                                "p-2 rounded-xl border transition-all",
+                                user.isActive 
+                                  ? 'text-rose-500 border-rose-100 hover:bg-rose-50' 
+                                  : 'text-emerald-600 border-emerald-100 hover:bg-emerald-50'
+                              )}
                             >
-                              <AlertCircle size={16} />
+                              {user.isActive ? <UserX size={16} /> : <UserCheck size={16} />}
                             </button>
                             <button className="p-2 text-slate-400 hover:bg-slate-100 border border-transparent hover:border-slate-200 rounded-xl transition-all">
                               <MoreVertical size={16} />
@@ -1006,10 +1115,140 @@ export const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'logs' && (
-             <div className="flex flex-col items-center justify-center py-20 text-slate-400 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-              <Activity size={48} className="mb-4 opacity-20 text-slate-800" />
-              <p className="text-lg font-black text-slate-700">سجل الاستجابة الشامل (Audit Log)</p>
-              <p className="text-sm font-bold mt-2">توثيق محكم لحركات إعادة التوجيه وتعديل الحسابات.</p>
+             <div className="space-y-6">
+                <div className="flex justify-between items-center bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                            <Activity className="w-6 h-6 text-indigo-500" /> سجل التدقيق والرقابة (Audit Log)
+                        </h3>
+                        <p className="text-sm font-bold text-slate-500 mt-1">عرض جميع العمليات الحساسة التي تمت عبر المنصة للشفافية المطلقة.</p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
+                    <table className="w-full text-right">
+                        <thead className="bg-slate-50 border-b border-slate-100">
+                            <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <th className="py-4 px-6">العملية</th>
+                                <th className="py-4 px-6">المسؤول</th>
+                                <th className="py-4 px-6">التاريخ والوقت</th>
+                                <th className="py-4 px-6">التفاصيل</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {auditLogs.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="py-20 text-center text-slate-300 font-bold">لا يوجد سجلات تدقيق متاحة حالياً</td>
+                                </tr>
+                            ) : auditLogs.map((log) => {
+                                const actor = users.find(u => u.uid === log.userId);
+                                return (
+                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="py-4 px-6">
+                                            <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-[10px] font-black">
+                                                {log.action}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-black text-slate-700">{actor?.displayName || 'مسؤول النظام'}</span>
+                                                <span className="text-[9px] font-mono text-slate-400">{log.userId.substring(0, 8)}...</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6 text-xs font-bold text-slate-500">
+                                            {log.timestamp ? new Date(log.timestamp).toLocaleString('ar-SA') : '...'}
+                                        </td>
+                                        <td className="py-4 px-6 text-xs font-bold text-slate-600">
+                                            {log.details}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+             </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+               <div className="bg-slate-900 p-8 rounded-[3rem] border border-slate-800 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
+                  <div className="relative z-10">
+                    <h3 className="text-2xl font-black text-white flex items-center gap-3">
+                      <Settings className="w-8 h-8 text-blue-400" /> إعدادات النظام المتقدمة
+                    </h3>
+                    <p className="text-slate-400 font-bold mt-2 max-w-2xl">ضبط الثوابت التشغيلية والمهلات الزمنية ومعايير جودة الخدمة لجميع قطاعات البلدية.</p>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-6">
+                    <div>
+                      <h4 className="text-lg font-black text-slate-900 mb-2">المهلات الزمنية (Timeouts)</h4>
+                      <p className="text-xs text-slate-500 font-bold">تحديد الوقت المسموح به لكل مرحلة قبل إطلاق التنبيهات.</p>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة تقييم المواطن (ساعة)</label>
+                        <div className="relative">
+                           <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                           <input 
+                             type="number"
+                             value={systemSettings.evaluationTimeoutHours}
+                             onChange={(e) => setSystemSettings({...systemSettings, evaluationTimeoutHours: parseInt(e.target.value)})}
+                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                           />
+                        </div>
+                        <p className="text-[9px] text-slate-400 font-bold">الوقت المتاح للمواطن لتقييم الخدمة قبل إغلاق البلاغ تلقائياً.</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة معالجة الطوارئ (ساعة)</label>
+                        <div className="relative">
+                           <AlertCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-300" />
+                           <input 
+                             type="number"
+                             value={systemSettings.emergencyProcessingTimeoutHours}
+                             onChange={(e) => setSystemSettings({...systemSettings, emergencyProcessingTimeoutHours: parseInt(e.target.value)})}
+                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all"
+                           />
+                        </div>
+                        <p className="text-[9px] text-rose-400 font-bold">المهلة القصوى للبلاغات ذات الأولوية "حرجة" قبل التصعيد المباشر.</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة المعالجة القياسية (ساعة)</label>
+                        <div className="relative">
+                           <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-300" />
+                           <input 
+                             type="number"
+                             value={systemSettings.standardProcessingTimeoutHours}
+                             onChange={(e) => setSystemSettings({...systemSettings, standardProcessingTimeoutHours: parseInt(e.target.value)})}
+                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all"
+                           />
+                        </div>
+                        <p className="text-[9px] text-amber-500 font-bold">المهلة الاعتيادية لمعظم البلاغات قبل أن تظهر في قائمة المتأخرات.</p>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={handleUpdateSettings}
+                      className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black text-sm shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
+                    >
+                      <Save className="w-5 h-5" /> حفظ التغييرات الاستراتيجية
+                    </button>
+                  </div>
+
+                  <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 border-dashed flex flex-col items-center justify-center text-center">
+                    <div className="bg-white w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                      <ShieldCheck className="w-10 h-10 text-indigo-500" />
+                    </div>
+                    <h4 className="text-lg font-black text-slate-900 mb-2">السياسات الأمنية والقيود</h4>
+                    <p className="text-xs text-slate-500 font-bold max-w-xs">سيتم قريباً إضافة خيارات لضبط عدد محاولات الدخول، وقوة كلمة المرور، وتشفير البيانات الحساسة.</p>
+                  </div>
+               </div>
             </div>
           )}
         </div>
@@ -1128,6 +1367,9 @@ export const AdminDashboard: React.FC = () => {
                                 <option value="manager">مدير قسم (Manager)</option>
                                 <option value="council">مجلس بلدي (Council)</option>
                                 <option value="specialist">مهندس/أخصائي (Specialist)</option>
+                                <option value="telecom">شركة اتصالات (Telecom)</option>
+                                <option value="contractor">مقاول (Contractor)</option>
+                                <option value="driver">سائق (Driver)</option>
                             </select>
                         </div>
                         <div>
@@ -1138,12 +1380,37 @@ export const AdminDashboard: React.FC = () => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                             >
                                 <option value="">بدون جهة (عام)</option>
-                                <option value="النظافة والمخلفات">النظافة والمخلفات</option>
-                                <option value="الإنارة والكهرباء">الإنارة والكهرباء</option>
-                                <option value="الطرق والجسور">الطرق والجسور</option>
-                                <option value="الصرف الصحي والمياه">الصرف الصحي والمياه</option>
-                                <option value="الشرطة والمطافئ">الشرطة والمطافئ</option>
+                                {availableDepartments.map(d => (
+                                    <option key={d.id} value={d.name}>{d.name}</option>
+                                ))}
                             </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] uppercase font-black text-slate-400 mb-3 pl-1">صلاحيات إضافية (اختياري)</label>
+                        <div className="grid grid-cols-2 gap-3">
+                            {[
+                                { id: 'delete_report', label: 'حذف البلاغات' },
+                                { id: 'export_data', label: 'تصدير البيانات' },
+                                { id: 'manage_users_lite', label: 'إدارة المستخدمين' },
+                                { id: 'edit_categories', label: 'تعديل التصنيفات' }
+                            ].map((perm) => (
+                                <label key={perm.id} className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-white transition-all group">
+                                    <input 
+                                        type="checkbox"
+                                        checked={newUserForm.permissions.includes(perm.id)}
+                                        onChange={(e) => {
+                                            const perms = e.target.checked 
+                                                ? [...newUserForm.permissions, perm.id]
+                                                : newUserForm.permissions.filter(p => p !== perm.id);
+                                            setNewUserForm({...newUserForm, permissions: perms});
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                                    />
+                                    <span className="text-[10px] font-bold text-slate-700">{perm.label}</span>
+                                </label>
+                            ))}
                         </div>
                     </div>
 
