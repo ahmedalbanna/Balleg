@@ -19,6 +19,7 @@ export function OperatorDashboard() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectDetails, setRejectDetails] = useState("");
+  const [previewReport, setPreviewReport] = useState<Report | null>(null);
   const [selectedMapLocation, setSelectedMapLocation] = useState<[number, number] | null>(null);
 
   useEffect(() => {
@@ -33,8 +34,12 @@ export function OperatorDashboard() {
             const pB = b.aiAnalysis?.priority || b.priority || 'low';
             const wA = priorityWeights[pA] || 1;
             const wB = priorityWeights[pB] || 1;
+            
+            // If priorities are different, show higher priority first
             if (wA !== wB) return wB - wA;
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            
+            // If same priority, show OLDER reports first (Seniority)
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
           });
           setReports(sorted);
           setLoading(false);
@@ -239,170 +244,51 @@ export function OperatorDashboard() {
                         return (
                         <motion.div 
                           key={report.id}
+                          layoutId={report.id}
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, x: -50 }}
-                          className="p-6 hover:bg-slate-50/50 transition-colors group flex flex-col gap-4"
+                          onClick={() => setPreviewReport(report)}
+                          className="p-6 hover:bg-indigo-50/30 transition-all group flex flex-col gap-3 cursor-pointer border-b border-slate-50 last:border-0 relative overflow-hidden"
                         >
-                            <div className="flex items-center gap-3 mb-2">
-                               {report.priority === 'critical' && (
-                                   <span className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white text-[10px] font-black rounded-lg animate-pulse shadow-sm">
-                                       <AlertCircle className="w-3 h-3" />
-                                       عاجل جداً
-                                   </span>
-                               )}
-                               <span className="text-indigo-700 bg-indigo-50 px-3 py-1 font-black text-[10px] rounded-lg tracking-wider border border-indigo-100 uppercase">
-                                   ID: {report.id}
-                               </span>
-                               <span className="text-slate-500 text-[10px] font-bold flex items-center gap-1">
-                                   <Clock className="w-3 h-3" /> {getTimeAgo(report.createdAt)}
-                               </span>
+                            <div className="absolute top-0 left-0 w-1 pt-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-3">
+                                {report.priority === 'critical' && (
+                                    <span className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white text-[10px] font-black rounded-lg animate-pulse shadow-sm">
+                                        <AlertCircle className="w-3 h-3" />
+                                        عاجل جداً
+                                    </span>
+                                )}
+                                <span className="text-indigo-700 bg-indigo-50 px-3 py-1 font-black text-[10px] rounded-lg tracking-wider border border-indigo-100 uppercase">
+                                    ID: {report.id}
+                                </span>
+                              </div>
+                              <span className="text-slate-500 text-[10px] font-bold flex items-center gap-1">
+                                  <Clock className="w-3 h-3" /> {getTimeAgo(report.createdAt)}
+                              </span>
                             </div>
 
-                            <p className="text-sm font-black text-slate-800 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-sm font-black text-slate-800 leading-relaxed line-clamp-2">
                               {report.description}
                             </p>
 
-                            <div className="flex flex-wrap gap-4">
-                                {report.imageUrl && (
-                                    <div className="w-48 h-32 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
-                                        <img src={report.imageUrl} alt="مرفق البلاغ" className="w-full h-full object-cover" />
-                                    </div>
-                                )}
-                                
-                                <div className="flex flex-col gap-2 flex-1 max-w-sm">
-                                  {report.audioUrl && (
-                                      <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center gap-3">
-                                        <Headset className="w-5 h-5 text-indigo-500" />
-                                        <audio controls className="h-8 flex-1 w-full" src={report.audioUrl}>
-                                          متصفحك لا يدعم تشغيل الصوت.
-                                        </audio>
-                                      </div>
+                            <div className="flex items-center justify-between mt-2">
+                               <div className="flex items-center gap-4">
+                                  {report.imageUrl && <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600"><Inbox size={14}/></div>}
+                                  {report.audioUrl && <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600"><Headset size={14}/></div>}
+                                  {report.location && <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600"><MapPin size={14}/></div>}
+                               </div>
+                               
+                               <div className="flex items-center gap-2">
+                                  {report.aiAnalysis && (
+                                     <span className="text-[9px] font-black bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md border border-emerald-100">تم التحليل بواسطة AI</span>
                                   )}
-                                  
-                                  {report.location && Array.isArray(report.location) && (
-                                     <button 
-                                        onClick={() => setSelectedMapLocation(report.location as [number, number])}
-                                        className="w-full bg-slate-100 hover:bg-indigo-50 p-3 rounded-2xl border border-slate-200 flex items-center justify-between transition-colors text-indigo-700 font-bold text-xs"
-                                     >
-                                        <span className="flex items-center gap-2"><MapPin className="w-4 h-4"/> عرض الموقع على الخريطة</span>
-                                        <span>🌍</span>
-                                     </button>
-                                  )}
-                                </div>
-                            </div>
-
-                            {report.aiAnalysis ? (
-                                <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl flex flex-col gap-2 relative overflow-hidden group/ai">
-                                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/40 blur-xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
-                                            <Sparkles className="w-3 h-3 text-white" />
-                                        </div>
-                                        <span className="font-black text-xs text-indigo-900">التحليل الذكي (AI)</span>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-3 mt-1 pr-8">
-                                       <div className="flex items-center gap-1.5 bg-white border border-indigo-100 px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-700">
-                                          <span className="text-slate-400">الجهة:</span>
-                                          <span className="text-indigo-700">{report.aiAnalysis.classification}</span>
-                                       </div>
-                                       <div className="flex items-center gap-1.5 bg-white border border-indigo-100 px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-700">
-                                          <span className="text-slate-400">الأولوية:</span>
-                                          <span className={cn(
-                                            (report.aiAnalysis.priority === 'critical' || report.aiAnalysis.priority === 'high') ? "text-red-600" : "text-amber-600"
-                                          )}>{report.aiAnalysis.priority === 'critical' ? 'عاجل جداً' : report.aiAnalysis.priority === 'high' ? 'عالية' : report.aiAnalysis.priority === 'medium' ? 'متوسطة' : 'منخفضة'}</span>
-                                       </div>
-                                    </div>
-                                    {report.aiAnalysis.summary && (
-                                       <p className="text-[11px] text-slate-600 leading-relaxed pr-8 mt-1 font-bold">
-                                         {report.aiAnalysis.summary}
-                                       </p>
-                                    )}
-                                </div>
-                            ) : (
-                                <button 
-                                  onClick={() => handleAnalyze(report)}
-                                  disabled={analyzingId === report.id}
-                                  className="w-full p-4 border border-dashed border-slate-300 rounded-xl flex items-center justify-center gap-3 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all font-bold text-xs disabled:opacity-50"
-                                >
-                                  {analyzingId === report.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
-                                  {analyzingId === report.id ? "جاري التحليل واستخراج التفاصيل..." : "استخراج توصيات التوجيه والأولوية باستخدام الذكاء الاصطناعي"}
-                                </button>
-                            )}
-                                        
-                            {/* Actions Area */}
-                            <div className="pt-4 mt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
-                               {rejectingId === report.id ? (
-                                  <div className="flex flex-col gap-3 w-full animate-in fade-in slide-in-from-top-4">
-                                     <div className="flex items-center justify-between">
-                                       <h5 className="text-xs font-black text-red-600">سبب رفض البلاغ:</h5>
-                                       <button onClick={() => setRejectingId(null)} className="text-slate-400 hover:text-slate-700"><X className="w-4 h-4"/></button>
-                                     </div>
-                                     <select 
-                                       value={rejectReason}
-                                       onChange={e => setRejectReason(e.target.value)}
-                                       className="w-full p-2.5 rounded-xl border border-red-200 bg-red-50 text-xs font-bold text-slate-700"
-                                     >
-                                        <option value="">-- اختر سبب الرفض --</option>
-                                        <option value="معلومات غير مكتملة">معلومات البلاغ غير مكتملة</option>
-                                        <option value="بلاغ متكرر">بلاغ متكرر أو موجود مسبقاً</option>
-                                        <option value="خارج النطاق">خارج النطاق الجغرافي أو الاختصاص</option>
-                                        <option value="بلاغ وهمي">بلاغ كيدي أو وهمي</option>
-                                     </select>
-                                     <textarea 
-                                       placeholder="اكتب تفاصيل إضافية إجبارية للمواطن..."
-                                       value={rejectDetails}
-                                       onChange={e => setRejectDetails(e.target.value)}
-                                       className="w-full p-3 rounded-xl border border-slate-200 text-xs font-bold min-h-[80px]"
-                                     />
-                                     <div className="flex gap-2">
-                                        <button onClick={() => handleReject(report.id)} className="flex-1 bg-red-600 text-white font-black text-xs py-2.5 rounded-xl hover:bg-red-700 transition-colors">
-                                           تأكيد الرفض
-                                        </button>
-                                     </div>
-                                  </div>
-                               ) : (
-                                 <>
-                                    <div className="flex items-center gap-2">
-                                       <button 
-                                         onClick={() => handleRoute(report, defaultDept)}
-                                         disabled={routingId === report.id}
-                                         className={cn("text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-lg transition-all flex items-center gap-2 disabled:opacity-50", report.aiAnalysis ? "bg-indigo-600 shadow-indigo-600/20 hover:bg-indigo-700" : "bg-slate-800 shadow-slate-800/20 hover:bg-slate-900")}
-                                       >
-                                         <CheckCircle2 className="w-4 h-4" /> 
-                                         {report.aiAnalysis ? `توجيه إلى (${defaultDept})` : "توجيه مبدئي (عام)"}
-                                       </button>
-                                       
-                                       <div className="relative group/dropdown">
-                                          <button 
-                                            className="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black hover:bg-slate-50 transition-colors flex items-center gap-2"
-                                          >
-                                            <Forward className="w-4 h-4" /> 
-                                            تحويل يدوي
-                                          </button>
-                                          {/* Dropdown menu */}
-                                          <div className="absolute bottom-full right-0 mb-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl opacity-0 invisible group-hover/dropdown:opacity-100 group-hover/dropdown:visible transition-all z-10 flex flex-col overflow-hidden">
-                                             {departments.map(dept => (
-                                                <button 
-                                                  key={dept}
-                                                  onClick={() => handleRoute(report, dept)}
-                                                  className="text-right px-4 py-3 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 border-b border-slate-50 last:border-0"
-                                                >
-                                                  {dept}
-                                                </button>
-                                             ))}
-                                          </div>
-                                       </div>
-                                    </div>
-                                    
-                                    <button 
-                                      onClick={() => setRejectingId(report.id)}
-                                      className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2.5 rounded-xl text-xs font-black transition-colors flex items-center gap-2"
-                                    >
-                                       <XCircle className="w-4 h-4" /> رفض
-                                    </button>
-                                 </>
-                               )}
+                                  <span className="text-[10px] font-black text-indigo-600 flex items-center gap-1 group-hover:translate-x-[-4px] transition-transform">
+                                     فتح البلاغ <Forward size={12} className="rotate-180" />
+                                  </span>
+                               </div>
                             </div>
                         </motion.div>
                     )})}
@@ -428,7 +314,198 @@ export function OperatorDashboard() {
         </div>
       </div>
 
+      {/* Report Details Modal */}
+      <AnimatePresence>
+        {previewReport && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                onClick={() => setPreviewReport(null)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                layoutId={previewReport.id}
+                className="relative w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                  <div className="p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                           <Bot size={24} />
+                        </div>
+                        <div>
+                           <h3 className="text-xl font-black text-slate-900">تفاصيل البلاغ الوارد</h3>
+                           <p className="text-[10px] font-black text-slate-400 tracking-wider">ID: {previewReport.id} • {getTimeAgo(previewReport.createdAt)}</p>
+                        </div>
+                     </div>
+                     <button onClick={() => setPreviewReport(null)} className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all">
+                        <X size={20} />
+                     </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-8">
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        <div className="flex flex-col gap-6">
+                           <div>
+                              <h4 className="text-xs font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
+                                 <Forward size={14} className="text-indigo-600" /> وصف البلاغ والمشكلة
+                              </h4>
+                              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                                 <p className="text-slate-800 font-bold leading-relaxed whitespace-pre-wrap">
+                                    {previewReport.description}
+                                 </p>
+                              </div>
+                           </div>
+
+                           {previewReport.audioUrl && (
+                             <div>
+                                <h4 className="text-xs font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
+                                   <Headset size={14} className="text-indigo-600" /> التسجيل الصوتي المرفق
+                                </h4>
+                                <div className="bg-indigo-50/50 p-4 rounded-3xl border border-indigo-100">
+                                   <audio controls className="w-full h-10" src={previewReport.audioUrl}>
+                                      متصفحك لا يدعم تشغيل الصوت
+                                   </audio>
+                                </div>
+                             </div>
+                           )}
+
+                           {previewReport.aiAnalysis ? (
+                              <div className="bg-indigo-600 rounded-3xl p-6 text-white relative overflow-hidden shadow-xl shadow-indigo-600/20">
+                                 <Sparkles className="absolute -top-4 -left-4 w-24 h-24 opacity-10 rotate-12" />
+                                 <h4 className="text-sm font-black mb-4 flex items-center gap-2 border-b border-white/20 pb-3">
+                                    <Bot size={18} /> تحليل الذكاء الاصطناعي (Gemini Vision)
+                                 </h4>
+                                 <div className="space-y-4">
+                                    <div className="flex items-center justify-between bg-white/10 p-3 rounded-xl border border-white/10">
+                                       <span className="text-[10px] font-black opacity-80 uppercase">الجهة المقترحة</span>
+                                       <span className="text-xs font-black">{previewReport.aiAnalysis.classification}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-white/10 p-3 rounded-xl border border-white/10">
+                                       <span className="text-[10px] font-black opacity-80 uppercase">الأولوية</span>
+                                       <span className={cn("text-xs font-black px-2 py-0.5 rounded-md", previewReport.aiAnalysis.priority === 'critical' ? 'bg-red-500' : 'bg-amber-500')}>
+                                          {previewReport.aiAnalysis.priority === 'critical' ? 'عاجل جداً' : previewReport.aiAnalysis.priority === 'high' ? 'عالية' : 'متوسطة'}
+                                       </span>
+                                    </div>
+                                    <p className="text-xs font-bold leading-relaxed bg-white/5 p-4 rounded-2xl">
+                                       {previewReport.aiAnalysis.summary}
+                                    </p>
+                                 </div>
+                              </div>
+                           ) : (
+                              <button 
+                                 onClick={() => handleAnalyze(previewReport)}
+                                 disabled={analyzingId === previewReport.id}
+                                 className="w-full py-5 bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-3xl text-indigo-600 font-black text-sm flex items-center justify-center gap-3 hover:bg-indigo-100 transition-all disabled:opacity-50"
+                              >
+                                 {analyzingId === previewReport.id ? <Loader2 size={24} className="animate-spin" /> : <Bot size={24} />}
+                                 تحليل البلاغ واستخراج التوصيات بالذكاء الاصطناعي
+                              </button>
+                           )}
+                        </div>
+
+                        <div className="flex flex-col gap-6">
+                           {previewReport.imageUrl && (
+                              <div>
+                                 <h4 className="text-xs font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
+                                    <Forward size={14} className="text-indigo-600" /> الصورة المرفقة
+                                 </h4>
+                                 <div className="rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl relative group aspect-video">
+                                    <img src={previewReport.imageUrl} alt="البلاغ" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                       <a href={previewReport.imageUrl} target="_blank" rel="noreferrer" className="bg-white text-slate-900 px-6 py-3 rounded-2xl font-black text-xs">فتح الصورة بالحجم الكامل</a>
+                                    </div>
+                                 </div>
+                              </div>
+                           )}
+
+                           {previewReport.location && (
+                              <div>
+                                 <h4 className="text-xs font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
+                                    <MapPin size={14} className="text-indigo-600" /> موقع البلاغ الجغرافي
+                                 </h4>
+                                 <div className="h-[300px] rounded-[2.5rem] overflow-hidden border border-slate-200 shadow-inner">
+                                    <MapView 
+                                       center={previewReport.location as [number, number]} 
+                                       points={[{
+                                          lat: (previewReport.location as [number, number])[0],
+                                          lng: (previewReport.location as [number, number])[1],
+                                          label: "موقع البلاغ",
+                                          intensity: 1
+                                       }]} 
+                                    />
+                                 </div>
+                              </div>
+                           )}
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-6">
+                     <div className="flex gap-3">
+                        {rejectingId === previewReport.id ? (
+                           <div className="flex items-center gap-3 animate-in slide-in-from-right-4">
+                              <select 
+                                 value={rejectReason} 
+                                 onChange={e => setRejectReason(e.target.value)}
+                                 className="p-3 bg-white border border-red-100 text-xs font-black rounded-xl text-red-600 outline-none"
+                              >
+                                 <option value="">-- اختر سبب الرفض --</option>
+                                 <option value="معلومات ناقصة">معلومات ناقصة</option>
+                                 <option value="بلاغ مكرر">بلاغ مكرر</option>
+                                 <option value="بلاغ وهمي">بلاغ وهمي</option>
+                              </select>
+                              <input 
+                                 placeholder="اكتب التوضيح للمواطن..."
+                                 value={rejectDetails}
+                                 onChange={e => setRejectDetails(e.target.value)}
+                                 className="p-3 bg-white border border-slate-200 text-xs font-bold rounded-xl w-64"
+                              />
+                              <button onClick={() => handleReject(previewReport.id)} className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-xs">تأكيد الرفض النهائي</button>
+                              <button onClick={() => setRejectingId(null)} className="p-3 text-slate-400"><X size={20}/></button>
+                           </div>
+                        ) : (
+                           <div className="flex gap-4">
+                              <button 
+                                 onClick={() => {
+                                    handleRoute(previewReport, previewReport.aiAnalysis?.classification || 'النظافة والمخلفات');
+                                    setPreviewReport(null);
+                                 }}
+                                 disabled={routingId === previewReport.id}
+                                 className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-3"
+                              >
+                                 {routingId === previewReport.id ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
+                                 توجيه للبلاغ الآن
+                              </button>
+                              
+                              <button 
+                                 onClick={() => setRejectingId(previewReport.id)}
+                                 className="px-8 py-4 bg-white border border-red-100 text-red-500 rounded-2xl font-black text-sm hover:bg-red-50 transition-all"
+                              >
+                                 رفض البلاغ
+                              </button>
+                           </div>
+                        )}
+                     </div>
+
+                     <div className="flex items-center gap-4">
+                        <div className="text-left">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">المواطن صاحب البلاغ</p>
+                           <p className="text-sm font-black text-slate-900">{previewReport.userId === 'anonymous' ? 'مواطن مجهول (Anonymous)' : 'مواطن مسجل (Verified)'}</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
+                           <Inbox size={24} />
+                        </div>
+                     </div>
+                  </div>
+              </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Map Modal */}
+
       <AnimatePresence>
          {selectedMapLocation && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
