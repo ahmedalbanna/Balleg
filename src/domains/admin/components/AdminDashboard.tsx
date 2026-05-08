@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow } from 'lucide-react';
+import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow, Database } from 'lucide-react';
 import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../core/services/firebase';
 import { 
@@ -24,7 +24,7 @@ interface UserData {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'alerts' | 'departments' | 'logs' | 'flow'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'alerts' | 'departments' | 'logs' | 'flow' | 'schema'>('analytics');
   const [users, setUsers] = useState<UserData[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,11 +283,11 @@ export const AdminDashboard: React.FC = () => {
 
       <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
         <div className="flex border-b border-slate-100 p-3 overflow-x-auto gap-2 bg-slate-50/50">
-          {['analytics', 'alerts', 'users', 'departments', 'flow', 'logs'].map((tab) => (
+          {['analytics', 'alerts', 'users', 'departments', 'flow', 'schema', 'logs'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all ${
+              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
                 activeTab === tab ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
@@ -296,13 +296,15 @@ export const AdminDashboard: React.FC = () => {
               {tab === 'alerts' && <AlertCircle className="w-4 h-4" />}
               {tab === 'departments' && <Building2 className="w-4 h-4" />}
               {tab === 'flow' && <Workflow className="w-4 h-4" />}
+              {tab === 'schema' && <Database className="w-4 h-4" />}
               {tab === 'logs' && <Activity className="w-4 h-4" />}
               
               {tab === 'analytics' ? 'المؤشرات والخرائط' : 
                tab === 'alerts' ? 'التنبيهات والمساءلة' :
                tab === 'users' ? 'إدارة الوصول' : 
                tab === 'departments' ? 'الهيكل التنظيمي' :
-               tab === 'flow' ? 'دورة حياة البلاغ' : 'سجل التدقيق'}
+               tab === 'flow' ? 'دورات العمل' : 
+               tab === 'schema' ? 'هيكل النظام (DB)' : 'سجل التدقيق'}
             </button>
           ))}
         </div>
@@ -674,6 +676,110 @@ export const AdminDashboard: React.FC = () => {
     S-->>V: ظهور البلاغ في لوحة تحكم الشركة
     V->>S: معالجة المشكلة وتحديث الحالة داخلياً
     S-->>C: إشعار للمواطن بإغلاق البلاغ وحل المشكلة`} />
+                 </div>
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'schema' && (
+            <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm flex flex-col gap-12 overflow-x-auto min-h-[400px]">
+               <div>
+                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                    <Database className="w-6 h-6 text-blue-500" /> مخطط الكيانات والعلاقات (ERD)
+                 </h3>
+                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 overflow-x-auto min-w-[800px]">
+                   <MermaidChart chart={`erDiagram
+    USERS ||--o{ REPORTS : "يقدم (مواطن) / يعالج (أخصائي)"
+    DEPARTMENTS ||--o{ USERS : "يضم (موظفين)"
+    DEPARTMENTS ||--o{ REPORTS : "يسند إليها"
+    REPORTS ||--o| RATINGS : "له تقييم (مواطن)"
+    REPORTS ||--o| PRIVATE_TICKETS : "يتحول إلى"
+    DEPARTMENTS ||--o{ CONTRACTS : "يبرم عقداً"
+    USERS ||--o{ CONTRACTS : "يدير (مقاول)"
+    USERS ||--o{ REQUESTS : "يرسل (صحفي/لجنة)"
+    DEPARTMENTS ||--o{ REQUESTS : "يستقبل"
+    USERS ||--o{ AUDIT_LOGS : "يقوم بإجراء"
+    USERS ||--o{ NOTIFICATIONS : "يتلقى"
+
+    USERS {
+        string uid PK
+        string role
+        string departmentId FK
+    }
+    DEPARTMENTS {
+        string id PK
+        string name
+        string category
+        string parentDepartmentId
+    }
+    REPORTS {
+        string id PK
+        string citizenUid FK
+        string status
+        string assignedDeptId FK
+        string assignedSpecialistUid FK
+    }
+    RATINGS {
+        string reportId FK
+        int stars
+        string comment
+    }
+    NOTIFICATIONS {
+        string id PK
+        string userId FK
+        string type
+        boolean isRead
+    }
+    AUDIT_LOGS {
+        string id PK
+        string userId FK
+        string action
+        string targetId
+    }
+    REQUESTS {
+        string id PK
+        string fromUserId FK
+        string toDepartmentId FK
+        string status
+    }
+    CONTRACTS {
+        string id PK
+        string contractorCompanyId FK
+        number budget
+        string status
+    }
+    PRIVATE_TICKETS {
+        string id PK
+        string reportId FK
+        string companyType
+        string status
+    }`} />
+                 </div>
+               </div>
+
+               <div>
+                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                    <Database className="w-6 h-6 text-blue-500" /> تفاصيل إضافية عن البيانات
+                 </h3>
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                        <h4 className="font-bold text-slate-800 mb-4">أنواع البيانات الموصى بها</h4>
+                        <ul className="space-y-4 text-sm text-slate-600">
+                            <li><strong className="text-slate-800">الموقع الجغرافي (locationGeo):</strong> GeoPoint لحفظ الإحداثيات للاستعلام المكاني.</li>
+                            <li><strong className="text-slate-800">الملفات (audioUrl, imageUrl):</strong> روابط (URL) للملفات المرفوعة على التخزين السحابي (Cloud Storage).</li>
+                            <li><strong className="text-slate-800">حالة البلاغ (status):</strong> قائمة محددة (جديد، قيد المعالجة، تحت التنفيذ، منتهي...إلخ).</li>
+                            <li><strong className="text-slate-800">الأدوار (role):</strong> تحدد صلاحيات المستخدمين (مواطن، أخصائي، مشغل، صحفي...إلخ).</li>
+                        </ul>
+                    </div>
+                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                        <h4 className="font-bold text-slate-800 mb-4">اعتبارات إضافية للمشروع</h4>
+                         <ul className="space-y-4 text-sm text-slate-600">
+                            <li><strong className="text-slate-800">الفصل بين البيانات:</strong> فصل تفاصيل المواطن عن الهيكل الأساسي للحد من الازدحام.</li>
+                            <li><strong className="text-slate-800">الإشعارات:</strong> يجب دعم الإشعارات اللحظية عبر الجوال والمتصفح.</li>
+                            <li><strong className="text-slate-800">بلاغات مجهولة:</strong> دعم البلاغات غير المسجلة (مثل النازحين) بآلية خاصة للرقم التعريفي.</li>
+                            <li><strong className="text-slate-800">فهرسة البيانات (Indexing):</strong> على الحقول الأكثر استخداماً بالبحث مثل status و departmentId.</li>
+                        </ul>
+                    </div>
                  </div>
                </div>
             </div>
