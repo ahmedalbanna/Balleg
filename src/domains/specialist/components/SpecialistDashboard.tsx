@@ -268,24 +268,41 @@ export function SpecialistDashboard() {
                      </div>
 
                      {selectedTask.status === 'in_progress' && (
-                        <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex flex-col gap-3">
+                        <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex flex-col gap-3 relative">
                            <p className="text-xs font-black text-rose-800 mb-1 flex items-center gap-2">
                               <AlertCircle className="w-4 h-4"/>
                               صورة توثيق المعالجة (إجبارية لإغلاق البلاغ)
                            </p>
                            {afterImageUrl ? (
-                              <div className="w-32 h-32 rounded-xl overflow-hidden border border-rose-200">
+                              <div className="w-32 h-32 rounded-xl overflow-hidden border border-rose-200 relative group/img">
                                  <img src={afterImageUrl} alt="After" className="w-full h-full object-cover" />
+                                 <button onClick={() => setAfterImageUrl(null)} className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"><X className="w-6 h-6"/></button>
                               </div>
                            ) : (
-                              <button 
-                                onClick={handleSimulatePhotoUpload}
-                                disabled={uploadingImage}
-                                className="w-full sm:w-auto self-start px-5 py-3 bg-white border border-rose-200 rounded-xl text-rose-700 text-xs font-black flex items-center gap-2 hover:bg-rose-100 transition-colors shadow-sm disabled:opacity-50"
-                              >
-                                 <CameraIcon className="w-4 h-4" />
-                                 {uploadingImage ? 'جاري الإرفاق...' : 'التقاط صورة توثيقية'}
-                              </button>
+                              <>
+                                <button 
+                                  onClick={() => document.getElementById('afterImageInput')?.click()}
+                                  className="w-full sm:w-auto self-start px-5 py-3 bg-white border border-rose-200 rounded-xl text-rose-700 text-xs font-black flex items-center gap-2 hover:bg-rose-100 transition-colors shadow-sm disabled:opacity-50"
+                                >
+                                   <CameraIcon className="w-4 h-4" />
+                                   إرفاق أو التقاط صورة توثيقية
+                                </button>
+                                <input 
+                                   id="afterImageInput" 
+                                   type="file" 
+                                   accept="image/*" 
+                                   className="hidden" 
+                                   onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                          const reader = new FileReader();
+                                          reader.onload = (ev) => {
+                                             setAfterImageUrl(ev.target?.result as string);
+                                          };
+                                          reader.readAsDataURL(e.target.files[0]);
+                                      }
+                                   }} 
+                                />
+                              </>
                            )}
                         </div>
                      )}

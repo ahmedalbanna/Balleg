@@ -172,7 +172,37 @@ export const AdminDashboard: React.FC = () => {
   );
 
   const handleExport = () => {
-      toast.success("تم تصدير التقرير بنجاح (Simulation)");
+      const csvRows = [];
+      // CSV Headers
+      csvRows.push(['ID', 'Status', 'Department', 'Type', 'Priority', 'Created At', 'Rating'].join(','));
+      
+      // Data Rows
+      reports.forEach(r => {
+         const row = [
+             r.id,
+             r.status,
+             r.department || 'N/A',
+             r.type || 'N/A',
+             r.priority || 'medium',
+             new Date(r.createdAt).toLocaleString(),
+             r.rating || ''
+         ];
+         // Escape commas and quotes
+         const safeRow = row.map(v => `"${String(v).replace(/"/g, '""')}"`);
+         csvRows.push(safeRow.join(','));
+      });
+      
+      const csvString = '\uFEFF' + csvRows.join('\n'); // adding BOM for unicode support in Excel
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `reports_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success("تم تصدير التقرير بصيغة CSV بنجاح");
   };
 
   // Generate chart data based on real reports
