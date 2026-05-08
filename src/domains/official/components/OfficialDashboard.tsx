@@ -14,10 +14,13 @@ export function OfficialDashboard() {
   const [department, setDepartment] = useState(userProfile?.departmentId || "النظافة والمخلفات");
   const [reports, setReports] = useState<Report[]>([]);
   const [allReports, setAllReports] = useState<Report[]>([]);
-  const [activeTab, setActiveTab] = useState<'active' | 'resolved'>('active');
+  const [clarifications, setClarifications] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'active' | 'resolved' | 'clarifications'>('active');
   const [delayThreshold, setDelayThreshold] = useState(5); // Configurable threshold in days
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string|null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userProfile?.departmentId && department === "النظافة والمخلفات") {
@@ -84,6 +87,18 @@ export function OfficialDashboard() {
     return () => unsubscribe();
   }, [department, activeTab, delayThreshold]);
 
+  useEffect(() => {
+    if (!department) return;
+    const q = query(
+      collection(db, 'clarification_requests'),
+      where('targetDepartment', '==', department)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setClarifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsubscribe();
+  }, [department]);
+
   const handleUpdateStatus = async (id: string, s: string) => {
     setUpdatingId(id);
     try {
@@ -139,6 +154,30 @@ export function OfficialDashboard() {
       toast.error("فشلت عملية إعادة الفتح");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleSendReply = async (requestId: string) => {
+    if (!replyText.trim()) return;
+    try {
+      const toastId = toast.loading('جاري إرسال الرد...');
+      await reportApi.updateStatus(requestId, 'replied', {
+        // This is a bit hacky because reportApi is for reports, let's use direct firestore instead
+      });
+      // Import updateDoc if needed, wait it's already there? No, let's check
+      // Actually let's just use updateDoc from firestore as I did in Admin
+      const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'clarification_requests', requestId), {
+        status: 'replied',
+        reply: replyText,
+        repliedBy: `إدارة ${department}`,
+        repliedAt: serverTimestamp()
+      });
+      toast.success('تم إرسال الرد بنجاح', { id: toastId });
+      setReplyingToId(null);
+      setReplyText("");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'clarification_requests');
     }
   };
 
@@ -284,9 +323,19 @@ export function OfficialDashboard() {
         >
           الأرشيف المنجز ({allReports.filter(r => ['resolved', 'resolved_pending_rating'].includes(r.status)).length})
         </button>
+        <button 
+          onClick={() => setActiveTab('clarifications')}
+          className={cn(
+            "px-6 py-2.5 rounded-xl text-xs font-black transition-all",
+            activeTab === 'clarifications' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          استيضاحات المجلس ({clarifications.length})
+        </button>
       </div>
 
       {/* Interactive Table Area */}
+      {activeTab !== 'clarifications' ? (
       <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px] flex flex-col">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <h3 className="font-bold flex items-center gap-2 text-slate-800">
@@ -427,6 +476,65 @@ export function OfficialDashboard() {
             </table>
         </div>
       </section>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+            {clarifications.length === 0 && (
+              <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+                  <p className="text-sm font-bold text-slate-400">لا توجد طلبات استيضاح موجهة لقطاع {department}</p>
+              </div>
+            )}
+            {clarifications.map((req) => (
+              <motion.div 
+                key={req.id}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col gap-4"
+              >
+                  <div className="flex justify-between items-start">
+                      <div className="flex flex-col gap-1">
+                          <h4 className="text-md font-black text-slate-900">{req.subject}</h4>
+                          <span className="text-[10px] font-bold text-slate-400">بتاريخ: {new Date(req.createdAt?.toDate?.() || req.createdAt).toLocaleDateString('ar-SA')}</span>
+                      </div>
+                      <span className={cn(
+                          "text-[10px] font-black px-3 py-1 rounded-lg uppercase",
+                          req.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                      )}>
+                          {req.status === 'pending' ? 'بانتظار ردكم' : 'تم الرد'}
+                      </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">{req.content}</p>
+                  </div>
+
+                  {req.status === 'replied' ? (
+                      <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                          <p className="text-xs font-bold text-emerald-900 leading-relaxed">{req.reply}</p>
+                          <div className="mt-2 text-[8px] font-black text-emerald-600/50">تم الرد بواسطة: {req.repliedBy}</div>
+                      </div>
+                  ) : (
+                    <div className="pt-2">
+                        {replyingToId === req.id ? (
+                          <div className="space-y-4">
+                              <textarea 
+                                  value={replyText}
+                                  onChange={(e) => setReplyText(e.target.value)}
+                                  placeholder="اكتب رد الدائرة الرسمي والخطوات المتخذة..."
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-50 min-h-[120px] resize-none"
+                              />
+                              <div className="flex gap-2">
+                                  <button onClick={() => handleSendReply(req.id)} className="bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-black hover:bg-black transition-colors">إرسال الرد</button>
+                                  <button onClick={() => setReplyingToId(null)} className="text-slate-500 px-6 py-2 text-xs font-bold">إلغاء</button>
+                              </div>
+                          </div>
+                        ) : (
+                          <button onClick={() => setReplyingToId(req.id)} className="text-indigo-600 text-xs font-black uppercase hover:underline">كتابة رد رسمي الآن</button>
+                        )}
+                    </div>
+                  )}
+              </motion.div>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

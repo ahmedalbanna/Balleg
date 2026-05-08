@@ -114,9 +114,31 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "type", "description", "status", "createdAt"]
+    },
+    "ClarificationRequest": {
+      "title": "Clarification Request",
+      "description": "Council request for information from departments or admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "councilId": { "type": "string" },
+        "targetDepartment": { "type": "string" },
+        "subject": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "replied"] },
+        "reply": { "type": "string" },
+        "repliedBy": { "type": "string" },
+        "repliedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["councilId", "subject", "content", "status", "createdAt"]
     }
   },
   "firestore": {
+    "/clarification_requests/{requestId}": {
+      "schema": "ClarificationRequest",
+      "description": "Requests from local council to departments"
+    },
     "/reports/{reportId}": {
       "schema": "Report",
       "description": "Main collection for all citizen reports"

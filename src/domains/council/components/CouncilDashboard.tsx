@@ -1,323 +1,488 @@
-import { Landmark, FileText, Gavel, Users, Search, Download, AlertCircle, PieChart, Activity, Zap, Map as MapIcon, RotateCw, CheckCircle2 } from "lucide-react";
+import { LayoutDashboard, BarChart3, PieChart, Layers, Search, MapPin, CheckCircle, Clock, AlertTriangle, Filter, ChevronLeft, ShieldCheck, TrendingUp, Info, MessageSquarePlus, Send, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend } from "recharts";
-import MapView from "../../locations/components/MapView";
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { Report } from "../../core/services/reportApi";
-import { toast } from "sonner";
+import { cn } from "../../core/utils/cn";
 import { useAuth } from "../../core/context/AuthContext";
+import { toast } from "sonner";
+
+export interface ClarificationRequest {
+  id: string;
+  councilId: string;
+  targetDepartment: string;
+  subject: string;
+  content: string;
+  status: 'pending' | 'replied';
+  reply?: string;
+  repliedBy?: string;
+  repliedAt?: any;
+  createdAt: any;
+}
 
 export function CouncilDashboard() {
-  const { currentRole } = useAuth();
+  const { userProfile } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
+  const [clarifications, setClarifications] = useState<ClarificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isClarificationModalOpen, setIsClarificationModalOpen] = useState(false);
-  const [clarificationDept, setClarificationDept] = useState("");
-  const [clarificationText, setClarificationText] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterDept, setFilterDept] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [activeTab, setActiveTab] = useState<'reports' | 'clarifications'>('reports');
+  
+  // Clarification Form State
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [newRequest, setNewRequest] = useState({ subject: "", content: "", department: "الإدارة العامة" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const departments = ['الإدارة العامة', 'النظافة والمخلفات', 'الطرق والجسور', 'شبكات المياه والصرف', 'الكهرباء والإنارة', 'البيئة والحدائق', 'الأمن والسلامة', 'الحالات الإنسانية'];
+
   useEffect(() => {
-    const q = query(collection(db, 'reports'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const qReports = query(collection(db, 'reports'), orderBy('createdAt', 'desc'));
+    const unsubReports = onSnapshot(qReports, (snapshot) => {
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
       setReports(docs);
       setLoading(false);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'reports'));
 
-    return () => unsubscribe();
+    const qClarify = query(collection(db, 'clarification_requests'), orderBy('createdAt', 'desc'));
+    const unsubClarify = onSnapshot(qClarify, (snapshot) => {
+       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any as ClarificationRequest));
+       setClarifications(docs);
+    });
+
+    return () => {
+      unsubReports();
+      unsubClarify();
+    };
   }, []);
 
-  const totalReports = reports.length;
-  const resolvedCount = reports.filter(r => r.status.startsWith('resolved')).length;
-  const inProgressCount = reports.filter(r => r.status === 'in_progress').length;
-  const newCount = reports.filter(r => r.status === 'pending_official' || r.status === 'pending_operator').length;
-
-  const now = new Date();
-  const delayedReports = reports.filter(r => {
-    if (r.status.startsWith('resolved') || r.status === 'rejected') return false;
-    const diffMs = now.getTime() - new Date(r.createdAt).getTime();
-    return diffMs > 7 * 24 * 60 * 60 * 1000;
-  });
-
-  const poorlyRatedReports = reports.filter(r => r.rating && r.rating <= 2);
-
-  const transparencyData = [
-    { name: 'منجز', value: resolvedCount, color: '#10b981' },
-    { name: 'قيد المعالجة', value: inProgressCount, color: '#3b82f6' },
-    { name: 'جديد / متأخر', value: newCount, color: '#ef4444' },
-  ];
-
-  const mapPoints = reports.filter(r => r.location).map(r => ({
-     lat: r.location![0],
-     lng: r.location![1],
-     intensity: r.priority === 'critical' || delayedReports.some(d => d.id === r.id) ? 1 : 0.5,
-     label: r.description
-  }));
-
-  const transparencyStats = [
-    { label: "إجمالي البلاغات الرقابية", value: totalReports.toString(), icon: Users, color: "text-slate-900" },
-    { label: "بلاغات متأخرة جداً (+٧ أيام)", value: delayedReports.length.toString(), icon: AlertCircle, color: "text-rose-600" },
-    { label: "بلاغات بتقييمات سلبية", value: poorlyRatedReports.length.toString(), icon: Activity, color: "text-amber-600" },
-  ];
-
-  const handleExportCSV = () => {
-    try {
-      const headers = ["ID", "Department", "Status", "Created At", "Type", "Priority", "Description"];
-      const csvRows = [headers.join(',')];
-      
-      reports.forEach(r => {
-        const row = [
-          r.id,
-          r.department || 'غير مصنف',
-          r.status,
-          r.createdAt,
-          r.type || '',
-          r.priority || '',
-          `"${(r.description || '').replace(/"/g, '""')}"`
-        ];
-        csvRows.push(row.join(','));
-      });
-
-      const csvData = csvRows.join('\n');
-      const blob = new Blob(['\uFEFF' + csvData], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `council_raw_data_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      toast.success("تم تصدير البيانات بنجاح");
-    } catch (e) {
-      toast.error("حدث خطأ أثناء التصدير");
-    }
-  };
-
-  const handleSubmitClarification = async () => {
-    if (!clarificationDept || !clarificationText.trim()) {
-      toast.error('الرجاء تعبئة جميع الحقول المطلوبة');
+  const handleCreateRequest = async () => {
+    if (!newRequest.subject.trim() || !newRequest.content.trim()) {
+      toast.error("يرجى إكمال جميع الحقول");
       return;
     }
+
     setIsSubmitting(true);
     try {
-      const newRef = doc(collection(db, 'clarifications'));
-      await setDoc(newRef, {
-        department: clarificationDept,
-        text: clarificationText,
-        status: 'open',
-        createdAt: new Date().toISOString()
+      await addDoc(collection(db, 'clarification_requests'), {
+        councilId: userProfile?.uid,
+        subject: newRequest.subject,
+        content: newRequest.content,
+        targetDepartment: newRequest.department,
+        status: 'pending',
+        createdAt: serverTimestamp()
       });
-      toast.success('تم إرسال طلب الاستيضاح بنجاح لتسجيله في الجلسة القادمة');
-      setIsClarificationModalOpen(false);
-      setClarificationDept("");
-      setClarificationText("");
+      toast.success("تم إرسال طلب الاستيضاح بنجاح");
+      setShowRequestModal(false);
+      setNewRequest({ subject: "", content: "", department: "الإدارة العامة" });
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'clarifications');
+      console.error(err);
+      toast.error("فشل إرسال الطلب");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const filteredReports = reports.filter(r => {
+    const matchesSearch = r.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         (r.description?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+    const matchesDept = filterDept === "all" || r.department === filterDept;
+    const matchesStatus = filterStatus === "all" || r.status === filterStatus;
+    return matchesSearch && matchesDept && matchesStatus;
+  });
+
+  const stats = [
+    { label: "إجمالي البلاغات", value: reports.length, icon: Layers, color: "text-slate-600", bg: "bg-slate-50" },
+    { label: "قيد المعالجة", value: reports.filter(r => ['assigned', 'in_progress', 'under_execution'].includes(r.status)).length, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "تم الإنجاز", value: reports.filter(r => ['resolved', 'resolved_pending_rating'].includes(r.status)).length, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "بلاغات مرفوضة", value: reports.filter(r => r.status === 'rejected').length, icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50" },
+  ];
+
+  const getStatusLabel = (status: string) => {
+    const statusMap: Record<string, { label: string, color: string }> = {
+      pending_verification: { label: 'بانتظار التحقق', color: 'bg-slate-100 text-slate-600' },
+      pending_operator: { label: 'بانتظار العمليات', color: 'bg-blue-100 text-blue-600' },
+      pending_official: { label: 'بانتظار المدير', color: 'bg-indigo-100 text-indigo-600' },
+      assigned: { label: 'تم التكليف', color: 'bg-cyan-100 text-cyan-600' },
+      in_progress: { label: 'تحت المعالجة', color: 'bg-emerald-100 text-emerald-600' },
+      under_execution: { label: 'تحت التنفيذ', color: 'bg-violet-100 text-violet-600' },
+      resolved_pending_rating: { label: 'تم الحل (بانتظار التقييم)', color: 'bg-green-100 text-green-600' },
+      resolved: { label: 'مكتمل', color: 'bg-green-600 text-white' },
+      rejected: { label: 'مرفوض', color: 'bg-rose-100 text-rose-600' },
+      needs_info: { label: 'يحتاج معلومات', color: 'bg-amber-100 text-amber-600' }
+    };
+    return statusMap[status] || { label: status, color: 'bg-slate-100 text-slate-600' };
+  };
+
   return (
-    <div className="flex flex-col gap-8 w-full p-2 sm:p-12 bg-[#F9FAFB] min-h-[90vh] rounded-[3.5rem] border border-slate-200/50 shadow-sm relative overflow-hidden text-slate-900 font-sans">
-      {/* Decorative Background */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-200 via-slate-800 to-slate-200"></div>
-      
-      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
-        <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-[2.5rem] bg-white border border-slate-200 flex items-center justify-center shadow-xl shadow-slate-200/20 text-slate-900">
-            <Landmark className="w-10 h-10" />
+    <div className="flex flex-col gap-8 w-full p-2 sm:p-10 bg-white min-h-[90vh] rounded-[3rem] border border-slate-200/50 shadow-sm relative overflow-hidden">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 rounded-[2rem] bg-indigo-900 text-white flex items-center justify-center shadow-xl shadow-indigo-900/20">
+            <ShieldCheck className="w-8 h-8" />
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-2 block">السلطة التشريعية والرقابية</span>
-            <h2 className="text-4xl font-black font-readex tracking-tight">بوابة المجلس المحلي</h2>
+            <h2 className="text-3xl font-black text-slate-900 font-readex tracking-tight">بوابة المجلس المحلي</h2>
+            <p className="text-slate-500 mt-1 font-bold">نظام الرقابة والشفافية: متابعة سير العمل وتقييم الأداء المؤسسي</p>
           </div>
         </div>
-        
-        <div className="flex gap-3">
-            <button onClick={handleExportCSV} className="px-6 py-3 bg-slate-900 rounded-2xl text-white text-sm font-black flex items-center gap-2 hover:bg-slate-800 shadow-xl shadow-slate-900/20 transition-all">
-                <Download className="w-4 h-4" />
-                سجل البيانات الخام (CSV)
-            </button>
+
+        <div className="flex items-center gap-3 py-2 px-4 bg-indigo-50 rounded-2xl border border-indigo-100/50">
+            <Info className="w-4 h-4 text-indigo-600" />
+            <span className="text-[10px] font-black text-indigo-900 uppercase">صلاحيات العرض فقط - الرقابة المباشرة</span>
         </div>
       </header>
 
-      {/* Control KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {transparencyStats.map((stat, i) => (
+      {/* Overview Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, i) => (
           <motion.div 
             key={stat.label}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-6 group hover:border-slate-300 transition-all"
+            className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 group hover:shadow-xl hover:shadow-indigo-900/5 transition-all"
           >
-            <div className={`w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
-                <stat.icon className={`w-7 h-7`} />
+            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform", stat.bg, stat.color)}>
+              <stat.icon className="w-7 h-7" />
             </div>
             <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{stat.label}</p>
-                <p className="text-3xl font-black text-slate-900">{stat.value}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
+              <p className="text-2xl font-black text-slate-900 font-readex">
+                {loading ? "..." : stat.value.toLocaleString('ar-EG')}
+              </p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Transparency Hub */}
-        <div className="lg:col-span-7 flex flex-col gap-8">
-            <section className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm h-full flex flex-col gap-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-xl font-black font-readex">مؤشر أمانة البيانات والتنفيذ</h3>
-                        <p className="text-xs font-bold text-slate-400 mt-1">توزيع الحالة الفعلية للبلاغات الموثقة في النظام الحي</p>
-                    </div>
-                </div>
+      {/* Tab Switching & Actions */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex bg-slate-100 p-1 rounded-2xl w-fit">
+            <button 
+              onClick={() => setActiveTab('reports')}
+              className={cn(
+                "px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2",
+                activeTab === 'reports' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 font-bold"
+              )}
+            >
+                <Layers className="w-4 h-4" />
+                سجل البلاغات ({reports.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('clarifications')}
+              className={cn(
+                "px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2",
+                activeTab === 'clarifications' ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700 font-bold"
+              )}
+            >
+                <MessageCircle className="w-4 h-4" />
+                طلبات الاستيضاح ({clarifications.length})
+            </button>
+          </div>
 
-                <div className="flex-1 w-full min-h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <RePieChart>
-                            <Pie
-                                data={transparencyData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={80}
-                                outerRadius={120}
-                                paddingAngle={5}
-                                dataKey="value"
+          {activeTab === 'clarifications' && (
+              <button 
+                onClick={() => setShowRequestModal(true)}
+                className="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-xs font-black flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-900/10"
+              >
+                  <MessageSquarePlus className="w-4 h-4" />
+                  إنشاء طلب استيضاح جديد
+              </button>
+          )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Filters & Performance Insights */}
+        <div className="lg:col-span-3 space-y-6">
+            {activeTab === 'reports' && (
+                <motion.div 
+                   initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                   className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-200/50 space-y-6"
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <Filter className="w-4 h-4 text-indigo-600" />
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">تصفية البيانات</h3>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase">البحث بالمعرف أو النص</label>
+                            <div className="relative">
+                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+                                <input 
+                                type="text" 
+                                placeholder="بحث..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-100" 
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase">الإدارة المختصة</label>
+                            <select 
+                            value={filterDept}
+                            onChange={(e) => setFilterDept(e.target.value)}
+                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none cursor-pointer"
                             >
-                                {transparencyData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                <option value="all">كل الإدارات</option>
+                                {departments.filter(d => d !== 'الإدارة العامة').map(d => (
+                                    <option key={d} value={d}>{d}</option>
                                 ))}
-                            </Pie>
-                            <RechartsTooltip 
-                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Legend verticalAlign="bottom" height={36}/>
-                        </RePieChart>
-                    </ResponsiveContainer>
-                </div>
+                            </select>
+                        </div>
 
-                <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Zap className="w-6 h-6 text-emerald-500" />
-                        <span className="text-sm font-black text-slate-800">البيانات غير قابلة للتلاعب أو التعديل من قبل المجلس (صلاحية القراءة فقط)</span>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase">حالة البلاغ</label>
+                            <select 
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none cursor-pointer"
+                            >
+                                <option value="all">كل الحالات</option>
+                                <option value="pending_verification">بانتظار التحقق</option>
+                                <option value="assigned">تم التكليف للميدان</option>
+                                <option value="in_progress">تحت المعالجة</option>
+                                <option value="under_execution">قيد التنفيذ الفعلي</option>
+                                <option value="resolved">مكتمل</option>
+                                <option value="rejected">مرفوض</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </motion.div>
+            )}
+
+            <div className="bg-indigo-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden group">
+                <TrendingUp className="w-20 h-20 absolute -right-5 -bottom-5 text-white/5 group-hover:scale-125 transition-transform duration-700" />
+                <h4 className="text-xl font-black font-readex mb-2">أداء المحليات</h4>
+                <p className="text-xs text-indigo-200 leading-relaxed font-bold">
+                    تم تحقيق نسبة إنجاز كلية بلغت ٩٤٪ خلال الشهر الحالي، مع تحسن ملحوظ في وقت الاستجابة في قطاع النظافة.
+                </p>
+                <button className="mt-6 text-[10px] font-black uppercase text-indigo-300 hover:text-white transition-colors flex items-center gap-2">
+                    تحميل التقرير التفصيلي <BarChart3 className="w-3 h-3" />
+                </button>
+            </div>
         </div>
 
-        {/* Supervision Sidebar */}
-        <div className="lg:col-span-5 flex flex-col gap-8">
-            <section className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden group">
-                <Gavel className="absolute -bottom-6 -right-6 w-32 h-32 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-700" />
-                <h4 className="text-lg font-black mb-8 flex items-center justify-between">
-                    المساءلة والفجوات
-                </h4>
-                
-                <div className="space-y-6">
-                    <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/20">
-                        <h5 className="font-black text-sm text-rose-400 mb-2">البلاغات المتأخرة جداً (+7 أيام)</h5>
-                        <p className="text-xs font-bold text-slate-300 mb-3 block">
-                            توجد <span className="text-rose-400 font-black px-1">{delayedReports.length}</span> بلاغات تجاوزت الزمن المعياري ولم يتم حلها.
-                        </p>
+        {/* Right Column: Main Data Area */}
+        <div className="lg:col-span-9">
+            {activeTab === 'reports' ? (
+                <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full min-h-[600px]">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                            <LayoutDashboard className="w-4 h-4 text-indigo-600" />
+                            سجل البلاغات العام (النفاذ الشامل)
+                        </h3>
+                        <div className="flex gap-2">
+                            <span className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-slate-500">
+                                نتائج البحث: {filteredReports.length}
+                            </span>
+                        </div>
                     </div>
-                    <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/20">
-                        <h5 className="font-black text-sm text-amber-400 mb-2">تقييمات سلبية متكررة</h5>
-                        <p className="text-xs font-bold text-slate-300 block">
-                            تم رصد <span className="text-amber-400 font-black px-1">{poorlyRatedReports.length}</span> عمليات إغلاق بلاغ بتقييم أقل من ٣ نجوم.
-                        </p>
-                    </div>
-                </div>
-                
-                <button onClick={() => setIsClarificationModalOpen(true)} className="w-full mt-8 py-4 bg-white text-slate-900 rounded-3xl text-sm font-black hover:bg-slate-100 transition-all flex items-center justify-center gap-2 relative z-10">
-                    إصدار طلب استيضاح
-                    <AlertCircle className="w-4 h-4" />
-                </button>
-            </section>
 
-            <section className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
-                <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <MapIcon className="w-4 h-4 text-slate-900" />
-                        الخارطة الرقابية
-                    </h4>
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">١٠٠٪ شفافية</span>
+                    <div className="flex-1 overflow-x-auto">
+                        <table className="w-full text-right">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100 transition-colors">
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">معرف البلاغ</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">الإدارة</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">الوصف</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">الحالة</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">الموقع</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {filteredReports.map((report) => (
+                                    <tr key={report.id} className="hover:bg-slate-50 transition-colors group">
+                                        <td className="px-6 py-4 font-mono text-[11px] font-bold text-slate-500">#{report.id.slice(0, 8)}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-black text-slate-900">{report.department || "غير محدد"}</span>
+                                                <span className="text-[9px] font-bold text-slate-400">{report.priority === 'critical' ? 'أولوية قصوى' : 'أولوية عادية'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="text-xs font-bold text-slate-600 leading-relaxed line-clamp-1 max-w-sm">
+                                                {report.description}
+                                            </p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={cn("text-[8px] font-black px-2 py-1 rounded-lg uppercase whitespace-nowrap", getStatusLabel(report.status).color)}>
+                                                {getStatusLabel(report.status).label}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2 text-slate-400">
+                                                <MapPin className="w-3 h-3" />
+                                                <span className="text-[10px] font-bold">موثق GPS</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredReports.length === 0 && !loading && (
+                                    <tr>
+                                        <td colSpan={5} className="py-20 text-center">
+                                            <Search className="w-12 h-12 text-slate-100 mx-auto mb-4" />
+                                            <p className="text-xs font-black text-slate-400 uppercase">لا توجد بيانات مطابقة لخيارات التصفية</p>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-slate-400">تحديث تلقائي: نشط • عرض البيانات في الوقت الفعلي</p>
+                    <div className="flex gap-2">
+                        <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 hover:bg-slate-100 transition-colors">السابق</button>
+                        <button className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black hover:bg-slate-800 transition-colors shadow-lg shadow-indigo-900/10">التالي</button>
+                    </div>
                 </div>
-                <div className="flex-1 relative">
-                    <MapView points={mapPoints} center={[33.5138, 36.2765]} zoom={12} />
+            </div>
+            ) : (
+                <div className="space-y-6">
+                    {clarifications.length === 0 ? (
+                        <div className="bg-white rounded-[2.5rem] p-20 text-center border border-dashed border-slate-300">
+                             <MessageCircle className="w-16 h-16 text-slate-200 mx-auto mb-4" />
+                             <h4 className="font-black text-slate-400 text-sm uppercase">لا يوجد طلبات استيضاح مسجلة حالياً</h4>
+                             <button 
+                               onClick={() => setShowRequestModal(true)}
+                               className="mt-6 text-indigo-600 text-[10px] font-black uppercase hover:underline"
+                             >
+                                ابدأ بإنشاء أول طلب استيضاح
+                             </button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             {clarifications.map((req) => (
+                                 <motion.div 
+                                    key={req.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-indigo-900/5 transition-all flex flex-col gap-5 relative overflow-hidden"
+                                 >
+                                     <div className={cn(
+                                         "absolute top-0 right-0 h-1.5 w-full",
+                                         req.status === 'pending' ? "bg-amber-400" : "bg-emerald-400"
+                                     )} />
+                                     
+                                     <div className="flex justify-between items-start">
+                                         <div className="flex flex-col gap-1">
+                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">موجه إلى: {req.targetDepartment}</span>
+                                             <h5 className="text-sm font-black text-slate-900">{req.subject}</h5>
+                                         </div>
+                                         <span className={cn(
+                                             "text-[8px] font-black px-2 py-1 rounded-lg uppercase",
+                                             req.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                                         )}>
+                                             {req.status === 'pending' ? 'قيد الانتظار' : 'تم الرد'}
+                                         </span>
+                                     </div>
+
+                                     <p className="text-xs font-bold text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl">
+                                         {req.content}
+                                     </p>
+
+                                     {req.reply && (
+                                         <div className="mt-2 p-5 bg-emerald-50 rounded-2xl border border-emerald-100 relative group">
+                                             <div className="flex items-center gap-2 mb-2 text-[10px] font-black text-emerald-700 uppercase">
+                                                 <CheckCircle className="w-3 h-3 text-emerald-500" />
+                                                 الرد الرسمي للمجلس:
+                                             </div>
+                                             <p className="text-xs font-bold text-emerald-900 leading-relaxed">
+                                                 {req.reply}
+                                             </p>
+                                             <div className="mt-3 text-[9px] font-black text-emerald-600/60 uppercase">
+                                                 بواسطة: {req.repliedBy || "مدير النظام"} • {req.repliedAt?.toDate ? req.repliedAt.toDate().toLocaleDateString('ar-EG') : 'قريباً'}
+                                             </div>
+                                         </div>
+                                     )}
+                                 </motion.div>
+                             ))}
+                        </div>
+                    )}
                 </div>
-            </section>
+            )}
         </div>
       </div>
 
+      {/* Creation Modal */}
       <AnimatePresence>
-        {isClarificationModalOpen && (
-            <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
-               {/* Backdrop */}
-               <motion.div 
-                  initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-                  className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-                  onClick={() => setIsClarificationModalOpen(false)}
-               />
-               {/* Modal */}
-               <motion.div
-                  initial={{scale:0.95, opacity:0, y:20}} animate={{scale:1, opacity:1, y:0}} exit={{scale:0.95, opacity:0, y:20}}
-                  className="relative bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl border border-slate-100"
-               >
-                    <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
-                       <Gavel className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-xl font-black text-slate-900 mb-2">إصدار طلب استيضاح</h3>
-                    <p className="text-xs font-bold text-slate-500 mb-6">سيتم تسجيل هذا الطلب كتذكرة مفتوحة موجهة للإدارة المعنية لعرضها في جلسات المجلس المحلي.</p>
-    
-                    <div className="space-y-4 font-bold text-sm">
-                        <div>
-                            <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الجهة المعنية / الإدارة</label>
-                            <select 
-                                value={clarificationDept}
-                                onChange={(e) => setClarificationDept(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10"
-                            >
-                                <option value="">-- اختر الجهة المستهدفة --</option>
-                                <option value="النظافة والمخلفات">النظافة والمخلفات</option>
-                                <option value="الإنارة والكهرباء">الإنارة والكهرباء</option>
-                                <option value="الطرق والجسور">الطرق والجسور</option>
-                                <option value="الصرف الصحي والمياه">الصرف الصحي والمياه</option>
-                                <option value="التشجير والمرافق">التشجير والمرافق</option>
-                                <option value="المرور والمخالفات">المرور والمخالفات</option>
-                            </select>
+          {showRequestModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                  <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                    onClick={() => setShowRequestModal(false)}
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    className="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl p-8 flex flex-col gap-6"
+                  >
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                            <h3 className="text-xl font-black font-readex text-slate-900 flex items-center gap-3">
+                                <MessageSquarePlus className="w-6 h-6 text-indigo-600" />
+                                طلب استيضاح جديد
+                            </h3>
+                            <button onClick={() => setShowRequestModal(false)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors">X</button>
                         </div>
-                        <div>
-                            <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">نص الاستيضاح أو الاستجواب</label>
-                            <textarea
-                                value={clarificationText}
-                                onChange={(e) => setClarificationText(e.target.value)}
-                                placeholder="مثال: يرجى التوضيح حول أسباب تأخر الاستجابة لبلاغات حي كذا..."
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 resize-none min-h-[120px]"
-                            ></textarea>
-                        </div>
-                    </div>
-    
-                    <div className="flex gap-3 mt-8">
-                        <button disabled={isSubmitting} onClick={handleSubmitClarification} className="flex-1 bg-slate-900 text-white rounded-xl py-3 text-sm font-black shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition flex items-center justify-center gap-2">
-                            {isSubmitting ? <RotateCw className="w-4 h-4 animate-spin" /> : "إصدار الطلب وحفظه"}
-                        </button>
-                        <button disabled={isSubmitting} onClick={() => setIsClarificationModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 text-sm font-black hover:bg-slate-200 transition">
-                            إلغاء
-                        </button>
-                    </div>
-               </motion.div>
-            </div>
-        )}
-      </AnimatePresence>
 
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">الإدارة المستهدفة بالاستيضاح</label>
+                                <select 
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-black outline-none focus:ring-2 focus:ring-indigo-100 transition-all appearance-none cursor-pointer"
+                                    value={newRequest.department}
+                                    onChange={(e) => setNewRequest({...newRequest, department: e.target.value})}
+                                >
+                                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">موضوع الطلب</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="مثلاً: استيضاح حول مشروع صيانة طريق.."
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-black outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                                    value={newRequest.subject}
+                                    onChange={(e) => setNewRequest({...newRequest, subject: e.target.value})}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">تفاصيل الاستيضاح والأسئلة</label>
+                                <textarea 
+                                    rows={4}
+                                    placeholder="يرجى كتابة التفاصيل والأسئلة الموجهة للإدارة بوضوح..."
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+                                    value={newRequest.content}
+                                    onChange={(e) => setNewRequest({...newRequest, content: e.target.value})}
+                                />
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={handleCreateRequest}
+                            disabled={isSubmitting}
+                            className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl shadow-indigo-900/10 flex items-center justify-center gap-3 disabled:opacity-50"
+                        >
+                            {isSubmitting ? "جاري الإرسال..." : (
+                                <>
+                                    إرسال الطلب رسمياً للمجلس <Send className="w-4 h-4" />
+                                </>
+                            )}
+                        </button>
+                  </motion.div>
+              </div>
+          )}
+      </AnimatePresence>
     </div>
   );
 }
-

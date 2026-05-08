@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow, Database } from 'lucide-react';
-import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp } from 'firebase/firestore';
+import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow, Database, MessageCircle, Send } from 'lucide-react';
+import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../core/services/firebase';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
@@ -28,11 +28,15 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'alerts' | 'departments' | 'logs' | 'flow' | 'schema'>('analytics');
   const [users, setUsers] = useState<UserData[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [clarifications, setClarifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [reroutingReportId, setReroutingReportId] = useState<string | null>(null);
   const [rerouteDepartment, setRerouteDepartment] = useState("");
   const [rerouteReason, setRerouteReason] = useState("");
+
+  const [replyText, setReplyText] = useState("");
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
@@ -85,9 +89,16 @@ export const AdminDashboard: React.FC = () => {
       setLoading(false);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'reports'));
 
+    // Fetch clarification requests
+    const qClarify = query(collection(db, 'clarification_requests'), orderBy('createdAt', 'desc'));
+    const unsubClarify = onSnapshot(qClarify, (snapshot) => {
+       setClarifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
     return () => {
       unsubUsers();
       unsubReports();
+      unsubClarify();
     };
   }, []);
 
@@ -164,6 +175,24 @@ export const AdminDashboard: React.FC = () => {
       setNewUserForm({ displayName: '', email: '', role: 'official', department: '' });
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'users');
+    }
+  };
+
+  const handleSendReply = async (requestId: string) => {
+    if (!replyText.trim()) return;
+    try {
+      const toastId = toast.loading('جاري إرسال الرد...');
+      await updateDoc(doc(db, 'clarification_requests', requestId), {
+        status: 'replied',
+        reply: replyText,
+        repliedBy: 'الإدارة العامة للمنصة',
+        repliedAt: serverTimestamp()
+      });
+      toast.success('تم إرسال الرد بنجاح', { id: toastId });
+      setReplyingToId(null);
+      setReplyText("");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'clarification_requests');
     }
   };
 
@@ -284,7 +313,7 @@ export const AdminDashboard: React.FC = () => {
 
       <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
         <div className="flex border-b border-slate-100 p-3 overflow-x-auto gap-2 bg-slate-50/50">
-          {['analytics', 'alerts', 'users', 'departments', 'flow', 'schema', 'logs'].map((tab) => (
+          {['analytics', 'alerts', 'clarifications', 'users', 'departments', 'flow', 'schema', 'logs'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -295,6 +324,7 @@ export const AdminDashboard: React.FC = () => {
               {tab === 'analytics' && <TrendingUp className="w-4 h-4" />}
               {tab === 'users' && <Users className="w-4 h-4" />}
               {tab === 'alerts' && <AlertCircle className="w-4 h-4" />}
+              {tab === 'clarifications' && <MessageCircle className="w-4 h-4" />}
               {tab === 'departments' && <Building2 className="w-4 h-4" />}
               {tab === 'flow' && <Workflow className="w-4 h-4" />}
               {tab === 'schema' && <Database className="w-4 h-4" />}
@@ -302,6 +332,7 @@ export const AdminDashboard: React.FC = () => {
               
               {tab === 'analytics' ? 'المؤشرات والخرائط' : 
                tab === 'alerts' ? 'التنبيهات والمساءلة' :
+               tab === 'clarifications' ? 'استيضاحات المجلس' :
                tab === 'users' ? 'إدارة الوصول' : 
                tab === 'departments' ? 'الهيكل التنظيمي' :
                tab === 'flow' ? 'دورات العمل' : 
@@ -780,6 +811,104 @@ export const AdminDashboard: React.FC = () => {
                         </ul>
                     </div>
                  </div>
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'clarifications' && (
+            <div className="space-y-6">
+               <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-blue-900">طلبات الاستيضاح من المجلس المحلي</h3>
+                    <p className="text-xs text-blue-700 font-bold mt-1">هنا يظهر تساؤلات المجلس حول سير البلاغات أو احتياجات المديريات.</p>
+                  </div>
+                  <div className="bg-white px-4 py-2 rounded-xl border border-blue-200">
+                    <span className="text-xs font-black text-blue-600">إجمالي الطلبات: {clarifications.length}</span>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 gap-4">
+                  {clarifications.length === 0 && (
+                    <div className="py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                       <MessageCircle className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                       <p className="text-sm font-black text-slate-400">لا توجد طلبات استيضاح حالياً</p>
+                    </div>
+                  )}
+                  {clarifications.map((req) => (
+                    <motion.div 
+                      key={req.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4"
+                    >
+                        <div className="flex justify-between items-start">
+                           <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest">{req.targetDepartment}</span>
+                                {req.status === 'pending' && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+                              </div>
+                              <h4 className="text-md font-black text-slate-900 mt-1">{req.subject}</h4>
+                           </div>
+                           <span className={cn(
+                             "text-[10px] font-black px-3 py-1 rounded-lg uppercase",
+                             req.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                           )}>
+                              {req.status === 'pending' ? 'بانتظار الرد' : 'تمت الإجابة'}
+                           </span>
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-2xl">
+                           <p className="text-xs font-bold text-slate-600 leading-relaxed">{req.content}</p>
+                        </div>
+
+                        {req.status === 'replied' ? (
+                           <div className="border-t border-slate-50 pt-4 mt-2">
+                              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                                <div className="flex items-center gap-2 mb-2">
+                                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                   <span className="text-[10px] font-black text-emerald-700 uppercase">رد الإدارة:</span>
+                                </div>
+                                <p className="text-xs font-bold text-emerald-900 leading-relaxed">{req.reply}</p>
+                                <div className="mt-3 text-[8px] font-black text-emerald-600/50 uppercase">بواسطة: {req.repliedBy}</div>
+                              </div>
+                           </div>
+                        ) : (
+                          <div className="border-t border-slate-50 pt-4 mt-2">
+                             {replyingToId === req.id ? (
+                                <div className="space-y-4">
+                                   <textarea 
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 min-h-[100px] resize-none"
+                                      placeholder="اكتب الرد الرسمي هنا..."
+                                      value={replyText}
+                                      onChange={(e) => setReplyText(e.target.value)}
+                                   />
+                                   <div className="flex gap-2">
+                                      <button 
+                                        onClick={() => handleSendReply(req.id)}
+                                        className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-600/10 hover:bg-blue-700 flex items-center gap-2"
+                                      >
+                                         <Send className="w-3 h-3" /> إرسال الرد
+                                      </button>
+                                      <button 
+                                        onClick={() => setReplyingToId(null)}
+                                        className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-xs font-black hover:bg-slate-200"
+                                      >
+                                         إلغاء
+                                      </button>
+                                   </div>
+                                </div>
+                             ) : (
+                                <button 
+                                  onClick={() => setReplyingToId(req.id)}
+                                  className="text-blue-600 text-[10px] font-black uppercase hover:underline flex items-center gap-2"
+                                >
+                                   <MessageCircle className="w-3 h-3" /> كتابة رد رسمي الآن
+                                </button>
+                             )}
+                          </div>
+                        )}
+                    </motion.div>
+                  ))}
                </div>
             </div>
           )}
