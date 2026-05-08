@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mic, Square, Camera as CameraIcon, UploadCloud, RefreshCcw, CheckCircle2, ChevronRight, AlertCircle, Loader2, Sparkles, EyeOff, ShieldCheck, MapPin } from "lucide-react";
+import { Mic, Square, Camera as CameraIcon, UploadCloud, RefreshCcw, CheckCircle2, ChevronRight, AlertCircle, Loader2, Sparkles, EyeOff, ShieldCheck, MapPin, X, ImagePlus } from "lucide-react";
 import * as motion from "motion/react-client";
 import { cn } from "../../core/utils/cn";
 import { reportApi } from "../../core/services/reportApi";
@@ -9,6 +9,19 @@ import { mediaUtils } from "../../core/utils/media";
 import { useRole } from "../../core/context/RoleContext";
 import { auth } from "../../core/services/firebase";
 import { toast } from "sonner";
+import { MapContainer, TileLayer, CircleMarker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+
+// Helper component for map location picking
+function LocationPicker({ location, setLocation, setLocationStr }: { location: [number, number] | null; setLocation: (loc: [number, number]) => void; setLocationStr: (str: string) => void }) {
+  useMapEvents({
+    click(e) {
+      setLocation([e.latlng.lat, e.latlng.lng]);
+      setLocationStr(`${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+    },
+  });
+  return location ? <CircleMarker center={location} radius={8} fillColor="#3b82f6" color="white" weight={2} fillOpacity={1} /> : null;
+}
 
 export function NewReport() {
   const { currentRole } = useRole();
@@ -30,14 +43,16 @@ export function NewReport() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Camera states
+  // Camera & Image states
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [cameraActive, setCameraActive] = useState(false);
 
   // Location states
   const [location, setLocation] = useState<[number, number] | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationStr, setLocationStr] = useState<string>("");
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Submit states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -283,15 +298,35 @@ export function NewReport() {
                     ></button>
                   </>
                 ) : (
-                  <button 
-                    onClick={startCamera}
-                    className="flex flex-col items-center justify-center text-slate-500 hover:text-blue-600 transition-colors gap-3 group w-full h-full"
-                  >
-                    <div className="w-16 h-16 rounded-3xl bg-white border border-slate-200 shadow-sm flex items-center justify-center group-hover:border-blue-200 group-hover:bg-blue-50 transition-colors group-hover:-translate-y-1 duration-300">
+                  <div className="flex flex-col items-stretch w-full h-full p-3 gap-2">
+                    <button 
+                      onClick={startCamera}
+                      className="flex-1 flex flex-col items-center justify-center text-slate-500 hover:text-blue-600 transition-colors gap-2 group bg-white rounded-2xl border border-slate-100 shadow-sm hover:border-blue-200 hover:bg-blue-50/50"
+                    >
                       <CameraIcon className="w-7 h-7 group-hover:text-blue-600 transition-colors" />
-                    </div>
-                    <span className="font-bold text-sm tracking-wide">تصوير المشكلة</span>
-                  </button>
+                      <span className="font-bold text-xs tracking-wide">تصوير المشكلة</span>
+                    </button>
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 flex flex-col items-center justify-center text-slate-500 hover:text-blue-600 transition-colors gap-2 group bg-white rounded-2xl border border-slate-100 shadow-sm hover:border-blue-200 hover:bg-blue-50/50"
+                    >
+                      <ImagePlus className="w-7 h-7 group-hover:text-blue-600 transition-colors" />
+                      <span className="font-bold text-xs tracking-wide">إرفاق من الاستوديو</span>
+                    </button>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      ref={fileInputRef} 
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setImageSrc(ev.target?.result as string);
+                          reader.readAsDataURL(e.target.files[0]);
+                        }
+                      }} 
+                    />
+                  </div>
                 )}
               </div>
 
@@ -337,19 +372,22 @@ export function NewReport() {
             </div>
 
             <div className="space-y-3 pt-4">
-              <div className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl">
-                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                       {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-sm text-slate-800">تحديد الموقع الجغرافي</h4>
-                        <p className="text-xs font-bold text-slate-500 mt-0.5">
-                            {location ? locationStr : "سيتم إرفاق إحداثيات المشكلة"}
-                        </p>
-                    </div>
+              <div className="flex flex-col gap-2 p-4 bg-white border border-slate-200 rounded-2xl">
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                         {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
+                      </div>
+                      <div>
+                          <h4 className="font-bold text-sm text-slate-800">تحديد الموقع الجغرافي</h4>
+                          <p className="text-xs font-bold text-slate-500 mt-0.5">
+                              {location ? locationStr : "سيتم إرفاق إحداثيات المشكلة"}
+                          </p>
+                      </div>
+                   </div>
+                   <button onClick={getLocation} disabled={isLocating} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition disabled:opacity-50">تحديث</button>
                  </div>
-                 <button onClick={getLocation} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition">تحديث</button>
+                 <button onClick={() => setShowMapPicker(true)} className="w-full text-xs font-bold border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 bg-slate-50 hover:bg-blue-50 py-2 rounded-xl transition-all">تحديد من الخريطة يدوياً</button>
               </div>
 
               <div onClick={() => setIsAnonymous(!isAnonymous)} className={cn("p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between", isAnonymous ? "bg-slate-900 border-slate-900 shadow-md" : "bg-white border-slate-200 hover:border-slate-300")}>
@@ -392,6 +430,26 @@ export function NewReport() {
                 متابعة البلاغ <ChevronRight className="w-5 h-5" />
               </button>
             </div>
+            
+            {showMapPicker && (
+              <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden flex flex-col h-[500px]">
+                  <div className="p-4 border-b flex items-center justify-between">
+                    <h3 className="font-bold text-slate-800">تحديد الموقع على الخريطة</h3>
+                    <button onClick={() => setShowMapPicker(false)} className="bg-slate-100 p-2 rounded-full text-slate-500 hover:text-slate-900 transition-colors"><X className="w-5 h-5"/></button>
+                  </div>
+                  <div className="flex-1 relative">
+                    <MapContainer center={location || [24.7136, 46.6753]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                       <LocationPicker location={location} setLocation={setLocation} setLocationStr={setLocationStr} />
+                    </MapContainer>
+                  </div>
+                  <div className="p-4 bg-slate-50 border-t border-slate-100">
+                    <button onClick={() => setShowMapPicker(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black h-12 rounded-xl transition-colors shadow-sm">تأكيد الموقع</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
 
