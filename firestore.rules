@@ -144,6 +144,7 @@ service cloud.firestore {
              (!('operatorComment' in data) || data.operatorComment is string) &&
              (!('rejectReason' in data) || data.rejectReason is string) &&
              (!('rejectDetails' in data) || data.rejectDetails is string) &&
+             (!('rejectAudioUrl' in data) || data.rejectAudioUrl is string) &&
              (!('priority' in data) || data.priority is string) &&
              (!('createdAt' in data) || data.createdAt is timestamp) &&
              (!('aiAnalysis' in data) || data.aiAnalysis is map || data.aiAnalysis == null) &&
@@ -178,7 +179,7 @@ service cloud.firestore {
         )) ||
         // Official/Operator updates
         (isValidReport(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly([
-          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'updatedAt', 'assignedTo', 'resolvedAt', 'operatorComment'
+          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'rejectAudioUrl', 'updatedAt', 'assignedTo', 'resolvedAt', 'operatorComment'
         ]))
       );
 

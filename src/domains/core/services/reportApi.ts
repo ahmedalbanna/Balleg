@@ -23,6 +23,9 @@ export interface Report {
   location?: [number, number];
   aiAnalysis?: any;
   operatorComment?: string;
+  rejectReason?: string;
+  rejectDetails?: string;
+  rejectAudioUrl?: string;
   sponsorId?: string;
   sponsorName?: string;
   sponsorDate?: string;

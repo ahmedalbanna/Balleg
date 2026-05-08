@@ -1,6 +1,6 @@
-import { Headset, Inbox, CheckCircle2, XCircle, Forward, Clock, Filter, Search, MoreHorizontal, Loader2, Sparkles, MapPin, X, ShieldCheck, AlertCircle, Bot } from "lucide-react";
+import { Headset, Inbox, CheckCircle2, XCircle, Forward, Clock, Filter, Search, MoreHorizontal, Loader2, Sparkles, MapPin, X, ShieldCheck, AlertCircle, Bot, Mic, Square } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { aiService } from "../../core/services/ai";
 import { notificationService } from "../../core/services/notifications";
@@ -22,6 +22,20 @@ export function OperatorDashboard() {
   const [previewReport, setPreviewReport] = useState<Report | null>(null);
   const [selectedMapLocation, setSelectedMapLocation] = useState<[number, number] | null>(null);
   const [routeComment, setRouteComment] = useState("");
+  
+  // Rejection Voice States
+  const [isRecordingReject, setIsRecordingReject] = useState(false);
+  const [rejectAudioBlob, setRejectAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+  const handlePreviewReport = (report: Report | null) => {
+    setPreviewReport(report);
+    setRejectingId(null);
+    setRejectReason("");
+    setRejectDetails("");
+    setRejectAudioBlob(null);
+    setRouteComment("");
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -143,19 +157,29 @@ export function OperatorDashboard() {
       toast.error("يرجى اختيار سبب الرفض");
       return;
     }
-    if (!rejectDetails) {
-      toast.error("يرجى كتابة تفاصيل سبب الرفض");
+    if (!rejectDetails && !rejectAudioBlob) {
+      toast.error("يرجى كتابة تفاصيل سبب الرفض أو تسجيل مقطع صوتي");
       return;
     }
 
     try {
       const toastId = toast.loading("جاري رفض البلاغ...");
-      // For demo, standard update via direct firestore to status rejected
+      
+      let uploadedAudioUrl = "";
+      if (rejectAudioBlob) {
+        toast.loading("جاري رفع التسجيل الصوتي...", { id: toastId });
+        const uploadRes = await reportApi.uploadAudio(rejectAudioBlob);
+        if (uploadRes.success) {
+          uploadedAudioUrl = uploadRes.audioUrl || "";
+        }
+      }
+
       const reportRef = doc(db, 'reports', reportId);
       await updateDoc(reportRef, {
         status: 'rejected',
         rejectReason: rejectReason,
         rejectDetails: rejectDetails,
+        rejectAudioUrl: uploadedAudioUrl,
         updatedAt: new Date().toISOString()
       });
       
@@ -187,6 +211,33 @@ export function OperatorDashboard() {
   };
 
   const departments = ['النظافة والمخلفات', 'الطرق والجسور', 'شبكات المياه والصرف', 'الكهرباء والإنارة', 'البيئة والحدائق', 'الأمن والسلامة', 'الحالات الإنسانية'];
+
+  const startRecordingReject = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const chunks: BlobPart[] = [];
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        setRejectAudioBlob(blob);
+        toast.success("تم حفظ التسجيل الصوتي للرفض");
+      };
+      mediaRecorder.start();
+      setIsRecordingReject(true);
+    } catch (err) {
+      toast.error("يرجى إعطاء صلاحية الميكروفون");
+    }
+  };
+
+  const stopRecordingReject = () => {
+    if (mediaRecorderRef.current && isRecordingReject) {
+      mediaRecorderRef.current.stop();
+      setIsRecordingReject(false);
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6 w-full p-2 sm:p-10 bg-indigo-50/20 min-h-[85vh] rounded-[3rem] border border-indigo-100/50 shadow-sm relative">
@@ -283,7 +334,7 @@ export function OperatorDashboard() {
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, x: -50 }}
-                          onClick={() => setPreviewReport(report)}
+                          onClick={() => handlePreviewReport(report)}
                           className="p-6 hover:bg-indigo-50/30 transition-all group flex flex-col gap-3 cursor-pointer border-b border-slate-50 last:border-0 relative overflow-hidden"
                         >
                             <div className="absolute top-0 left-0 w-1 pt-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -357,7 +408,7 @@ export function OperatorDashboard() {
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 exit={{ opacity: 0 }}
-                onClick={() => setPreviewReport(null)}
+                onClick={() => handlePreviewReport(null)}
                 className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
               />
               <motion.div 
@@ -374,7 +425,7 @@ export function OperatorDashboard() {
                            <p className="text-[10px] font-black text-slate-400 tracking-wider">ID: {previewReport.id} • {getTimeAgo(previewReport.createdAt)}</p>
                         </div>
                      </div>
-                     <button onClick={() => setPreviewReport(null)} className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all">
+                     <button onClick={() => handlePreviewReport(null)} className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all">
                         <X size={20} />
                      </button>
                   </div>
@@ -487,17 +538,45 @@ export function OperatorDashboard() {
                                  className="p-3 bg-white border border-red-100 text-xs font-black rounded-xl text-red-600 outline-none"
                               >
                                  <option value="">-- اختر سبب الرفض --</option>
-                                 <option value="معلومات ناقصة">معلومات ناقصة</option>
                                  <option value="بلاغ مكرر">بلاغ مكرر</option>
-                                 <option value="بلاغ وهمي">بلاغ وهمي</option>
+                                 <option value="معلومات ناقصة">معلومات ناقصة</option>
+                                 <option value="خارج الاختصاص">خارج الاختصاص</option>
                               </select>
-                              <input 
-                                 placeholder="اكتب التوضيح للمواطن..."
-                                 value={rejectDetails}
-                                 onChange={e => setRejectDetails(e.target.value)}
-                                 className="p-3 bg-white border border-slate-200 text-xs font-bold rounded-xl w-64"
-                              />
-                              <button onClick={() => handleReject(previewReport.id)} className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-xs">تأكيد الرفض النهائي</button>
+                              <div className="relative flex-1 min-w-[250px]">
+                                 <input 
+                                    placeholder="اكتب التوضيح للمواطن (إلزامي)..."
+                                    value={rejectDetails}
+                                    onChange={e => setRejectDetails(e.target.value)}
+                                    className={cn(
+                                       "p-3 bg-white border text-xs font-bold rounded-xl w-full pr-10",
+                                       !rejectDetails && rejectingId ? "border-red-200" : "border-slate-200"
+                                    )}
+                                 />
+                                 <AlertCircle size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400" />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                 <button 
+                                    onClick={isRecordingReject ? stopRecordingReject : startRecordingReject}
+                                    className={cn(
+                                       "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                                       isRecordingReject ? "bg-red-500 text-white animate-pulse" : 
+                                       rejectAudioBlob ? "bg-emerald-100 text-emerald-600 border border-emerald-200" : "bg-white border border-slate-200 text-slate-400"
+                                    )}
+                                    title="تسجيل رد صوتي"
+                                 >
+                                    {isRecordingReject ? <Square size={16} /> : <Mic size={16} />}
+                                 </button>
+                                 {rejectAudioBlob && (
+                                    <button onClick={() => setRejectAudioBlob(null)} className="text-[10px] font-black text-red-500 underline">حذف الصوت</button>
+                                 )}
+                              </div>
+                              <button 
+                                 onClick={() => handleReject(previewReport.id)} 
+                                 className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-xs shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all flex items-center gap-2"
+                              >
+                                 <XCircle size={14} />
+                                 تأكيد الرفض النهائي
+                              </button>
                               <button onClick={() => setRejectingId(null)} className="p-3 text-slate-400"><X size={20}/></button>
                            </div>
                         ) : (

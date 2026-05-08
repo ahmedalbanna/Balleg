@@ -75,6 +75,15 @@ async function startServer() {
     res.json({ success: true, imageUrl });
   });
 
+  // 1b. Audio Upload Endpoint
+  reportRouter.post("/upload-audio", upload.single("audio"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No audio uploaded" });
+    }
+    const audioUrl = `/uploads/${req.file.filename}`;
+    res.json({ success: true, audioUrl });
+  });
+
   // 2. Citizen submits report
   reportRouter.post("/create", (req, res) => {
     const { description, type, audioUrl, imageUrl, location, aiAnalysis, userId, role } = req.body;
