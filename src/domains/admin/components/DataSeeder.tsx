@@ -69,6 +69,7 @@ export function DataSeeder() {
           type: "تسرب مياه",
           status: "pending_operator",
           priority: "high",
+          imageUrl: "https://images.unsplash.com/photo-1541888081699-236b005ffbf1?auto=format&fit=crop&q=80&w=800",
           location: [24.7136, 46.6753],
           createdAt: new Date(now.getTime() - 86400000), // 1 day ago
           isPrivateService: false,

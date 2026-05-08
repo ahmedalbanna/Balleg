@@ -256,6 +256,15 @@ export function SpecialistDashboard() {
                      <p className="text-sm font-bold text-slate-700 leading-relaxed bg-slate-100 p-4 rounded-xl border border-slate-200">
                         {selectedTask.description}
                      </p>
+                     
+                     {selectedTask.imageUrl && (
+                        <div className="flex flex-col gap-2">
+                           <label className="text-xs font-black text-slate-600">صورة المشكلة المرفقة والمُبلَّغ عنها (Before):</label>
+                           <div className="w-full sm:w-1/2 rounded-2xl overflow-hidden border border-slate-200">
+                              <img src={selectedTask.imageUrl} alt="Before" className="w-full h-auto max-h-64 object-cover" />
+                           </div>
+                        </div>
+                     )}
 
                      <div className="flex flex-col gap-2">
                         <label className="text-xs font-black text-slate-600">ملاحظات لفريق العمل الميداني أو العمليات (سرية):</label>
