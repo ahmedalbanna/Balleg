@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight } from 'lucide-react';
+import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow } from 'lucide-react';
 import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../core/services/firebase';
 import { 
@@ -11,6 +11,7 @@ import { cn } from '../../core/utils/cn';
 import MapView from '../../locations/components/MapView';
 import { Report } from '../../core/services/reportApi';
 import { toast } from 'sonner';
+import { MermaidChart } from '../../core/components/MermaidChart';
 
 interface UserData {
   uid: string;
@@ -23,7 +24,7 @@ interface UserData {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'alerts' | 'departments' | 'logs'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'alerts' | 'departments' | 'logs' | 'flow'>('analytics');
   const [users, setUsers] = useState<UserData[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -282,7 +283,7 @@ export const AdminDashboard: React.FC = () => {
 
       <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
         <div className="flex border-b border-slate-100 p-3 overflow-x-auto gap-2 bg-slate-50/50">
-          {['analytics', 'alerts', 'users', 'departments', 'logs'].map((tab) => (
+          {['analytics', 'alerts', 'users', 'departments', 'flow', 'logs'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -294,12 +295,14 @@ export const AdminDashboard: React.FC = () => {
               {tab === 'users' && <Users className="w-4 h-4" />}
               {tab === 'alerts' && <AlertCircle className="w-4 h-4" />}
               {tab === 'departments' && <Building2 className="w-4 h-4" />}
+              {tab === 'flow' && <Workflow className="w-4 h-4" />}
               {tab === 'logs' && <Activity className="w-4 h-4" />}
               
               {tab === 'analytics' ? 'المؤشرات والخرائط' : 
                tab === 'alerts' ? 'التنبيهات والمساءلة' :
                tab === 'users' ? 'إدارة الوصول' : 
-               tab === 'departments' ? 'الهيكل التنظيمي' : 'سجل التدقيق'}
+               tab === 'departments' ? 'الهيكل التنظيمي' :
+               tab === 'flow' ? 'دورة حياة البلاغ' : 'سجل التدقيق'}
             </button>
           ))}
         </div>
@@ -536,6 +539,43 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-lg font-black text-slate-700">إدارة الهيكل التنظيمي للمدينة</p>
               <p className="text-sm font-bold mt-2">من هنا يتم إنشاء البلديات والجهات الخدمية الفرعية.</p>
               <button className="mt-6 bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-black shadow-lg shadow-slate-900/10">إضافة قطاع جديد</button>
+            </div>
+          )}
+
+          {activeTab === 'flow' && (
+            <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm overflow-x-auto min-h-[400px]">
+               <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Workflow className="w-6 h-6 text-blue-500" /> مخطط حالة (State Diagram) لدورة حياة البلاغ
+               </h3>
+               <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                 <MermaidChart chart={`stateDiagram-v2
+    [*] --> جديد: يقدم المواطن بلاغاً
+
+    جديد --> محل_إعادة: رفض من المشغل (بيانات ناقصة)
+    محل_إعادة --> جديد: يعدل المواطن البلاغ (خلال 48 ساعة)
+    محل_إعادة --> ملغى: انتهاء المهلة 48 ساعة دون تعديل
+
+    جديد --> مرفوض: رفض (مكرر/وهمي/خارج الاختصاص)
+    مرفوض --> [*]: إشعار للمواطن بالرفض النهائي
+
+    جديد --> قيد_المعالجة: قبول من المشغل وتحويله لإدارة مختصة
+
+    قيد_المعالجة --> تحت_التنفيذ: يكلف الأخصائي الفريق الميداني
+    تحت_التنفيذ --> قيد_المعالجة: يعيد الأخصائي التحويل لإدارة أخرى (نادر)
+
+    تحت_التنفيذ --> منتهي_بانتظار_تقييم: يرفع الأخصائي صورة "بعد" ويغير الحالة
+
+    منتهي_بانتظار_تقييم --> مغلق_رضا: يقيّم المواطن إيجاباً
+    منتهي_بانتظار_تقييم --> مغلق_استياء: يقيّم المواطن سلباً
+    منتهي_بانتظار_تقييم --> مغلق_ضمني: لا يقيّم المواطن خلال 48 ساعة
+
+    مغلق_رضا --> [*]
+    مغلق_ضمني --> [*]
+    مغلق_استياء --> تحت_التنفيذ: يعيد مدير الإدارة فتح البلاغ (إذا تبين استحقاقه)
+    مغلق_استياء --> [*]: إذا رئي أن التقييم غير مبرر
+
+    ملغى --> [*]`} />
+               </div>
             </div>
           )}
 
