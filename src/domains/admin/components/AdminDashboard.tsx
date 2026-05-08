@@ -543,12 +543,58 @@ export const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'flow' && (
-            <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm overflow-x-auto min-h-[400px]">
-               <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                  <Workflow className="w-6 h-6 text-blue-500" /> مخطط حالة (State Diagram) لدورة حياة البلاغ
-               </h3>
-               <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
-                 <MermaidChart chart={`stateDiagram-v2
+            <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm overflow-x-auto min-h-[400px] flex flex-col gap-12">
+               
+               <div>
+                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                    <Workflow className="w-6 h-6 text-blue-500" /> مخطط سير العمل (Sequence Diagram) الدورة النموذجية للبلاغ
+                 </h3>
+                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                   <MermaidChart chart={`sequenceDiagram
+    participant C as المواطن
+    participant S as النظام
+    participant O as موظف الاستقبال
+    participant P as الأخصائي
+    participant T as الفريق الميداني
+    
+    C->>S: تقديم البلاغ (صورة/صوت/موقع)
+    S-->>C: إشعار استلام (رقم المتابعة)
+    Note over S: الحالة: جديد
+    
+    O->>S: عرض البلاغ
+    Note over S: اقتراح الذكاء الاصطناعي للإدارة
+    O->>S: قبول وتوجيه للإدارة المختصة
+    Note over S: الحالة: قيد المعالجة
+    
+    P->>S: عرض البلاغ 
+    P->>T: تكليف الفريق
+    Note over S: الحالة: تحت التنفيذ
+    
+    T-->>P: إنجاز المهمة وإرسال صور
+    P->>S: رفع صورة توثيق بعد الإنجاز
+    Note over S: الحالة: منتهي بانتظار التقييم
+    
+    S-->>C: إشعار للمواطن: تم الحل يرجى التقييم
+    
+    alt إيجابي
+        C->>S: تقييم عالٍ
+        Note over S: الحالة: مغلق - رضا
+    else سلبي
+        C->>S: تقييم منخفض
+        Note over S: الحالة: مغلق - استياء (تنبيه للمدير)
+    else لا يوجد رد
+        Note over S: مرور 48 ساعة
+        Note over S: الحالة: مغلق - ضمني
+    end`} />
+                 </div>
+               </div>
+
+               <div>
+                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                    <Workflow className="w-6 h-6 text-blue-500" /> مخطط حالة (State Diagram) لدورة حياة البلاغ
+                 </h3>
+                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                   <MermaidChart chart={`stateDiagram-v2
     [*] --> جديد: يقدم المواطن بلاغاً
 
     جديد --> محل_إعادة: رفض من المشغل (بيانات ناقصة)
@@ -575,6 +621,60 @@ export const AdminDashboard: React.FC = () => {
     مغلق_استياء --> [*]: إذا رئي أن التقييم غير مبرر
 
     ملغى --> [*]`} />
+                 </div>
+               </div>
+               <div>
+                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                    <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: إدارة المستخدمين والأدوار (للمسؤول فقط)
+                 </h3>
+                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                   <MermaidChart chart={`sequenceDiagram
+    participant A as مدير النظام العام
+    participant S as النظام
+    participant E as الموظف الجديد
+
+    A->>S: إنشاء حساب موظف (تحديد الدور والقسم)
+    S-->>E: إرسال دعوة التفعيل
+    E->>S: تفعيل الحساب وتسجيل الدخول
+    Note over S: الموظف جاهز لاستخدام النظام بحسب الصلاحيات`} />
+                 </div>
+               </div>
+
+               <div>
+                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                    <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: اعتراض صحفي أو لجنة حي
+                 </h3>
+                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                   <MermaidChart chart={`sequenceDiagram
+    participant J as صحفي / لجنة
+    participant S as النظام
+    participant D as الجهة المختصة
+
+    J->>S: بحث عن بلاغ متأخر أو ذو أهمية
+    J->>S: إرسال طلب تعليق رسمي ومساءلة للجهة
+    S-->>D: إشعار بوجود طلب تعليق
+    D->>S: الرد والتوضيح (خلال المهلة المحددة)
+    S-->>J: وصول رد الجهة للصحفي
+    J->>J: تصدير وبناء تقرير للمجتمع`} />
+                 </div>
+               </div>
+
+               <div>
+                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                    <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: تكامل القطاع الخاص (مثال: شركة اتصالات)
+                 </h3>
+                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                   <MermaidChart chart={`sequenceDiagram
+    participant C as المواطن
+    participant S as النظام
+    participant V as القطاع الخاص (شركة الاتصالات)
+
+    C->>S: تقديم بلاغ مخصص (خدمة خاصة)
+    Note over S: النظام يوجه البلاغ فوراً لمسارات القطاع الخاص
+    S-->>V: ظهور البلاغ في لوحة تحكم الشركة
+    V->>S: معالجة المشكلة وتحديث الحالة داخلياً
+    S-->>C: إشعار للمواطن بإغلاق البلاغ وحل المشكلة`} />
+                 </div>
                </div>
             </div>
           )}
