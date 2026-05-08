@@ -7,8 +7,8 @@ import { notificationService } from "../../core/services/notifications";
 import { cn } from "../../core/utils/cn";
 import { toast } from "sonner";
 import MapView from "../../locations/components/MapView";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../../core/services/firebase";
+import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { db, auth } from "../../core/services/firebase";
 
 export function OperatorDashboard() {
   const [activeTab, setActiveTab] = useState<'new' | 'processed'>('new');
@@ -21,34 +21,36 @@ export function OperatorDashboard() {
   const [rejectDetails, setRejectDetails] = useState("");
   const [previewReport, setPreviewReport] = useState<Report | null>(null);
   const [selectedMapLocation, setSelectedMapLocation] = useState<[number, number] | null>(null);
+  const [routeComment, setRouteComment] = useState("");
 
   useEffect(() => {
+    setLoading(true);
     import("firebase/firestore").then(({ collection, query, where, onSnapshot }) => {
-       const q = query(collection(db, 'reports'), where('status', '==', 'pending_operator'));
+       const statusFilter = activeTab === 'new' ? 'pending_operator' : 'in_progress';
+       const q = query(collection(db, 'reports'), where('status', '==', statusFilter));
        const unsubscribe = onSnapshot(q, (snapshot) => {
           const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
           const priorityWeights: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
           const sorted = docs.sort((a: Report, b: Report) => {
-            // Include AI priority in sorting if present
             const pA = a.aiAnalysis?.priority || a.priority || 'low';
             const pB = b.aiAnalysis?.priority || b.priority || 'low';
             const wA = priorityWeights[pA] || 1;
             const wB = priorityWeights[pB] || 1;
-            
-            // If priorities are different, show higher priority first
-            if (wA !== wB) return wB - wA;
-            
-            // If same priority, show OLDER reports first (Seniority)
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            if (activeTab === 'new') {
+              if (wA !== wB) return wB - wA;
+              return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            } else {
+              return new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime();
+            }
           });
           setReports(sorted);
           setLoading(false);
        });
        return () => unsubscribe();
     });
-  }, []);
+  }, [activeTab]);
 
-  const handleRoute = async (report: Report, department: string) => {
+  const handleRoute = async (report: Report, department: string, comment?: string) => {
     setRoutingId(report.id);
     try {
       let classification = report.classification || report.aiAnalysis?.classification || department;
@@ -56,13 +58,24 @@ export function OperatorDashboard() {
       
       const reportRef = doc(db, 'reports', report.id);
       await updateDoc(reportRef, {
-        status: 'pending_official',
+        status: 'in_progress',
         department: department,
         classification: classification,
         priority: priority,
+        operatorComment: comment || "",
         updatedAt: new Date().toISOString()
       });
       
+      const auditRef = collection(db, 'audits');
+      await addDoc(auditRef, {
+        reportId: report.id,
+        action: 'routed',
+        target: department,
+        operatorId: auth.currentUser?.uid,
+        comment: comment || "",
+        timestamp: new Date().toISOString()
+      });
+
       await notificationService.notifyUser(department, {
         title: "بلاغ جديد موجه لقسمك",
         message: `تم توجيه بلاغ جديد رقم ${report.id} إلى قسم ${department}.`,
@@ -173,7 +186,7 @@ export function OperatorDashboard() {
     return `منذ ${Math.round(min/60)} ساعة`;
   };
 
-  const departments = ['النظافة والمخلفات', 'الطرق والجسور', 'المياه والصرف الصحي', 'الكهرباء والإنارة', 'الحدائق والمرافق', 'الجهات الأمنية'];
+  const departments = ['النظافة والمخلفات', 'الطرق والجسور', 'شبكات المياه والصرف', 'الكهرباء والإنارة', 'البيئة والحدائق', 'الأمن والسلامة', 'الحالات الإنسانية'];
 
   return (
     <div className="flex flex-col gap-6 w-full p-2 sm:p-10 bg-indigo-50/20 min-h-[85vh] rounded-[3rem] border border-indigo-100/50 shadow-sm relative">
@@ -186,6 +199,29 @@ export function OperatorDashboard() {
             <h2 className="text-3xl font-black text-slate-900 font-readex">مركز استقبال البلاغات (العمليات)</h2>
             <p className="text-slate-500 mt-1 font-bold">إدارة منظمة وسريعة لتصنيف وتوجيه البلاغات الواردة</p>
           </div>
+        </div>
+
+        <div className="flex bg-white/50 p-1 rounded-2xl border border-indigo-100/50 self-start lg:self-center">
+            <button 
+              onClick={() => setActiveTab('new')}
+              className={cn(
+                "px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2",
+                activeTab === 'new' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "text-slate-500 hover:bg-white hover:text-indigo-600"
+              )}
+            >
+              <Inbox size={14} />
+              البلاغات الجديدة
+            </button>
+            <button 
+              onClick={() => setActiveTab('processed')}
+              className={cn(
+                "px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2",
+                activeTab === 'processed' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "text-slate-500 hover:bg-white hover:text-indigo-600"
+              )}
+            >
+              <Clock size={14} />
+              قيد المعالجة (تتبع وتحويل)
+            </button>
         </div>
       </header>
 
@@ -221,7 +257,8 @@ export function OperatorDashboard() {
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div className="flex items-center gap-4">
                         <h3 className="font-black text-slate-800 flex items-center gap-2">
-                           <Inbox className="text-indigo-600 w-5 h-5"/> الوارد الجديد
+                           <Inbox className="text-indigo-600 w-5 h-5"/> 
+                           {activeTab === 'new' ? 'الوارد الجديد' : 'البلاغات الجارية (إعادة التوجيه)'}
                         </h3>
                     </div>
                     {loading && <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />}
@@ -464,25 +501,51 @@ export function OperatorDashboard() {
                               <button onClick={() => setRejectingId(null)} className="p-3 text-slate-400"><X size={20}/></button>
                            </div>
                         ) : (
-                           <div className="flex gap-4">
-                              <button 
-                                 onClick={() => {
-                                    handleRoute(previewReport, previewReport.aiAnalysis?.classification || 'النظافة والمخلفات');
-                                    setPreviewReport(null);
-                                 }}
-                                 disabled={routingId === previewReport.id}
-                                 className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-3"
-                              >
-                                 {routingId === previewReport.id ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
-                                 توجيه للبلاغ الآن
-                              </button>
-                              
-                              <button 
-                                 onClick={() => setRejectingId(previewReport.id)}
-                                 className="px-8 py-4 bg-white border border-red-100 text-red-500 rounded-2xl font-black text-sm hover:bg-red-50 transition-all"
-                              >
-                                 رفض البلاغ
-                              </button>
+                           <div className="flex flex-wrap gap-4 items-center">
+                              <div className="flex flex-col gap-1">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-2">توجيه إلى جهة:</label>
+                                 <select 
+                                    id="dept_selector"
+                                    defaultValue={previewReport.aiAnalysis?.classification || 'النظافة والمخلفات'}
+                                    className="p-3 bg-white border border-slate-200 text-xs font-black rounded-xl outline-none min-w-[180px]"
+                                 >
+                                    {departments.map(d => (
+                                       <option key={d} value={d}>{d}</option>
+                                    ))}
+                                 </select>
+                              </div>
+                              <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-2">ملاحظات التحويل (اختياري):</label>
+                                 <input 
+                                    type="text"
+                                    placeholder="اكتب سبب التحويل أو ملاحظات للمنفذ..."
+                                    value={routeComment}
+                                    onChange={(e) => setRouteComment(e.target.value)}
+                                    className="p-3 bg-white border border-slate-200 text-xs font-bold rounded-xl outline-none"
+                                 />
+                              </div>
+                              <div className="flex gap-4 self-end">
+                                 <button 
+                                    onClick={() => {
+                                       const selector = document.getElementById('dept_selector') as HTMLSelectElement;
+                                       handleRoute(previewReport!, selector.value, routeComment);
+                                       setPreviewReport(null);
+                                       setRouteComment("");
+                                    }}
+                                    disabled={routingId === previewReport.id}
+                                    className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center gap-3"
+                                 >
+                                    {routingId === previewReport.id ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
+                                    {previewReport.status === 'in_progress' ? 'تحديث وتغيير الجهة' : 'قبول وتوجيه البلاغ'}
+                                 </button>
+                                 
+                                 <button 
+                                    onClick={() => setRejectingId(previewReport!.id)}
+                                    className="px-8 py-4 bg-white border border-red-100 text-red-500 rounded-2xl font-black text-sm hover:bg-red-50 transition-all"
+                                 >
+                                    رفض البلاغ
+                                 </button>
+                              </div>
                            </div>
                         )}
                      </div>

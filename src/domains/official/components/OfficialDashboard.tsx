@@ -101,11 +101,12 @@ export function OfficialDashboard() {
               className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg px-2 py-1 font-bold shadow-sm outline-none"
             >
                 <option value="النظافة والمخلفات">النظافة والمخلفات</option>
-                <option value="الإنارة والكهرباء">الإنارة والكهرباء</option>
+                <option value="الكهرباء والإنارة">الكهرباء والإنارة</option>
                 <option value="الطرق والجسور">الطرق والجسور</option>
-                <option value="الصرف الصحي والمياه">الصرف الصحي والمياه</option>
-                <option value="التشجير والمرافق">التشجير والمرافق</option>
-                <option value="الشرطة والمطافئ">الشرطة والمطافئ</option>
+                <option value="شبكات المياه والصرف">شبكات المياه والصرف</option>
+                <option value="البيئة والحدائق">البيئة والحدائق</option>
+                <option value="الأمن والسلامة">الأمن والسلامة</option>
+                <option value="الحالات الإنسانية">الحالات الإنسانية</option>
             </select>
           </div>
         </div>

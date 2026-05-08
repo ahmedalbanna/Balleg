@@ -22,6 +22,7 @@ export interface Report {
   feedbackAudioUrl?: string;
   location?: [number, number];
   aiAnalysis?: any;
+  operatorComment?: string;
   sponsorId?: string;
   sponsorName?: string;
   sponsorDate?: string;
