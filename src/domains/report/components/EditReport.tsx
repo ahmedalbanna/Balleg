@@ -242,7 +242,7 @@ export function EditReport() {
       let analysis = undefined;
       if (description || imageSrc) {
           setSubmitProgress("إعادة تحليل البيانات بالذكاء الاصطناعي...");
-          analysis = await aiService.analyzeImageAndText(description, imageSrc || undefined);
+          analysis = await aiService.analyzeReport(description, imageSrc || undefined);
       }
 
       const updateData: any = {

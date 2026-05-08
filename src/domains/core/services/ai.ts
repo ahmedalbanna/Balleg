@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from "axios";
 
 export interface AIClassificationResult {
   success: boolean;
@@ -11,25 +11,11 @@ export interface AIClassificationResult {
 }
 
 export const aiService = {
-  async classifyReport(text: string): Promise<AIClassificationResult> {
+  async analyzeReport(text: string, imageUrl?: string): Promise<AIClassificationResult> {
     try {
-      const response = await axios.post('/api/domain/ai/classify', { text });
-      return response.data;
-    } catch (error: any) {
-      console.error('AI Service Error:', error);
-      return {
-        success: false,
-        error: error.response?.data?.error || 'فشل الاتصال بخدمة الذكاء الاصطناعي'
-      };
-    }
-  },
-
-  async analyzeImageAndText(text: string, imageBase64?: string): Promise<AIClassificationResult> {
-    try {
-      // Directing calls to our Ollama endpoint via backend
-      const response = await axios.post('/api/domain/ai/analyze', { 
+      const response = await axios.post("/api/domain/ai/analyze", { 
         text, 
-        hasImage: !!imageBase64 
+        imageUrl 
       });
       
       return {
@@ -37,12 +23,15 @@ export const aiService = {
         ...response.data
       };
     } catch (error: any) {
-      console.error('AI Analyze Error:', error);
-      // Fallback
+      console.error('AI Service Error:', error);
       return {
         success: false,
-        error: error.response?.data?.error || 'فشل تحليل البلاغ عبر Ollama'
+        error: error.response?.data?.error || 'فشل التحليل عبر محرك الذكاء الاصطناعي الخاص بالبلدية'
       };
     }
+  },
+
+  async classifyReport(text: string): Promise<AIClassificationResult> {
+    return this.analyzeReport(text);
   }
 };

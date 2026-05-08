@@ -91,37 +91,35 @@ export function OperatorDashboard() {
      setAnalyzingId(report.id);
      try {
        const toastId = toast.loading("جاري تحليل البلاغ باستخدام AI...");
-       // Call Gemini AI or our local api endpoint
-       // We can mock it properly here to showcase the usecase
-       await new Promise(resolve => setTimeout(resolve, 2000)); 
        
-       const keywords = ['تسرب', 'مياه', 'مجارٍ', 'طافح'];
-       let suggestedDept = 'الأمانة والبلدية';
-       let suggestedPriority: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+       const aiResult = await aiService.analyzeReport(report.description, report.imageUrl);
        
-       if (report.description?.includes('مياه') || report.description?.includes('تسرب')) {
-          suggestedDept = 'شركة المياه الوطنية';
-          suggestedPriority = 'high';
-       } else if (report.description?.includes('كهرباء') || report.description?.includes('ظلام')) {
-          suggestedDept = 'شركة الكهرباء';
-          suggestedPriority = 'critical';
+       if (!aiResult.success) {
+         throw new Error(aiResult.error);
        }
-
-       const aiResult = {
-         classification: suggestedDept,
-         priority: suggestedPriority,
-         summary: `هذا البلاغ يتعلق بظاهرة يجب معالجتها من قبل ${suggestedDept} وتحمل أولوية ${suggestedPriority === 'critical' || suggestedPriority === 'high' ? 'عالية' : 'متوسطة'}.`
-       };
 
        const reportRef = doc(db, 'reports', report.id);
        await updateDoc(reportRef, {
-          aiAnalysis: aiResult,
+          aiAnalysis: {
+            classification: aiResult.classification,
+            priority: aiResult.priority,
+            summary: aiResult.summary,
+            detectedObjects: aiResult.detectedObjects
+          },
           updatedAt: new Date().toISOString()
        });
 
        toast.success("اكتمل التحليل الذكي للبلاغ", { id: toastId });
-     } catch (e) {
-        toast.error("حدث خطأ أثناء التحليل");
+       
+       // If in preview, update it too
+       if (previewReport && previewReport.id === report.id) {
+         setPreviewReport(prev => prev ? {
+           ...prev,
+           aiAnalysis: aiResult
+         } : null);
+       }
+     } catch (e: any) {
+        toast.error(e.message || "حدث خطأ أثناء التحليل");
      } finally {
         setAnalyzingId(null);
      }

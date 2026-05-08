@@ -181,7 +181,7 @@ export function NewReport() {
     setSubmitProgress("جاري تحليل البلاغ بالذكاء الاصطناعي...");
     try {
       // 1. AI Analysis
-      const analysis = await aiService.analyzeImageAndText(description || "بلاغ وسائط", imageSrc || undefined);
+      const analysis = await aiService.analyzeReport(description || "بلاغ وسائط", imageSrc || undefined);
       setAiAnalysis(analysis);
 
       // 2. Upload Image if exists

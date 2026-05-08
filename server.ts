@@ -278,56 +278,81 @@ async function startServer() {
   // Domain: "AI" Module API Routes
   const aiRouter = express.Router();
   aiRouter.post("/analyze", async (req, res) => {
-    const { text, hasImage } = req.body;
-    const OLLAMA_HOST = "http://185.190.140.93:11434";
-    const MODEL = "qwen2.5:1.5b";
+    const { text, imageUrl } = req.body;
+    const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://185.190.140.93:11434";
+    const MODEL = process.env.OLLAMA_MODEL || "qwen2.5:1.5b";
 
     if (!text) {
       return res.status(400).json({ error: "Text is required for analysis" });
     }
 
     try {
-      const prompt = `أنت مساعد ذكي لتحليل بلاغات المواطنين. قم بتحليل البلاغ التالي وأعد النتيجة بصيغة JSON حصراً.
-      البلاغ: "${text}"
-      ${hasImage ? "(ملاحظة: هذا البلاغ يحتوي على صورة مرفقة)" : ""}
+      const prompt = `أنت مساعد ذكي لتحليل بلاغات المواطنين في نظام بلدية ذكي. قم بتحليل البلاغ التالي وأعطني النتائج في صيغة JSON صريح.
+          النص: "${text}"
+          
+          الأقسام والجهات المتاحة والمقترحة كـ "classification": 
+          - الطرق والجسور (Roads)
+          - النظافة والمخلفات (Waste)
+          - شبكات المياه والصرف (Water)
+          - الكهرباء والإنارة (Electricity)
+          - الحالات الإنسانية (Humanitarian)
+          - الأمن والسلامة (Emergency)
+          - البيئة والحدائق (Environment)
+          
+          يجب أن يتضمن الـ JSON الحقول التالية حصراً:
+          1. classification: الاسم العربي للجهة الأنسب من القائمة أعلاه.
+          2. severity: (low, medium, high).
+          3. priority: (critical, high, medium, low).
+          4. summary: ملخص مركز جداً باللغة العربية.
+          5. detectedObjects: قائمة بكلمات مفتاحية للأشياء في البلاغ.
+          
+          مهم جداً: أعد JSON فقط دون أي نص شرح إضافي.`;
 
-      يجب أن يحتوي الـ JSON على الحقول التالية:
-      1. classification: أحد الأصناف (طرق، نظافة، كهرباء، مياه، إنساني، طارئ)
-      2. severity: (low, medium, high)
-      3. priority: (critical, high, medium, low)
-      4. summary: ملخص قصير جداً للبلاغ باللغة العربية.
-      5. detectedObjects: قائمة بكلمات مفتاحية للأشياء في البلاغ.
+      const ollamaPayload: any = {
+        model: MODEL,
+        prompt: prompt,
+        stream: false,
+        options: {
+          temperature: 0.1,
+          num_predict: 500,
+        }
+      };
 
-      مهم جداً: أعد JSON فقط دون أي نص إضافي.`;
+      // If it's a multimodal model like llava and image is provided, we can add images array
+      // But qwen2.5 1.5b isn't necessarily multimodal. 
+      // We will assume text-based for now or basic multimodal if the model supports it via 'images' field
+      if (imageUrl) {
+        try {
+          const imgRes = await fetch(imageUrl.startsWith('http') ? imageUrl : `http://localhost:3000${imageUrl}`);
+          const buffer = await imgRes.arrayBuffer();
+          const base64 = Buffer.from(buffer).toString('base64');
+          ollamaPayload.images = [base64];
+        } catch (e) {
+          console.warn("[AI Server] Could not process image for Ollama:", e);
+        }
+      }
 
       const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: MODEL,
-          prompt: prompt,
-          stream: false,
-          options: {
-            temperature: 0.1,
-            format: "json" // Ensure JSON output if supported by model/ollama
-          }
-        }),
+        body: JSON.stringify(ollamaPayload),
       });
 
       const data: any = await response.json();
       let result;
       try {
-        // Find JSON block if model decided to add fluff
         const textResponse = data.response;
+        // Search for JSON block
         const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-        result = JSON.parse(jsonMatch ? jsonMatch[0] : textResponse);
+        const jsonStr = jsonMatch ? jsonMatch[0] : textResponse;
+        result = JSON.parse(jsonStr);
       } catch (e) {
-        // Fallback if parsing fails
+        console.error("[AI Server] JSON Parse Error:", e, "Response was:", data.response);
         result = {
           classification: "عام",
           severity: "medium",
           priority: "medium",
-          summary: text.substring(0, 50) + "...",
+          summary: text.substring(0, 100),
           detectedObjects: []
         };
       }
