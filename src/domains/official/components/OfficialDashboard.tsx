@@ -53,6 +53,18 @@ export function OfficialDashboard() {
     setUpdatingId(id);
     try {
       await reportApi.updateStatus(id, s);
+      
+      const report = reports.find(r => r.id === id);
+      if (report && report.userId && report.userId !== "anonymous") {
+        await notificationService.notifyUser(report.userId, {
+          title: s === 'resolved' ? "تم إنجاز بلاغك" : "بدء معالجة بلاغك",
+          message: s === 'resolved' 
+            ? `البلاغ رقم ${id} تم التعامل معه بنجاح. شكراً لتعاونك.` 
+            : `البلاغ رقم ${id} قيد التنفيذ الآن من قبل الجهات المختصة.`,
+          type: s === 'resolved' ? "success" : "info"
+        });
+      }
+
       toast.success(s === 'resolved' ? "تم إنجاز البلاغ بنجاح" : "تم بدء العمل على البلاغ");
     } catch (e) {
       console.error(e);

@@ -64,6 +64,14 @@ export function OperatorDashboard() {
         type: "info"
       });
 
+      if (report.userId && report.userId !== "anonymous") {
+        await notificationService.notifyUser(report.userId, {
+          title: "تم قبول البلاغ وتوجيهه",
+          message: `تم قبول بلاغك رقم ${report.id} وتوجيهه إلى قسم ${department} للمعالجة.`,
+          type: "success"
+        });
+      }
+
       setReports(prev => prev.filter(r => r.id !== report.id));
       toast.success(`تم القبول وتوجيه البلاغ إلى ${department}`);
     } catch (e) {
@@ -135,6 +143,15 @@ export function OperatorDashboard() {
         updatedAt: new Date().toISOString()
       });
       
+      const report = reports.find(r => r.id === reportId);
+      if (report && report.userId && report.userId !== "anonymous") {
+        await notificationService.notifyUser(report.userId, {
+          title: "تم رفض البلاغ",
+          message: `نعتذر، تم رفض بلاغك رقم ${reportId}. السبب: ${rejectReason}. ${rejectDetails}`,
+          type: "error"
+        });
+      }
+
       setReports(prev => prev.filter(r => r.id !== reportId));
       setRejectingId(null);
       setRejectReason("");

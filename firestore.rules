@@ -138,6 +138,9 @@ service cloud.firestore {
              (!('assignedTo' in data) || data.assignedTo is string) &&
              (!('bids' in data) || data.bids is list) &&
              (!('resolutionImageUrl' in data) || data.resolutionImageUrl is string) &&
+             (!('resolvedAt' in data) || (data.resolvedAt is timestamp || data.resolvedAt == null)) &&
+             (!('ratedAt' in data) || (data.ratedAt is timestamp || data.ratedAt == null)) &&
+             (!('feedbackAudioUrl' in data) || (data.feedbackAudioUrl is string || data.feedbackAudioUrl == null)) &&
              (!('rejectReason' in data) || data.rejectReason is string) &&
              (!('rejectDetails' in data) || data.rejectDetails is string) &&
              (!('priority' in data) || data.priority is string) &&
@@ -158,15 +161,23 @@ service cloud.firestore {
       
       allow update: if isSignedIn() && (
         isAdmin() ||
-        (isOwner(existing().userId) && isValidReport(incoming()) && 
-          existing().status in ['pending_verification', 'pending_operator'] &&
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'description', 'imageUrl', 'audioUrl', 'location', 'isAnonymous', 'updatedAt', 'aiAnalysis'
-          ])
-        ) ||
+        (isOwner(existing().userId) && isValidReport(incoming()) && (
+          (existing().status in ['pending_verification', 'pending_operator'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'description', 'imageUrl', 'audioUrl', 'location', 'isAnonymous', 'updatedAt', 'aiAnalysis'
+            ])
+          ) ||
+          // Feedback Action (48h limit)
+          (existing().status == 'resolved' && 
+           request.time < existing().resolvedAt + duration.value(48, 'h') &&
+           incoming().diff(existing()).affectedKeys().hasOnly([
+             'rating', 'feedback', 'feedbackAudioUrl', 'ratedAt', 'updatedAt'
+           ])
+          )
+        )) ||
         // Official/Operator updates
         (isValidReport(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly([
-          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'updatedAt', 'assignedTo'
+          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'updatedAt', 'assignedTo', 'resolvedAt'
         ]))
       );
 

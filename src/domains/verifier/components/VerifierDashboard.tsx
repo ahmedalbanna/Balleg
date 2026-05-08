@@ -5,6 +5,7 @@ import { aiService } from "../../core/services/ai";
 import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { Report } from "../../core/services/reportApi";
+import { notificationService } from "../../core/services/notifications";
 import { toast } from "sonner";
 import MapView from "../../locations/components/MapView";
 
@@ -45,6 +46,15 @@ export function VerifierDashboard() {
             priority: priorityInfo,
             updatedAt: new Date().toISOString()
         });
+
+        if (currentReport.userId && currentReport.userId !== "anonymous") {
+            await notificationService.notifyUser(currentReport.userId, {
+                title: "تم التحقق من بلاغك",
+                message: `تم التحقق من صحة بلاغك رقم ${currentReport.id} وهو الآن قيد التوجيه للقسم المختص.`,
+                type: "info"
+            });
+        }
+
         toast.success("تم اعتماد البلاغ وتوجيهه بنجاح.");
         setSelectedReportId(null);
     } catch (e) {
@@ -64,6 +74,15 @@ export function VerifierDashboard() {
             rejectReason: "بلاغ وهمي أو مكرر (تدقيق بشري)",
             updatedAt: new Date().toISOString()
         });
+
+        if (currentReport.userId && currentReport.userId !== "anonymous") {
+            await notificationService.notifyUser(currentReport.userId, {
+                title: "تم استبعاد البلاغ",
+                message: `تم مراجعة بلاغك رقم ${currentReport.id} وتبين أنه وهمي أو مكرر، لذا تم استبعاده.`,
+                type: "error"
+            });
+        }
+
         toast.info("تم استبعاد البلاغ.");
         setSelectedReportId(null);
     } catch (e) {

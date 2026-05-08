@@ -9,6 +9,7 @@ import { cn } from "../../core/utils/cn";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { auth } from "../../core/services/firebase";
 import { toast } from "sonner";
+import { RatingModal } from "./RatingModal";
 
 export function MyReports() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export function MyReports() {
   const [filter, setFilter] = useState<'all' | 'active' | 'resolved'>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [ratingReportId, setRatingReportId] = useState<string | null>(null);
 
   // Dynamic reputation logic based on resolved reports
   const resolvedCount = reports.filter(r => r.status === 'resolved').length;
@@ -35,7 +37,26 @@ export function MyReports() {
       }
     };
     fetchMyReports();
-  }, []);
+  }, [ratingReportId]);
+
+  const canRate = (report: Report) => {
+    if (report.status !== 'resolved') return false;
+    if (report.rating) return false;
+    if (!report.resolvedAt) return true; // fallback for older data
+    
+    // Firestore timestamp handling
+    let resolvedTime: number;
+    if (report.resolvedAt && typeof report.resolvedAt.toMillis === 'function') {
+      resolvedTime = report.resolvedAt.toMillis();
+    } else if (report.resolvedAt && report.resolvedAt.seconds) {
+      resolvedTime = report.resolvedAt.seconds * 1000;
+    } else {
+      resolvedTime = new Date(report.resolvedAt).getTime();
+    }
+
+    const diff = Date.now() - resolvedTime;
+    return diff <= 48 * 60 * 60 * 1000;
+  };
 
   const handleEditRedirect = (reportId: string) => {
     navigate(`/edit?id=${reportId}`);
@@ -238,18 +259,23 @@ export function MyReports() {
                 {report.status === 'resolved' ? (
                   <div className="flex items-center gap-1">
                     {report.rating ? (
-                       <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-xl">
+                       <div className="flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100">
                           {[1,2,3,4,5].map(s => (
                             <Star key={s} size={14} className={cn("fill-current", s <= (report.rating || 0) ? "text-amber-500" : "text-slate-200")} />
                           ))}
+                          <span className="text-[10px] font-black text-emerald-700 mr-2">تم التقييم</span>
                        </div>
-                    ) : (
-                      <Link 
-                        to={`/track?no=${report.id}`}
-                        className="text-[11px] font-black text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all flex items-center gap-2 border border-blue-100"
+                    ) : canRate(report) ? (
+                      <button 
+                        onClick={() => setRatingReportId(report.id)}
+                        className="text-[11px] font-black text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all flex items-center gap-2 border border-blue-100 bg-white"
                       >
                         <Star size={14} /> قيم الخدمة الآن
-                      </Link>
+                      </button>
+                    ) : (
+                      <div className="text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                        انتهت مهلة التقييم (48 ساعة)
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -269,6 +295,14 @@ export function MyReports() {
             </motion.div>
           ))}
         </div>
+      )}
+
+      {ratingReportId && (
+        <RatingModal 
+          reportId={ratingReportId}
+          onClose={() => setRatingReportId(null)}
+          onSuccess={() => setRatingReportId(null)}
+        />
       )}
     </div>
   );

@@ -15,6 +15,11 @@ export interface Report {
   department?: string;
   classification?: string;
   createdAt: any;
+  updatedAt?: any;
+  resolvedAt?: any;
+  ratedAt?: any;
+  feedback?: string;
+  feedbackAudioUrl?: string;
   location?: [number, number];
   aiAnalysis?: any;
   sponsorId?: string;
@@ -128,9 +133,15 @@ export const reportApi = {
     return res.data;
   },
 
-  async submitFeedback(id: string, data: { rating: number, feedback?: string }) {
+  async submitFeedback(id: string, data: { rating: number, feedback?: string, audioUrl?: string }) {
     const reportRef = doc(db, 'reports', id);
-    await setDoc(reportRef, { rating: data.rating, feedback: data.feedback, updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(reportRef, { 
+        rating: data.rating, 
+        feedback: data.feedback, 
+        feedbackAudioUrl: data.audioUrl,
+        ratedAt: serverTimestamp(),
+        updatedAt: serverTimestamp() 
+    }, { merge: true });
     return { success: true };
   },
   
@@ -156,7 +167,11 @@ export const reportApi = {
   // 6. Official updates report status
   async updateStatus(id: string, status: string) {
     const reportRef = doc(db, 'reports', id);
-    await setDoc(reportRef, { status, updatedAt: serverTimestamp() }, { merge: true });
+    const updateData: any = { status, updatedAt: serverTimestamp() };
+    if (status === 'resolved') {
+        updateData.resolvedAt = serverTimestamp();
+    }
+    await setDoc(reportRef, updateData, { merge: true });
     return { success: true };
   },
 
