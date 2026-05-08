@@ -132,6 +132,16 @@ service cloud.firestore {
       );
     }
 
+    match /journalist_comment_requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 
+                    incoming().journalistId == request.auth.uid &&
+                    incoming().status == 'pending';
+      allow update: if isSignedIn() && (
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'officialReply', 'repliedBy', 'repliedAt']))
+      );
+    }
+
     function isValidReport(data) {
       return data.keys().hasAll(['description', 'type', 'status', 'userId']) &&
              data.status in ['pending_verification', 'pending_operator', 'pending_official', 'assigned', 'in_progress', 'under_execution', 'resolved', 'resolved_pending_rating', 'rejected', 'needs_info', 'ignored'] &&

@@ -132,12 +132,35 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["councilId", "subject", "content", "status", "createdAt"]
+    },
+    "JournalistCommentRequest": {
+      "title": "Journalist Comment Request",
+      "description": "Requests from journalists to departments regarding specific reports",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "journalistId": { "type": "string" },
+        "reportId": { "type": "string" },
+        "targetDepartment": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "replied"] },
+        "deadline": { "type": "string", "format": "date-time" },
+        "officialReply": { "type": "string" },
+        "repliedBy": { "type": "string" },
+        "repliedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["journalistId", "reportId", "targetDepartment", "content", "status", "deadline", "createdAt"]
     }
   },
   "firestore": {
     "/clarification_requests/{requestId}": {
       "schema": "ClarificationRequest",
       "description": "Requests from local council to departments"
+    },
+    "/journalist_comment_requests/{requestId}": {
+      "schema": "JournalistCommentRequest",
+      "description": "Official requests for comments from journalists"
     },
     "/reports/{reportId}": {
       "schema": "Report",

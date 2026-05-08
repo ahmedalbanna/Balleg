@@ -1,20 +1,37 @@
-import { Newspaper, TrendingUp, Clock, Share2, FileVideo, Download, Filter, Search, MoreVertical, MessageSquare, ThumbsUp, AlertCircle, ExternalLink, ShieldCheck, FolderPlus, Send, RotateCw } from "lucide-react";
+import { Newspaper, TrendingUp, Clock, Share2, FileVideo, Download, Filter, Search, MoreVertical, MessageSquare, ThumbsUp, AlertCircle, ExternalLink, ShieldCheck, FolderPlus, Send, RotateCw, CheckCircle2, Timer, MessageSquarePlus, Activity } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, doc, setDoc, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { Report } from "../../core/services/reportApi";
 import { toast } from "sonner";
 import { useAuth } from "../../core/context/AuthContext";
+import { cn } from "../../core/utils/cn";
+
+export interface JournalistRequest {
+  id: string;
+  reportId: string;
+  journalistId: string;
+  targetDepartment: string;
+  content: string;
+  status: 'pending' | 'replied';
+  officialReply?: string;
+  repliedBy?: string;
+  repliedAt?: any;
+  deadline: any;
+  createdAt: any;
+}
 
 export function JournalistDashboard() {
-  const { currentRole } = useAuth();
-  const [activeFilter, setActiveFilter] = useState("trending");
+  const { currentRole, userProfile } = useAuth();
+  const [activeFilter, setActiveFilter] = useState("supported");
   const [reports, setReports] = useState<Report[]>([]);
+  const [journalistRequests, setJournalistRequests] = useState<JournalistRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState<Report | null>(null);
+  const [isGeneralCommentModalOpen, setIsGeneralCommentModalOpen] = useState(false);
   const [targetDepartment, setTargetDepartment] = useState("");
   const [targetReportId, setTargetReportId] = useState("");
   const [commentRequestText, setCommentRequestText] = useState("");
@@ -24,15 +41,102 @@ export function JournalistDashboard() {
   const [investigationFolder, setInvestigationFolder] = useState<string[]>([]);
 
   useEffect(() => {
-    const q = query(collection(db, 'reports'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const qReports = query(collection(db, 'reports'), orderBy('createdAt', 'desc'));
+    const unsubReports = onSnapshot(qReports, (snapshot) => {
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
       setReports(docs);
       setLoading(false);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'reports'));
 
-    return () => unsubscribe();
+    const qReq = query(collection(db, 'journalist_comment_requests'), orderBy('createdAt', 'desc'));
+    const unsubReq = onSnapshot(qReq, (snapshot) => {
+      setJournalistRequests(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any as JournalistRequest)));
+    });
+
+    return () => {
+      unsubReports();
+      unsubReq();
+    };
   }, []);
+
+  const handleCreateRequest = async () => {
+    if (!showRequestModal || !commentRequestText.trim()) return;
+    
+    setIsSubmitting(true);
+    try {
+      const deadlineDate = new Date();
+      deadlineDate.setHours(deadlineDate.getHours() + 48); // 48 hour deadline
+
+      await addDoc(collection(db, 'journalist_comment_requests'), {
+        reportId: showRequestModal.id,
+        journalistId: userProfile?.uid,
+        targetDepartment: showRequestModal.department || "البلدية والإدارة العليا",
+        content: commentRequestText,
+        status: 'pending',
+        deadline: deadlineDate,
+        createdAt: serverTimestamp()
+      });
+
+      toast.success("تم إرسال طلب التعليق الرسمي بنجاح");
+      setShowRequestModal(null);
+      setCommentRequestText("");
+    } catch (err) {
+      console.error(err);
+      toast.error("فشل إرسال الطلب");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateGeneralCommentRequest = async () => {
+      if (!targetDepartment || !commentRequestText.trim()) {
+          toast.error("الرجاء تحديد الجهة وكتابة الاستفسار");
+          return;
+      }
+      setIsSubmitting(true);
+      try {
+        const deadlineDate = new Date();
+        deadlineDate.setHours(deadlineDate.getHours() + 48);
+
+        await addDoc(collection(db, 'journalist_comment_requests'), {
+            targetDepartment,
+            reportId: targetReportId || "تحقيق عام",
+            journalistId: userProfile?.uid,
+            content: commentRequestText,
+            status: 'pending',
+            deadline: deadlineDate,
+            createdAt: serverTimestamp()
+        });
+
+        toast.success("تم إرسال طلب التعليق الرسمي بنجاح للجهة المعنية");
+        setIsGeneralCommentModalOpen(false);
+        setTargetDepartment("");
+        setCommentRequestText("");
+        setTargetReportId("");
+      } catch (err) {
+          handleFirestoreError(err, OperationType.CREATE, 'journalist_comment_requests');
+      } finally {
+          setIsSubmitting(false);
+      }
+  };
+
+  const getDeadlineStatus = (deadline: any) => {
+    if (!deadline) return null;
+    const now = new Date();
+    const dDate = deadline.toDate ? deadline.toDate() : new Date(deadline);
+    const diff = dDate.getTime() - now.getTime();
+    
+    if (diff < 0) return { label: "تجاوز المهلة", color: "text-rose-600", isExpired: true };
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return { 
+      label: `متبقي ${hours} ساعة و ${mins} دقيقة`, 
+      color: hours < 12 ? "text-amber-600" : "text-emerald-600",
+      isExpired: false 
+    };
+  };
 
   const pendingCount = reports.filter(r => !r.status.startsWith('resolved')).length;
   
@@ -54,31 +158,42 @@ export function JournalistDashboard() {
       filteredReports = filteredReports.filter(r => r.description.includes(searchQuery) || (r.department && r.department.includes(searchQuery)));
   }
 
-  if (activeFilter === 'trending') {
-      // Sort by community comments length as proxy for upvotes
+  if (activeFilter === 'supported') {
+      // Sort by community interactions (comments as proxy)
       filteredReports.sort((a, b) => (b.communityComments?.length || 0) - (a.communityComments?.length || 0));
   } else if (activeFilter === 'slowest') {
-      // Sort by oldest unresolved
-      filteredReports = filteredReports.filter(r => !r.status.startsWith('resolved'));
-      filteredReports.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      // Sort by response time (for resolved) or current delay (for active)
+      filteredReports.sort((a, b) => {
+        const getDuration = (r: Report) => {
+            const start = new Date(r.createdAt).getTime();
+            const end = r.resolvedAt ? new Date(r.resolvedAt).getTime() : new Date().getTime();
+            return end - start;
+        };
+        return getDuration(b) - getDuration(a);
+      });
   }
 
   const handleExportCSV = () => {
     try {
-      const headers = ["ID", "Department", "Status", "Created At", "Type", "Priority", "Description", "Location Lat", "Location Lng"];
+      const headers = ["ID", "Department", "Status", "Created At", "Resolved At", "Response Time (Hours)", "Interactions", "Priority", "Description", "Location"];
       const csvRows = [headers.join(',')];
       
       reports.forEach(r => {
+        const start = new Date(r.createdAt).getTime();
+        const end = r.resolvedAt ? new Date(r.resolvedAt).getTime() : null;
+        const responseHours = end ? Math.round((end - start) / (1000 * 60 * 60)) : 'N/A';
+
         const row = [
           r.id,
           r.department || 'غير مصنف',
           r.status,
           r.createdAt,
-          r.type || '',
+          r.resolvedAt || '',
+          responseHours,
+          r.communityComments?.length || 0,
           r.priority || '',
           `"${(r.description || '').replace(/"/g, '""')}"`,
-          r.location?.[0] || '',
-          r.location?.[1] || ''
+          r.location ? `${r.location[0]};${r.location[1]}` : ''
         ];
         csvRows.push(row.join(','));
       });
@@ -117,12 +232,12 @@ export function JournalistDashboard() {
             createdAt: new Date().toISOString()
         });
         toast.success("تم إرسال طلب التعليق الرسمي بنجاح للجهة المعنية");
-        setIsCommentModalOpen(false);
+        setIsGeneralCommentModalOpen(false);
         setTargetDepartment("");
         setCommentRequestText("");
         setTargetReportId("");
       } catch (err) {
-          handleFirestoreError(err, OperationType.CREATE, 'clarifications');
+          handleFirestoreError(err, OperationType.CREATE, 'journalist_comment_requests');
       } finally {
           setIsSubmitting(false);
       }
@@ -182,13 +297,13 @@ export function JournalistDashboard() {
                 <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <button 
-                            onClick={() => setActiveFilter("trending")}
+                            onClick={() => setActiveFilter("supported")}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
-                                activeFilter === 'trending' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-500 hover:bg-slate-50'
+                                activeFilter === 'supported' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-500 hover:bg-slate-50'
                             }`}
                         >
-                            <TrendingUp className="w-3 h-3 inline-block ml-1" />
-                            الأكثر تفاعلاً
+                            <TrendingUp className="w-3 h-3 inline-block ml-2" />
+                            أعلى البلاغات تأييداً
                         </button>
                         <button 
                             onClick={() => setActiveFilter("slowest")}
@@ -196,8 +311,8 @@ export function JournalistDashboard() {
                                 activeFilter === 'slowest' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'text-slate-500 hover:bg-slate-50'
                             }`}
                         >
-                            <Clock className="w-3 h-3 inline-block ml-1" />
-                            البطء الإداري
+                            <Clock className="w-3 h-3 inline-block ml-2" />
+                            أبطأ البلاغات استجابة
                         </button>
                     </div>
                     <div className="relative">
@@ -224,15 +339,79 @@ export function JournalistDashboard() {
                                     <div>
                                         <h4 className="font-black text-slate-800 text-sm group-hover:text-purple-700 transition-colors leading-relaxed">{story.description}</h4>
                                         <div className="flex items-center gap-3 mt-2">
-                                            <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md">
-                                                <ThumbsUp className="w-3 h-3" />
-                                                {(story.communityComments?.length || 0)} تفاعلات
-                                            </span>
+                                            {activeFilter === 'supported' && (
+                                                <span className="text-[9px] font-black text-purple-600 flex items-center gap-1 bg-purple-50 px-2 py-0.5 rounded-md">
+                                                    <TrendingUp className="w-3 h-3" />
+                                                    تأييد شعبي: {story.communityComments?.length || 0}
+                                                </span>
+                                            )}
+                                            {activeFilter === 'slowest' && (
+                                                <span className="text-[9px] font-black text-rose-600 flex items-center gap-1 bg-rose-50 px-2 py-0.5 rounded-md">
+                                                    <Clock className="w-3 h-3" />
+                                                    التأخير الحسابي: {(() => {
+                                                        const start = new Date(story.createdAt).getTime();
+                                                        const end = story.resolvedAt ? new Date(story.resolvedAt).getTime() : new Date().getTime();
+                                                        const hours = Math.round((end - start) / (1000 * 60 * 60));
+                                                        return hours > 24 ? `${Math.round(hours/24)} يوم` : `${hours} ساعة`;
+                                                    })()}
+                                                </span>
+                                            )}
                                             <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md">
                                                 <AlertCircle className="w-3 h-3" />
                                                 {story.department || 'غير مصنف'}
                                             </span>
                                         </div>
+
+                                        {/* Journalist Requests Display */}
+                                        {(() => {
+                                            const req = journalistRequests.find(jr => jr.reportId === story.id);
+                                            if (!req) return (
+                                                <button 
+                                                    onClick={() => setShowRequestModal(story)}
+                                                    className="mt-4 flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-purple-100 transition-all border border-purple-100"
+                                                >
+                                                    <MessageSquarePlus className="w-3 h-3" />
+                                                    طلب تعليق رسمي من {story.department || "الجهة المعنية"}
+                                                </button>
+                                            );
+
+                                            const deadlineStatus = getDeadlineStatus(req.deadline);
+
+                                            return (
+                                                <div className="mt-4 space-y-3">
+                                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative group">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2 text-[10px] font-black text-purple-600 uppercase">
+                                                                <Activity className="w-3 h-3" />
+                                                                طلب تعليق صحفي معلق
+                                                            </div>
+                                                            {req.status === 'pending' && deadlineStatus && (
+                                                                <div className={cn("text-[9px] font-black flex items-center gap-1", deadlineStatus.color)}>
+                                                                    <Timer className="w-3 h-3" />
+                                                                    {deadlineStatus.label}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs font-bold text-slate-500 italic">"{req.content}"</p>
+                                                    </div>
+
+                                                    {req.officialReply && (
+                                                        <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 animate-in fade-in slide-in-from-top-2">
+                                                            <div className="flex items-center gap-2 mb-2 text-[10px] font-black text-emerald-700 uppercase">
+                                                                <CheckCircle2 className="w-3 h-3" />
+                                                                الرد الرسمي للجهة:
+                                                            </div>
+                                                            <p className="text-xs font-black text-emerald-900 leading-relaxed">
+                                                                {req.officialReply}
+                                                            </p>
+                                                            <div className="mt-2 text-[8px] font-black text-emerald-600/50 uppercase">
+                                                                المتحدث باسم: {req.repliedBy}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                                 <button className="p-2 text-slate-300 hover:text-slate-600 transition-colors">
@@ -292,7 +471,7 @@ export function JournalistDashboard() {
                 </div>
                 
                 <button 
-                    onClick={() => setIsCommentModalOpen(true)}
+                    onClick={() => setIsGeneralCommentModalOpen(true)}
                     className="w-full mt-auto py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
                 >
                     <MessageSquare className="w-4 h-4" />
@@ -303,13 +482,66 @@ export function JournalistDashboard() {
       </div>
 
       <AnimatePresence>
-        {isCommentModalOpen && (
+        {showRequestModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                    onClick={() => setShowRequestModal(null)}
+                />
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl p-8 flex flex-col gap-6"
+                >
+                    <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
+                        <MessageSquarePlus className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 font-readex">طلب تعليق رسمي</h3>
+                        <p className="text-xs font-bold text-slate-500 mt-2 leading-relaxed">
+                            سيتم إرسال هذا الطلب بشكل رسمي إلى إدارة <span className="text-purple-600 font-black">({showRequestModal.department || "الجهة المعنية"})</span>. يمنح النظام مهلة 48 ساعة للرد الرسمي قبل تسجيل "غياب الشفافية".
+                        </p>
+                    </div>
+
+                    <textarea 
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:ring-2 focus:ring-purple-100 min-h-[150px] resize-none"
+                        placeholder="اكتب سؤالك أو استفسارك الصحفي هنا..."
+                        value={commentRequestText}
+                        onChange={(e) => setCommentRequestText(e.target.value)}
+                    />
+
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={handleCreateRequest}
+                            disabled={isSubmitting}
+                            className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {isSubmitting ? "جاري الإرسال..." : (
+                                <>
+                                    إرسال الطلب <Send className="w-4 h-4" />
+                                </>
+                            )}
+                        </button>
+                        <button 
+                            onClick={() => setShowRequestModal(null)}
+                            className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
+                        >
+                            إلغاء
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+
+        {isGeneralCommentModalOpen && (
             <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
                {/* Backdrop */}
                <motion.div 
                   initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
                   className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-                  onClick={() => setIsCommentModalOpen(false)}
+                  onClick={() => setIsGeneralCommentModalOpen(false)}
                />
                {/* Modal */}
                <motion.div
@@ -364,10 +596,10 @@ export function JournalistDashboard() {
                     </div>
     
                     <div className="flex gap-3 mt-8">
-                        <button disabled={isSubmitting} onClick={handleCreateCommentRequest} className="flex-1 bg-slate-900 text-white rounded-xl py-3 text-sm font-black shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition flex items-center justify-center gap-2">
+                        <button disabled={isSubmitting} onClick={handleCreateGeneralCommentRequest} className="flex-1 bg-slate-900 text-white rounded-xl py-3 text-sm font-black shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition flex items-center justify-center gap-2">
                             {isSubmitting ? <RotateCw className="w-4 h-4 animate-spin" /> : "إرسال وتوثيق الطلب"}
                         </button>
-                        <button disabled={isSubmitting} onClick={() => setIsCommentModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 text-sm font-black hover:bg-slate-200 transition">
+                        <button disabled={isSubmitting} onClick={() => setIsGeneralCommentModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 text-sm font-black hover:bg-slate-200 transition">
                             إلغاء
                         </button>
                     </div>
