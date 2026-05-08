@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
-import { doc, setDoc, getDocs, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDocs, deleteDoc, collection, query, where, serverTimestamp } from 'firebase/firestore';
 
 export interface Report {
   id: string;
@@ -74,10 +74,23 @@ export const reportApi = {
     return { success: true, trackingNo, report: newReport };
   },
 
-  async editReport(id: string, data: { description: string }) {
+  async editReport(id: string, data: { description?: string, imageUrl?: string, audioUrl?: string, location?: [number, number], aiAnalysis?: any }) {
     const reportRef = doc(db, 'reports', id);
-    await setDoc(reportRef, { description: data.description, updatedAt: serverTimestamp() }, { merge: true });
+    const updateData: any = { ...data, updatedAt: serverTimestamp() };
+    await setDoc(reportRef, updateData, { merge: true });
     return { success: true };
+  },
+
+  async deleteReport(id: string) {
+    const reportRef = doc(db, 'reports', id);
+    try {
+      await deleteDoc(reportRef);
+      return { success: true };
+    } catch (e) {
+      console.error("Error deleting report in firestore", e);
+      handleFirestoreError(e, OperationType.DELETE, `reports/${id}`);
+      throw e;
+    }
   },
 
   // 1.5 Upload Image
@@ -85,6 +98,17 @@ export const reportApi = {
     const formData = new FormData();
     formData.append('image', file);
     const res = await axios.post('/api/domain/report/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return res.data;
+  },
+
+  async uploadAudio(file: Blob) {
+    const formData = new FormData();
+    formData.append('audio', file);
+    const res = await axios.post('/api/domain/report/upload-audio', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

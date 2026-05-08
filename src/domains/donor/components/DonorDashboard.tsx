@@ -2,7 +2,7 @@ import { Globe2, TrendingUp, Users, DollarSign, Target, Map as MapIcon, Download
 import { motion } from "motion/react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { useState, useEffect } from "react";
-import { collection, query, where, getCountFromServer } from "firebase/firestore";
+import { collection, query, where, getCountFromServer, onSnapshot } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 
 export function DonorDashboard() {

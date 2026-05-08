@@ -21,7 +21,7 @@ export function BottomNav() {
     }
     return [
       { icon: LayoutDashboard, label: "لوحتي", path: "/" },
-      { icon: Bell, label: "تنبيهات", path: "/" }, // Placeholder for now
+      { icon: Bell, label: "تنبيهات", path: "/notifications" }, // Placeholder for now
       { icon: User, label: "حسابي", path: "/profile" },
     ];
   };
@@ -36,7 +36,7 @@ export function BottomNav() {
 
         return (
           <Link
-            key={item.path}
+            key={item.label}
             to={item.path}
             className="flex flex-col items-center justify-center gap-1 min-w-[64px] transition-all"
           >

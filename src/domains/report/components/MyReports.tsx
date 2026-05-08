@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   FileText, Clock, CheckCircle2, AlertCircle, 
-  ChevronLeft, Star, MessageSquare, MapPin, Search, Edit3, Shield, Loader2, Save, X
+  ChevronLeft, Star, MessageSquare, MapPin, Search, Edit3, Shield, Loader2, Save, X, Trash2
 } from "lucide-react";
 import * as motion from "motion/react-client";
 import { cn } from "../../core/utils/cn";
 import { reportApi, Report } from "../../core/services/reportApi";
 import { auth } from "../../core/services/firebase";
+import { toast } from "sonner";
 
 export function MyReports() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'resolved'>('all');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Dynamic reputation logic based on resolved reports
   const resolvedCount = reports.filter(r => r.status === 'resolved').length;
@@ -36,21 +37,22 @@ export function MyReports() {
     fetchMyReports();
   }, []);
 
-  const handleEditStart = (report: Report) => {
-    setEditingId(report.id);
-    setEditValue(report.description);
+  const handleEditRedirect = (reportId: string) => {
+    navigate(`/edit?id=${reportId}`);
   };
 
-  const handleEditSave = async (id: string) => {
-    setSaving(true);
+  const handleDeleteReport = async (id: string) => {
+    setIsDeleting(true);
     try {
-      await reportApi.editReport(id, { description: editValue });
-      setReports(reports.map(r => r.id === id ? { ...r, description: editValue } : r));
-      setEditingId(null);
+      await reportApi.deleteReport(id);
+      setReports(reports.filter(r => r.id !== id));
+      toast.success("تم حذف البلاغ بنجاح");
+      setDeleteConfirmId(null);
     } catch (err) {
       console.error(err);
+      toast.error("فشل حذف البلاغ");
     } finally {
-      setSaving(false);
+      setIsDeleting(false);
     }
   };
 
@@ -64,6 +66,7 @@ export function MyReports() {
     switch(status) {
       case 'resolved': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
       case 'in_progress': return 'bg-blue-50 text-blue-700 border-blue-100';
+      case 'pending_verification':
       case 'pending_operator': 
       case 'pending_official': return 'bg-amber-50 text-amber-700 border-amber-100';
       default: return 'bg-slate-50 text-slate-700 border-slate-100';
@@ -72,6 +75,7 @@ export function MyReports() {
 
   const getStatusText = (status: string) => {
     const map: Record<string, string> = {
+      'pending_verification': 'جاري التحليل الآلي',
       'pending_operator': 'قيد المراجعة',
       'pending_official': 'تم التوجيه للقسم',
       'in_progress': 'جاري العمل',
@@ -166,14 +170,23 @@ export function MyReports() {
                   {getStatusText(report.status)}
                 </div>
                 <div className="flex items-center gap-2">
-                   {report.status === 'pending_operator' && editingId !== report.id && (
-                     <button 
-                        onClick={() => handleEditStart(report)}
-                        className="p-2 bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600 rounded-xl transition-colors"
-                        title="تعديل البلاغ"
-                     >
-                       <Edit3 size={16} />
-                     </button>
+                   {(report.status === 'pending_operator' || report.status === 'pending_verification') && (
+                     <>
+                       <button 
+                          onClick={() => handleEditRedirect(report.id)}
+                          className="p-2 bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600 rounded-xl transition-colors"
+                          title="تعديل البلاغ"
+                       >
+                         <Edit3 size={16} />
+                       </button>
+                       <button 
+                          onClick={() => setDeleteConfirmId(report.id)}
+                          className="p-2 bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"
+                          title="حذف البلاغ"
+                       >
+                         <Trash2 size={16} />
+                       </button>
+                     </>
                    )}
                    <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl">
                     #{report.id}
@@ -181,35 +194,32 @@ export function MyReports() {
                 </div>
               </div>
 
-              {editingId === report.id ? (
-                <div className="space-y-4 mb-6">
-                   <textarea
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 outline-none min-h-[120px] resize-none"
-                   />
-                   <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleEditSave(report.id)}
-                        disabled={saving}
-                        className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
-                      >
-                         {saving ? <Loader2 className="w-3 h-3 animate-spin"/> : <Save size={14}/>}
-                         حفظ التغيرات
-                      </button>
-                      <button 
-                        onClick={() => setEditingId(null)}
-                        className="px-6 py-3 bg-slate-100 text-slate-500 rounded-xl text-xs font-black flex items-center justify-center gap-2"
-                      >
-                         <X size={14}/> إلغاء
-                      </button>
-                   </div>
+              {deleteConfirmId === report.id && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
+                  <p className="text-xs font-bold text-red-800 mb-3 text-center">هل أنت متأكد من حذف هذا البلاغ؟</p>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleDeleteReport(report.id)}
+                      disabled={isDeleting}
+                      className="flex-1 py-2 bg-red-600 text-white rounded-lg text-[10px] font-black flex items-center justify-center gap-2"
+                    >
+                      {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                      نعم، احذف
+                    </button>
+                    <button 
+                      onClick={() => setDeleteConfirmId(null)}
+                      disabled={isDeleting}
+                      className="flex-1 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg text-[10px] font-black"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <h3 className="text-lg font-black text-slate-900 mb-4 line-clamp-3 leading-relaxed flex-1">
-                  {report.description}
-                </h3>
               )}
+
+              <h3 className="text-lg font-black text-slate-900 mb-4 line-clamp-3 leading-relaxed flex-1">
+                {report.description}
+              </h3>
 
               <div className="space-y-3 mb-8">
                  <div className="flex items-center gap-2 text-xs font-bold text-slate-500">

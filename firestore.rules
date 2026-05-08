@@ -151,9 +151,28 @@ service cloud.firestore {
 
     match /reports/{reportId} {
       allow read: if true;
-      allow write: if true;
-      allow create: if isValidReport(incoming()) || true;
-      allow update: if true;
+      
+      allow create: if isSignedIn() && isValidId(reportId) && isValidReport(incoming()) && (
+        incoming().userId == request.auth.uid || incoming().userId == "anonymous"
+      );
+      
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(existing().userId) && isValidReport(incoming()) && 
+          existing().status in ['pending_verification', 'pending_operator'] &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'description', 'imageUrl', 'audioUrl', 'location', 'isAnonymous', 'updatedAt', 'aiAnalysis'
+          ])
+        ) ||
+        // Official/Operator updates
+        (isValidReport(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'updatedAt', 'assignedTo'
+        ]))
+      );
+
+      allow delete: if isSignedIn() && 
+                    isOwner(existing().userId) && 
+                    existing().status in ['pending_verification', 'pending_operator'];
     }
   }
 }
