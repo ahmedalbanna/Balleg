@@ -12,6 +12,7 @@ import MapView from '../../locations/components/MapView';
 import { Report } from '../../core/services/reportApi';
 import { toast } from 'sonner';
 import { MermaidChart } from '../../core/components/MermaidChart';
+import { DepartmentsManager } from './DepartmentsManager';
 
 interface UserData {
   uid: string;
@@ -536,12 +537,7 @@ export const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'departments' && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-              <Building2 size={48} className="mb-4 opacity-20 text-slate-800" />
-              <p className="text-lg font-black text-slate-700">إدارة الهيكل التنظيمي للمدينة</p>
-              <p className="text-sm font-bold mt-2">من هنا يتم إنشاء البلديات والجهات الخدمية الفرعية.</p>
-              <button className="mt-6 bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-black shadow-lg shadow-slate-900/10">إضافة قطاع جديد</button>
-            </div>
+            <DepartmentsManager />
           )}
 
           {activeTab === 'flow' && (
