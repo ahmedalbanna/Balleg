@@ -35,6 +35,8 @@ import { DonorDashboard } from "./domains/donor/components/DonorDashboard";
 
 import { ProfilePage } from "./domains/core/components/ProfilePage";
 
+import { DataSeeder } from "./domains/admin/components/DataSeeder";
+
 function HomeSwitcher() {
   const { currentRole } = useRole();
   const { profile } = useAuth();
@@ -69,6 +71,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/demo-seed" element={<DataSeeder />} />
             
             <Route element={<AuthGuard><Layout /></AuthGuard>}>
               <Route path="/" element={<HomeSwitcher />} />

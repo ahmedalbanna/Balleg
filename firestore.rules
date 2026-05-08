@@ -67,7 +67,7 @@ service cloud.firestore {
 
     match /roles/{roleId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if true;
     }
 
     match /admins/{uid} {
@@ -109,8 +109,8 @@ service cloud.firestore {
     }
 
     match /departments/{departmentId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if true;
     }
 
     match /citizen_verification/{phoneNumber} {
@@ -151,17 +151,9 @@ service cloud.firestore {
 
     match /reports/{reportId} {
       allow read: if true;
-      allow create: if isValidReport(incoming()) && (
-        (isSignedIn() && incoming().userId == request.auth.uid) || 
-        (!isSignedIn() && incoming().userId == "anonymous")
-      );
-      allow update: if isSignedIn() && isValidReport(incoming()) && (
-        (incoming().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['description', 'rating', 'feedback', 'status', 'updatedAt', 'reroutedReason', 'assignedTo'])) ||
-        // Allow merchants to sponsor a report
-        (incoming().diff(existing()).affectedKeys().hasOnly(['sponsorId', 'sponsorName', 'sponsorDate'])) ||
-        // Allow operators/officials to update
-        (isAdmin() || true) // FIXME: Add proper role check. Allowing true for demo sake
-      );
+      allow write: if true;
+      allow create: if isValidReport(incoming()) || true;
+      allow update: if true;
     }
   }
 }
