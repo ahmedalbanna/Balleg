@@ -17,6 +17,10 @@ export function SpecialistDashboard() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [afterImageUrl, setAfterImageUrl] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isReroutingMode, setIsReroutingMode] = useState(false);
+  const [targetDept, setTargetDept] = useState("");
+
+  const departments = ['النظافة والمخلفات', 'الطرق والجسور', 'شبكات المياه والصرف', 'الكهرباء والإنارة', 'البيئة والحدائق', 'الأمن والسلامة', 'الحالات الإنسانية'];
 
   // We are showing the user's assigned department, or fallback
   const specialistDept = userProfile?.departmentId || "النظافة والمخلفات";
@@ -25,7 +29,7 @@ export function SpecialistDashboard() {
     const q = query(
       collection(db, 'reports'),
       where('department', '==', specialistDept),
-      where('status', 'in', ['pending_official', 'in_progress'])
+      where('status', 'in', ['assigned', 'in_progress', 'under_execution'])
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -38,15 +42,16 @@ export function SpecialistDashboard() {
     return () => unsubscribe();
   }, []);
 
-  const handleStartWork = async (reportId: string) => {
+  const handleStartWork = async (reportId: string, targetStatus: string) => {
     try {
       const toastId = toast.loading('جاري تحديث الحالة...');
       const reportRef = doc(db, 'reports', reportId);
       await updateDoc(reportRef, {
-        status: 'in_progress',
+        status: targetStatus,
         updatedAt: new Date().toISOString()
       });
-      toast.success('تم تحويل البلاغ إلى (تحت المعالجة)', { id: toastId });
+      const label = targetStatus === 'in_progress' ? 'تحت المعالجة' : 'تحت التنفيذ';
+      toast.success(`تم تحويل البلاغ إلى (${label})`, { id: toastId });
     } catch (err) {
        toast.error('حدث خطأ أثناء التحديث');
        console.error(err);
@@ -89,21 +94,35 @@ export function SpecialistDashboard() {
   };
 
   const handleReroute = async (reportId: string) => {
-     // Ask for re-route department conceptually. For demo we just push it back to operator.
-     try {
-      const toastId = toast.loading('جاري إعادة التوجيه لغرفة العمليات...');
+    if (!targetDept) {
+      toast.error('يرجى اختيار الإدارة المختصة المحمول إليها.');
+      return;
+    }
+    if (!internalNote.trim() || internalNote.length < 10) {
+      toast.error('يجب كتابة سبب التحويل بالتفصيل (١٠ أحرف على الأقل).');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const toastId = toast.loading('جاري تحويل البلاغ للإدارة المختصة...');
       const reportRef = doc(db, 'reports', reportId);
       await updateDoc(reportRef, {
-        status: 'pending_operator',
-        department: '', // Clear department
+        status: 'pending_official', // Send back to official of the new department
+        department: targetDept,
         updatedAt: new Date().toISOString(),
-        reroutedReason: internalNote || 'جهة اختصاص خاطئة'
+        reroutedReason: internalNote
       });
-      toast.success('تم الإرجاع لغرفة العمليات للمراجعة', { id: toastId });
+      toast.success(`تم تحويل البلاغ إلى (${targetDept}) بنجاح`, { id: toastId });
       setSelectedTask(null);
       setInternalNote("");
+      setIsReroutingMode(false);
+      setTargetDept("");
     } catch (err) {
-       toast.error('حدث خطأ: لا يمكن الإرجاع');
+       toast.error('حدث خطأ أثناء المحاولة، يرجى التحقق من الاتصال');
+       console.error(err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -120,8 +139,9 @@ export function SpecialistDashboard() {
 
   const stats = [
     { label: "مهام نشطة", value: reports.length.toString(), icon: AlertCircle, color: "text-rose-600", bg: "bg-rose-50" },
-    { label: "فرق في الميدان", value: "٤", icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "قيد المعالجة الآن", value: reports.filter(r => r.status === 'in_progress').length.toString(), icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "بانتظار البدء", value: reports.filter(r => r.status === 'assigned').length.toString(), icon: Clock, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "تحت المعالجة", value: reports.filter(r => r.status === 'in_progress').length.toString(), icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "تحت التنفيذ", value: reports.filter(r => r.status === 'under_execution').length.toString(), icon: Navigation, color: "text-indigo-600", bg: "bg-indigo-50" },
   ];
 
   const mapPoints = reports.filter(r => r.location).map(r => ({
@@ -203,16 +223,18 @@ export function SpecialistDashboard() {
                     ) : reports.map(task => (
                         <button 
                             key={task.id} 
-                            onClick={() => { setSelectedTask(task); setInternalNote(""); setAfterImageUrl(null); }}
+                            onClick={() => { setSelectedTask(task); setInternalNote(""); setAfterImageUrl(null); setIsReroutingMode(false); }}
                             className={`w-full p-4 rounded-3xl border transition-all text-right group ${
                                 selectedTask?.id === task.id ? 'bg-rose-50 border-rose-200 shadow-lg shadow-rose-900/5' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200'
                             }`}
                         >
                             <div className="flex justify-between items-center mb-2">
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
-                                    task.status === 'in_progress' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                    task.status === 'under_execution' ? 'bg-indigo-100 text-indigo-700' : 
+                                    task.status === 'in_progress' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
                                 }`}>
-                                    {task.status === 'in_progress' ? 'تحت المعالجة' : 'عمل جديد'}
+                                    {task.status === 'under_execution' ? 'تحت التنفيذ' : 
+                                     task.status === 'in_progress' ? 'تحت المعالجة' : 'تم التكليف'}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-bold">{task.id}</span>
                             </div>
@@ -231,7 +253,7 @@ export function SpecialistDashboard() {
                <motion.div 
                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                  className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-                 onClick={() => setSelectedTask(null)}
+                 onClick={() => { setSelectedTask(null); setIsReroutingMode(false); }}
                />
                <motion.div 
                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -245,7 +267,7 @@ export function SpecialistDashboard() {
                         إدارة المهمة: {selectedTask.id}
                      </h3>
                      <button 
-                       onClick={() => setSelectedTask(null)}
+                       onClick={() => { setSelectedTask(null); setIsReroutingMode(false); }}
                        className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-300 transition-colors"
                      >
                         <X className="w-4 h-4" />
@@ -269,14 +291,68 @@ export function SpecialistDashboard() {
                      <div className="flex flex-col gap-2">
                         <label className="text-xs font-black text-slate-600">ملاحظات لفريق العمل الميداني أو العمليات (سرية):</label>
                         <textarea 
-                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold min-h-[80px]"
-                           placeholder="اكتب هنا إذا كان هناك صعوبات أو طلب تحويل لجهة أخرى..."
+                           className={`w-full bg-slate-50 border ${isReroutingMode ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200'} rounded-xl p-3 text-xs font-bold min-h-[80px] shadow-inner transition-all`}
+                           placeholder={isReroutingMode ? "يرجى كتابة سبب تحويل البلاغ للإدارة الأخرى بدقة..." : "اكتب هنا إذا كان هناك صعوبات أو طلب تحويل لجهة أخرى..."}
                            value={internalNote}
                            onChange={(e) => setInternalNote(e.target.value)}
                         />
+                        {isReroutingMode && <p className="text-[10px] font-bold text-amber-600">التعليق إجباري عند تحويل البلاغ لجهة أخرى</p>}
                      </div>
 
+                     {isReroutingMode && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-6 bg-amber-50 border border-amber-200 rounded-[2rem] flex flex-col gap-4"
+                        >
+                           <div className="flex items-center justify-between">
+                              <h5 className="text-xs font-black text-amber-900 uppercase tracking-widest">إجراء تحويل البلاغ</h5>
+                              <button onClick={() => setIsReroutingMode(false)} className="text-amber-500 hover:text-amber-700">
+                                 <X className="w-4 h-4" />
+                              </button>
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black text-amber-700 uppercase">اختر الإدارة المختصة البديلة:</label>
+                              <select 
+                                 value={targetDept}
+                                 onChange={(e) => setTargetDept(e.target.value)}
+                                 className="w-full p-4 bg-white border border-amber-200 rounded-2xl text-[11px] font-black outline-none focus:ring-2 focus:ring-amber-300 transition-all appearance-none cursor-pointer shadow-sm"
+                              >
+                                 <option value="">-- اختر الإدارة --</option>
+                                 {departments.filter(d => d !== specialistDept).map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                 ))}
+                              </select>
+                           </div>
+                           <button 
+                              onClick={() => handleReroute(selectedTask.id)}
+                              disabled={isUpdating}
+                              className="w-full py-4 bg-amber-600 text-white rounded-2xl font-black text-xs hover:bg-amber-700 shadow-xl shadow-amber-600/10 transition-all disabled:opacity-50"
+                           >
+                              تأكيد تحويل البلاغ الآن
+                           </button>
+                        </motion.div>
+                      )}
+
+                     {selectedTask.status === 'assigned' && (
+                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex flex-col gap-3 relative">
+                           <p className="text-xs font-black text-blue-800 mb-1 flex items-center gap-2">
+                              <Users className="w-4 h-4"/>
+                              تم تكليفكم بالمهمة، يرجى تعميد الفريق الميداني وتغيير الحالة لـ "تحت المعالجة"
+                           </p>
+                        </div>
+                     )}
+
                      {selectedTask.status === 'in_progress' && (
+                        <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex flex-col gap-3 relative">
+                           <p className="text-xs font-black text-emerald-800 mb-1 flex items-center gap-2">
+                              <Clock className="w-4 h-4"/>
+                              الفريق الميداني مكلف.. بانتظار البدء الفعلي في الموقع (تحويل الحالة لـ "تحت التنفيذ")
+                           </p>
+                        </div>
+                     )}
+
+                     {selectedTask.status === 'under_execution' && (
                         <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex flex-col gap-3 relative">
                            <p className="text-xs font-black text-rose-800 mb-1 flex items-center gap-2">
                               <AlertCircle className="w-4 h-4"/>
@@ -317,16 +393,25 @@ export function SpecialistDashboard() {
                      )}
 
                      <div className="border-t border-slate-100 pt-4 mt-2 flex flex-wrap gap-3 items-center justify-between">
-                        {selectedTask.status === 'pending_official' && (
+                        {selectedTask.status === 'assigned' && (
                            <button 
-                             onClick={() => handleStartWork(selectedTask.id)}
-                             className="px-6 py-3 bg-rose-600 text-white rounded-xl font-black text-sm hover:bg-rose-700 shadow-lg shadow-rose-600/20"
+                             onClick={() => handleStartWork(selectedTask.id, 'in_progress')}
+                             className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 shadow-lg shadow-blue-600/20"
                            >
-                              البدء الفعلي: تحريك الفريق
+                              تكليف الفريق الميداني (تحت المعالجة)
                            </button>
                         )}
                         
                         {selectedTask.status === 'in_progress' && (
+                           <button 
+                             onClick={() => handleStartWork(selectedTask.id, 'under_execution')}
+                             className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-sm hover:bg-emerald-700 shadow-lg shadow-emerald-600/20"
+                           >
+                              بدء التنفيذ: الفريق في الموقع
+                           </button>
+                        )}
+                        
+                        {selectedTask.status === 'under_execution' && (
                            <button 
                              onClick={() => handleCompleteWork(selectedTask.id)}
                              disabled={isUpdating}
@@ -337,12 +422,16 @@ export function SpecialistDashboard() {
                         )}
 
                         <button 
-                          onClick={() => handleReroute(selectedTask.id)}
-                          className="px-4 py-3 bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-xl font-black text-xs transition-colors flex items-center gap-2 ml-auto"
-                        >
-                           <Forward className="w-4 h-4" />
-                           خارج اختصاص القسم
-                        </button>
+                           onClick={() => setIsReroutingMode(!isReroutingMode)}
+                           className={`px-4 py-3 border rounded-xl font-black text-xs transition-colors flex items-center gap-2 ml-auto ${
+                              isReroutingMode 
+                              ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-900/20' 
+                              : 'bg-white border-slate-200 text-slate-600 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm'
+                           }`}
+                         >
+                            <Forward className="w-4 h-4" />
+                            {isReroutingMode ? 'إلغاء التحويل' : 'خارج اختصاص القسم'}
+                         </button>
                      </div>
                   </div>
                </motion.div>

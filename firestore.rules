@@ -124,7 +124,7 @@ service cloud.firestore {
 
     function isValidReport(data) {
       return data.keys().hasAll(['description', 'type', 'status', 'userId']) &&
-             data.status in ['pending_verification', 'pending_operator', 'in_progress', 'resolved', 'rejected', 'needs_info', 'ignored'] &&
+             data.status in ['pending_verification', 'pending_operator', 'pending_official', 'assigned', 'in_progress', 'under_execution', 'resolved', 'resolved_pending_rating', 'rejected', 'needs_info', 'ignored'] &&
              (!('latitude' in data) || data.latitude is number) &&
              (!('longitude' in data) || data.longitude is number) &&
              (!('audioUrl' in data) || data.audioUrl is string) &&
@@ -180,9 +180,13 @@ service cloud.firestore {
           )
         )) ||
         // Official/Operator updates
-        (isValidReport(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly([
-          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'rejectAudioUrl', 'infoRequestedAt', 'updatedAt', 'assignedTo', 'resolvedAt', 'operatorComment'
-        ]))
+        (isValidReport(incoming()) && incoming().diff(existing()).affectedKeys().hasAll(['updatedAt']) && 
+         incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'department', 'classification', 'priority', 'rejectReason', 'rejectDetails', 'rejectAudioUrl', 'infoRequestedAt', 'updatedAt', 'assignedTo', 'resolvedAt', 'operatorComment', 'aiAnalysis', 'resolutionImageUrl', 'internalNotes', 'reroutedReason', 'reopenReason'
+        ]) &&
+        (incoming().status in ['resolved', 'resolved_pending_rating'] ? 
+          ('resolutionImageUrl' in incoming() && incoming().resolutionImageUrl is string && incoming().resolutionImageUrl.size() > 0)
+        : true))
       );
 
       allow delete: if isSignedIn() && 

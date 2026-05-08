@@ -17,6 +17,8 @@ export function VerifierDashboard() {
   const [aiClassification, setAiClassification] = useState<string | null>(null);
   const [priorityInfo, setPriorityInfo] = useState<string>("medium");
 
+  const departments = ['النظافة والمخلفات', 'الطرق والجسور', 'شبكات المياه والصرف', 'الكهرباء والإنارة', 'البيئة والحدائق', 'الأمن والسلامة', 'الحالات الإنسانية'];
+
   useEffect(() => {
     const q = query(collection(db, 'reports'), where('status', '==', 'pending_verification'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -142,7 +144,7 @@ export function VerifierDashboard() {
             <div className="bg-white rounded-[3rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
                 <div className="p-6 border-b border-slate-50">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">قائمة الانتظار (١٨)</h3>
+                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">قائمة الانتظار ({reports.length})</h3>
                         <History className="w-4 h-4 text-slate-300" />
                     </div>
                     <div className="relative">
@@ -151,7 +153,7 @@ export function VerifierDashboard() {
                     </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-3">
+                <div className="flex-1 overflow-y-auto p-6 space-y-3">
                     {reports.map(report => (
                         <button 
                             key={report.id}
@@ -173,7 +175,7 @@ export function VerifierDashboard() {
                                     {report.type}
                                 </span>
                                 <span className={`text-[9px] font-bold ${selectedReportId === report.id ? 'text-slate-400' : 'text-slate-400'}`}>
-                                    {new Date(report.createdAt).toLocaleDateString()}
+                                    {report.id}
                                 </span>
                             </div>
                             <h4 className="text-xs font-black truncate">{report.description || "بلاغ غير معروف"}</h4>
@@ -214,7 +216,7 @@ export function VerifierDashboard() {
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                        <div className="flex-1 overflow-y-auto p-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <div className="aspect-video bg-slate-200 rounded-[2rem] overflow-hidden relative group flex items-center justify-center">
@@ -277,25 +279,27 @@ export function VerifierDashboard() {
                                                     disabled={isAIClassifying}
                                                     className="flex items-center gap-1 text-[9px] font-black text-violet-600 bg-violet-50 px-2 py-1 rounded-lg hover:bg-violet-100 transition-colors disabled:opacity-50"
                                                 >
-                                                    {isAIClassifying ? (
-                                                        <div className="w-2 h-2 border border-violet-600 border-t-transparent rounded-full animate-spin" />
-                                                    ) : <Sparkles className="w-2 h-2" />}
-                                                    تصنيف ذكي
+                                                    <Sparkles className="w-3 h-3" />
+                                                    {isAIClassifying ? "جاري التصنيف..." : "تصنيف ذكي"}
                                                 </button>
                                             </div>
                                             <div className="relative">
                                                 <select 
                                                     value={aiClassification || ""}
                                                     onChange={(e) => setAiClassification(e.target.value)}
-                                                    className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-[11px] font-black outline-none focus:ring-2 focus:ring-slate-100 transition-all appearance-none cursor-pointer"
+                                                    className={`w-full p-4 bg-white border ${!aiClassification ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200'} rounded-2xl text-[11px] font-black outline-none focus:ring-2 focus:ring-slate-100 transition-all appearance-none cursor-pointer`}
                                                 >
-                                                    <option value="">{aiClassification ? aiClassification : "غير محدد"}</option>
-                                                    <option value="بنية تحتية والمياه">بنية تحتية والمياه</option>
-                                                    <option value="طرق والنقل">طرق والنقل</option>
-                                                    <option value="نظافة وبيئة">نظافة وبيئة</option>
-                                                    <option value="كهرباء وطاقة">أعطال كهرباء</option>
-                                                    <option value="البلدية والمنظمات الإنسانية">إنساني</option>
+                                                    <option value="">-- اختر الجهة المختصة يدوياً --</option>
+                                                    {departments.map(dept => (
+                                                        <option key={dept} value={dept}>{dept}</option>
+                                                    ))}
                                                 </select>
+                                                {!aiClassification && (
+                                                    <div className="absolute -top-10 right-0 bg-amber-50 text-amber-700 text-[10px] font-black px-3 py-1.5 rounded-lg border border-amber-200 flex items-center gap-2">
+                                                        <AlertCircle size={12} />
+                                                        فشل الذكاء الاصطناعي في تحديد الجهة، يرجى الاختيار يدوياً
+                                                    </div>
+                                                )}
                                                 {aiClassification && (
                                                     <div className="absolute left-3 top-1/2 -translate-y-1/2">
                                                         <Wand2 className="w-3 h-3 text-violet-500 animate-pulse" />

@@ -72,7 +72,7 @@ export function OperatorDashboard() {
       
       const reportRef = doc(db, 'reports', report.id);
       await updateDoc(reportRef, {
-        status: 'in_progress',
+        status: 'pending_official',
         department: department,
         classification: classification,
         priority: priority,

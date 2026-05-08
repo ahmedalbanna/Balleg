@@ -91,9 +91,36 @@
         "link": { "type": "string" }
       },
       "required": ["userId", "title", "message", "createdAt", "read"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Citizen compliance or infrastructure report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "department": { "type": "string" },
+        "classification": { "type": "string" },
+        "location": { "type": "array", "items": { "type": "number" } },
+        "imageUrl": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending_verification", "pending_operator", "pending_official", "assigned", "in_progress", "under_execution", "resolved_pending_rating", "resolved", "rejected", "needs_info"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "description", "status", "createdAt"]
     }
   },
   "firestore": {
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Main collection for all citizen reports"
+    },
     "/roles/{roleId}": {
       "schema": "Role",
       "description": "Collection of available app roles"

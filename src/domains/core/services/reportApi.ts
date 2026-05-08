@@ -170,9 +170,9 @@ export const reportApi = {
   },
 
   // 6. Official updates report status
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: string, additionalData: any = {}) {
     const reportRef = doc(db, 'reports', id);
-    const updateData: any = { status, updatedAt: serverTimestamp() };
+    const updateData: any = { ...additionalData, status, updatedAt: serverTimestamp() };
     if (status === 'resolved') {
         updateData.resolvedAt = serverTimestamp();
     }
