@@ -31,12 +31,13 @@ export function ContractorDashboard() {
   // In a real app, we filter by r.assignedTo === currentRole.slug
   // For demo, we show reports that belong to infrastructure departments that are open or assigned to contractor
   const assignedReports = reports.filter(r => 
-      r.assignedTo === currentRole?.slug || 
+      r.assignedTo === 'contractor' || 
+      (currentRole?.slug === 'contractor' && r.assignedTo === currentRole?.slug) ||
       (!r.assignedTo && ['الطرق والجسور', 'الصرف الصحي والمياه', 'الإنارة والكهرباء'].includes(r.department || ''))
   ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const activeReports = assignedReports.filter(r => !r.status.startsWith('resolved') && r.status !== 'تم الإنجاز');
-  const completedReports = assignedReports.filter(r => r.status.startsWith('resolved') || r.status === 'تم الإنجاز');
+  const activeReports = assignedReports.filter(r => !r.status.startsWith('resolved') && r.status !== 'تم الإنجاز' && r.status !== 'تم الإنجاز - بانتظار الاعتماد');
+  const completedReports = assignedReports.filter(r => r.status.startsWith('resolved') || r.status === 'تم الإنجاز' || r.status === 'تم الإنجاز - بانتظار الاعتماد');
 
   const displayReports = activeTab === 'active' ? activeReports : completedReports;
 
@@ -150,11 +151,11 @@ export function ContractorDashboard() {
                                         <div className="flex items-center flex-wrap gap-3 mt-2">
                                             <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
                                                 <Building2 className="w-3 h-3" />
-                                                جهة الإحالة: {contract.department || "غير محدد"}
+                                                رقم العقد: MUN-2024-{contract.id.slice(-4).toUpperCase()}
                                             </span>
                                             <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
                                                 <Calendar className="w-3 h-3" />
-                                                تاريخ البلاغ: {new Date(contract.createdAt).toLocaleDateString('ar-SA')}
+                                                تاريخ الإحالة: {new Date(contract.updatedAt || contract.createdAt).toLocaleDateString('ar-SA')}
                                             </span>
                                         </div>
                                     </div>
@@ -257,20 +258,20 @@ export function ContractorDashboard() {
                     </p>
     
                     <div className="space-y-3 mb-8">
-                        <button onClick={() => handleUpdateStatus('تم التكليف - جاري الجدولة')} className="w-full px-5 py-4 rounded-2xl border border-slate-200 text-sm font-black text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors flex justify-between items-center group">
-                            تم التكليف - جاري الجدولة
+                        <button onClick={() => handleUpdateStatus('تم الاستلام')} className="w-full px-5 py-4 rounded-2xl border border-slate-200 text-sm font-black text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors flex justify-between items-center group">
+                            تم الاستلام وتأكيد التكليف
                             <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 group-hover:-translate-x-1 transition-all" />
                         </button>
-                        <button onClick={() => handleUpdateStatus('الفريق في الطريق للموقع')} className="w-full px-5 py-4 rounded-2xl border border-sky-200 bg-sky-50 text-sm font-black text-sky-800 hover:bg-sky-100 transition-colors flex justify-between items-center group">
-                            الآليات والفريق في الطريق للموقع
+                        <button onClick={() => handleUpdateStatus('قيد الفحص الفني')} className="w-full px-5 py-4 rounded-2xl border border-sky-200 bg-sky-50 text-sm font-black text-sky-800 hover:bg-sky-100 transition-colors flex justify-between items-center group">
+                            قيد الفحص الفني وإعداد المخطط
                             <ChevronRight className="w-4 h-4 text-sky-400 group-hover:text-sky-600 group-hover:-translate-x-1 transition-all" />
                         </button>
-                        <button onClick={() => handleUpdateStatus('جاري العمل والترميم')} className="w-full px-5 py-4 rounded-2xl border border-amber-200 bg-amber-50 text-sm font-black text-amber-800 hover:bg-amber-100 transition-colors flex justify-between items-center group">
-                            جاري العمل والترميم (قيد التنفيذ المباشر)
+                        <button onClick={() => handleUpdateStatus('بدء التنفيذ الميداني')} className="w-full px-5 py-4 rounded-2xl border border-amber-200 bg-amber-50 text-sm font-black text-amber-800 hover:bg-amber-100 transition-colors flex justify-between items-center group">
+                            بدء التنفيذ الميداني (توريد العمالة)
                             <ChevronRight className="w-4 h-4 text-amber-400 group-hover:text-amber-600 group-hover:-translate-x-1 transition-all" />
                         </button>
-                        <button onClick={() => handleUpdateStatus('تم الإنجاز')} className="w-full px-5 py-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-sm font-black text-emerald-800 hover:bg-emerald-100 transition-colors flex justify-between items-center group">
-                            تم الإنجاز والمطابقة وإنهاء الأعمال
+                        <button onClick={() => handleUpdateStatus('تم الإنجاز - بانتظار الاعتماد')} className="w-full px-5 py-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-sm font-black text-emerald-800 hover:bg-emerald-100 transition-colors flex justify-between items-center group">
+                            تم الإنجاز - بانتظار اعتماد الاستشاري
                             <ChevronRight className="w-4 h-4 text-emerald-400 group-hover:text-emerald-600 group-hover:-translate-x-1 transition-all" />
                         </button>
                     </div>

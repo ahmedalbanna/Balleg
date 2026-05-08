@@ -1,4 +1,4 @@
-import { Wrench, MapPin, Star, TrendingUp, DollarSign, MessageSquare, Bell, PenTool as Tool, Package, Users, Search, Filter, ArrowUpRight, CheckCircle2, Clock } from "lucide-react";
+import { Wrench, MapPin, Star, TrendingUp, DollarSign, MessageSquare, Bell, PenTool as Tool, Package, Users, Search, Filter, ArrowUpRight, CheckCircle2, Clock, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { collection, query, onSnapshot, doc, updateDoc, arrayUnion } from "firebase/firestore";
@@ -12,6 +12,9 @@ export function HandymanDashboard() {
   const [activeTab, setActiveTab] = useState("leads");
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubscribed, setIsSubscribed] = useState(true);
+  const [subscribedCategories, setSubscribedCategories] = useState(['سباكة', 'كهرباء', 'تكييف']);
+  const [subscribedDistricts, setSubscribedDistricts] = useState(['حي الروضة', 'حي النزهة']);
 
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [bidPrice, setBidPrice] = useState("");
@@ -32,7 +35,20 @@ export function HandymanDashboard() {
 
   const privateLeads = reports.filter(r => r.isPrivateService || r.department === 'خدمات خاصة');
   const myContracts = privateLeads.filter(r => r.assignedTo === currentRole?.slug);
-  const openLeads = privateLeads.filter(r => !r.assignedTo && r.status !== 'تم الإنجاز' && r.status !== 'resolved');
+  
+  // Nearby Leads: Filter based on subscription preferences if subscribed to "Ads/Contextual Leads"
+  const openLeads = privateLeads.filter(r => {
+    if (r.assignedTo || r.status === 'تم الإنجاز' || r.status === 'resolved') return false;
+    
+    // If subscribed, filter by preferences
+    if (isSubscribed) {
+        const matchesCategory = subscribedCategories.some(cat => r.description?.includes(cat) || r.type?.includes(cat));
+        const matchesDistrict = subscribedDistricts.includes(r.district || '');
+        return matchesCategory || matchesDistrict;
+    }
+    
+    return true; // Show all if not subscribed (or maybe show less? Let's show all for now)
+  });
 
   const displayReports = activeTab === 'leads' ? openLeads : myContracts;
 
@@ -180,8 +196,14 @@ export function HandymanDashboard() {
                                         <div className="flex items-center flex-wrap gap-4 mt-2">
                                             <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
                                                 <MapPin className="w-3 h-3" />
-                                                الحي السكني (يبعد متراً)
+                                                {lead.district || 'حي غير محدد'}
                                             </span>
+                                            {isSubscribed && (subscribedDistricts.includes(lead.district || '') || subscribedCategories.some(c => lead.description?.includes(c))) && (
+                                                <span className="text-[9px] font-black text-indigo-600 flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                                    <TrendingUp className="w-3 h-3" />
+                                                    مطابقة ذكية (قريب منك)
+                                                </span>
+                                            )}
                                             <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
                                                 <Clock className="w-3 h-3" />
                                                 {new Date(lead.createdAt).toLocaleDateString('ar-SA')}
@@ -243,13 +265,36 @@ export function HandymanDashboard() {
                     تظهر إعلاناتك كـ "اقتراحات إضافية" للمواطنين الذين يبلغون عن أعطال قريبة منك. الاشتراك الشهري متاح.
                 </p>
                 <div className="space-y-3 relative z-10">
-                    <div className="flex items-center gap-3 p-3 bg-white/10 rounded-2xl border border-white/5">
-                        <DollarSign className="w-4 h-4 text-emerald-400" />
-                        <span className="text-[10px] font-bold">الرصيد الإعلاني: نشط (باقة برونزية)</span>
+                    <div className="flex items-center justify-between p-3 bg-white/10 rounded-2xl border border-white/5">
+                        <div className="flex items-center gap-3">
+                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                            <span className="text-[10px] font-bold">الحالة: {isSubscribed ? 'مشترك نشط' : 'غير مشترك'}</span>
+                        </div>
+                        <button 
+                            onClick={() => setIsSubscribed(!isSubscribed)}
+                            className="text-[9px] font-black underline text-indigo-300"
+                        >
+                            {isSubscribed ? 'إيقاف مؤقت' : 'تفعيل الآن'}
+                        </button>
                     </div>
                 </div>
-                <button className="w-full mt-6 py-4 bg-white text-indigo-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all relative z-10">
-                    ترقية باقة الإعلانات
+                <div className="mt-6 p-4 bg-indigo-800/50 rounded-2xl border border-indigo-700">
+                    <h5 className="text-[10px] font-black mb-3 text-indigo-200">تغطية الإعلانات السياقية:</h5>
+                    <div className="flex flex-wrap gap-2">
+                        {subscribedCategories.map(cat => (
+                            <span key={cat} className="px-2 py-1 bg-indigo-600 rounded-lg text-[8px] font-bold">{cat}</span>
+                        ))}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 border-t border-indigo-700/50 pt-3">
+                        {subscribedDistricts.map(dist => (
+                            <span key={dist} className="px-2 py-1 bg-indigo-500/50 rounded-lg text-[8px] font-bold flex items-center gap-1">
+                                <MapPin size={8} /> {dist}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+                <button className="w-full mt-4 py-3 bg-white text-indigo-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all relative z-10">
+                    تعديل مناطق التغطية
                 </button>
             </div>
 

@@ -1,4 +1,4 @@
-import { BarChart3, LayoutDashboard, Bell, Search, Filter, CheckCircle, Loader2, AlertCircle, Clock } from "lucide-react";
+import { BarChart3, LayoutDashboard, Bell, Search, Filter, CheckCircle, Loader2, AlertCircle, Clock, Hammer } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { reportApi, Report } from "../../core/services/reportApi";
@@ -113,10 +113,10 @@ export function OfficialDashboard() {
     };
   }, [department]);
 
-  const handleUpdateStatus = async (id: string, s: string) => {
+  const handleUpdateStatus = async (id: string, s: string, extras?: any) => {
     setUpdatingId(id);
     try {
-      await reportApi.updateStatus(id, s);
+      await reportApi.updateStatus(id, s, extras);
       
       const report = allReports.find(r => r.id === id);
       if (report && report.userId && report.userId !== "anonymous") {
@@ -472,9 +472,17 @@ export function OfficialDashboard() {
                                                 {activeTab === 'active' ? (
                                                   <>
                                                     {report.status === 'pending_official' && (
-                                                        <button onClick={() => handleUpdateStatus(report.id, 'assigned')} className="px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold rounded transition-colors">
-                                                            اعتماد وتوجيه للميدان
-                                                        </button>
+                                                        <div className="flex flex-col gap-1">
+                                                            <button onClick={() => handleUpdateStatus(report.id, 'assigned')} className="px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 text-[10px] font-black rounded transition-colors whitespace-nowrap">
+                                                                توجيه للفريق الميداني
+                                                            </button>
+                                                            {['الطرق والجسور', 'شبكات المياه والصرف', 'الكهرباء والإنارة', 'البيئة والحدائق'].includes(department) && (
+                                                                <button onClick={() => handleUpdateStatus(report.id, 'assigned', { assignedTo: 'contractor' })} className="px-3 py-1 bg-orange-50 text-orange-600 hover:bg-orange-100 text-[10px] font-black rounded transition-colors whitespace-nowrap flex items-center gap-1">
+                                                                    <Hammer className="w-3 h-3" />
+                                                                    تحويل لمقاول خارجي
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     )}
                                                     <button onClick={() => handleUpdateStatus(report.id, 'resolved')} className="px-3 py-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 text-xs font-bold rounded transition-colors flex items-center gap-1">
                                                         إنجاز
