@@ -17,6 +17,7 @@ interface UserProfile {
   isActive: boolean;
   profileImageUrl?: string;
   departmentId?: string;
+  neighborhood?: string;
 }
 
 interface AuthContextType {

@@ -1,15 +1,38 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Shield, Building2, Calendar, MapPin, Camera, Star, LogOut, Settings, Bell, ChevronRight } from 'lucide-react';
+import { User, Mail, Phone, Shield, Building2, Calendar, MapPin, Camera, Star, LogOut, Settings, Bell, ChevronRight, Save } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRole } from '../context/RoleContext';
 import { cn } from '../utils/cn';
+import { useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { toast } from 'sonner';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, refreshProfile } = useAuth();
   const { currentRole } = useRole();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState(profile?.neighborhood || "حي الصافية");
 
   if (!profile) return null;
+
+  const handleUpdateNeighborhood = async () => {
+    setIsUpdating(true);
+    try {
+      const userRef = doc(db, 'users', profile.uid);
+      await updateDoc(userRef, {
+        neighborhood: selectedNeighborhood
+      });
+      await refreshProfile();
+      toast.success("تم تحديث الحي بنجاح");
+    } catch (error) {
+      console.error(error);
+      toast.error("فشل تحديث البيانات");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const themeColor = currentRole?.themeColor || '#3b82f6';
 
@@ -134,9 +157,32 @@ export const ProfilePage: React.FC = () => {
                 >
                   <MapPin size={20} />
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 mb-0.5">المنطقة / الفرع</p>
-                  <p className="text-sm font-bold text-slate-900">{profile.departmentId || 'المقر الرئيسي'}</p>
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-slate-400 mb-0.5">المنطقة / الحي المتابع</p>
+                  {profile.role === 'neighborhood' ? (
+                    <div className="flex gap-2">
+                       <select 
+                        value={selectedNeighborhood}
+                        onChange={(e) => setSelectedNeighborhood(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg text-xs font-bold p-1 px-2 outline-none"
+                       >
+                          <option value="حي الصافية">حي الصافية</option>
+                          <option value="حي النزهة">حي النزهة</option>
+                          <option value="حي الروضة">حي الروضة</option>
+                          <option value="حي الملز">حي الملز</option>
+                          <option value="حي العليا">حي العليا</option>
+                       </select>
+                       <button 
+                        onClick={handleUpdateNeighborhood}
+                        disabled={isUpdating || selectedNeighborhood === profile.neighborhood}
+                        className="p-1 px-2 bg-slate-900 text-white rounded-lg text-[10px] font-black disabled:opacity-30 transition-all hover:bg-slate-800"
+                       >
+                         {isUpdating ? "..." : "حفظ"}
+                       </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-bold text-slate-900">{profile.neighborhood || profile.departmentId || 'المقر الرئيسي'}</p>
+                  )}
                 </div>
               </div>
 

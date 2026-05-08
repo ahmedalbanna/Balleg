@@ -151,9 +151,30 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["journalistId", "reportId", "targetDepartment", "content", "status", "deadline", "createdAt"]
+    },
+    "NeighborhoodDissatisfactionReport": {
+      "title": "Neighborhood Dissatisfaction Report",
+      "description": "Reports from neighborhood committees about general community dissatisfaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "neighborhoodId": { "type": "string" },
+        "neighborhoodName": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "reviewed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "reviewedBy": { "type": "string" },
+        "reviewedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["neighborhoodId", "neighborhoodName", "title", "content", "status", "createdAt"]
     }
   },
   "firestore": {
+    "/neighborhood_dissatisfaction_reports/{reportId}": {
+      "schema": "NeighborhoodDissatisfactionReport",
+      "description": "Community dissatisfaction reports for the General Manager"
+    },
     "/clarification_requests/{requestId}": {
       "schema": "ClarificationRequest",
       "description": "Requests from local council to departments"

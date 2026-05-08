@@ -52,6 +52,7 @@ export function NewReport() {
   const [location, setLocation] = useState<[number, number] | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationStr, setLocationStr] = useState<string>("");
+  const [district, setDistrict] = useState("حي الصافية");
   const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Submit states
@@ -207,6 +208,7 @@ export function NewReport() {
       const res = await reportApi.createReport({
         description: description || analysis.summary || "تم تقديم بلاغ عبر النظام",
         type: analysis.classification || "عام", 
+        district: district,
         location: location || [24.7136, 46.6753], // Fallback to Riyadh
         imageUrl: uploadedImageUrl,
         aiAnalysis: analysis,
@@ -378,14 +380,22 @@ export function NewReport() {
                       <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                          {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
                       </div>
-                      <div>
-                          <h4 className="font-bold text-sm text-slate-800">تحديد الموقع الجغرافي</h4>
-                          <p className="text-xs font-bold text-slate-500 mt-0.5">
-                              {location ? locationStr : "سيتم إرفاق إحداثيات المشكلة"}
-                          </p>
+                      <div className="flex-1">
+                          <h4 className="font-bold text-sm text-slate-800">الحي والموقع</h4>
+                          <select 
+                            value={district} 
+                            onChange={(e) => setDistrict(e.target.value)}
+                            className="bg-transparent text-xs font-bold text-blue-600 border-none outline-none p-0 cursor-pointer"
+                          >
+                            <option value="حي الصافية">حي الصافية</option>
+                            <option value="حي النزهة">حي النزهة</option>
+                            <option value="حي الروضة">حي الروضة</option>
+                            <option value="حي الملز">حي الملز</option>
+                            <option value="حي العليا">حي العليا</option>
+                          </select>
                       </div>
                    </div>
-                   <button onClick={getLocation} disabled={isLocating} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition disabled:opacity-50">تحديث</button>
+                   <button onClick={getLocation} disabled={isLocating} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition disabled:opacity-50">تحديث GPS</button>
                  </div>
                  <button onClick={() => setShowMapPicker(true)} className="w-full text-xs font-bold border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 bg-slate-50 hover:bg-blue-50 py-2 rounded-xl transition-all">تحديد من الخريطة يدوياً</button>
               </div>

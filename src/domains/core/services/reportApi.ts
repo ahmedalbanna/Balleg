@@ -7,6 +7,7 @@ export interface Report {
   userId?: string;
   description: string;
   type: string;
+  district?: string;
   rating?: number;
   priority?: string;
   audioUrl?: string;
@@ -41,6 +42,7 @@ export const reportApi = {
   async createReport(data: { 
     description: string, 
     type?: string, 
+    district?: string,
     location?: [number, number],
     imageUrl?: string,
     aiAnalysis?: any,
@@ -55,12 +57,16 @@ export const reportApi = {
     const status = isDisplaced ? "pending_official" : (data.isPrivateService ? "pending_operator" : "pending_verification");
     const department = isDisplaced ? "البلدية والمنظمات الإنسانية" : (data.isPrivateService ? "خدمات خاصة" : undefined);
     
+    const districts = ["حي الصافية", "حي النزهة", "حي الروضة", "حي الملز", "حي العليا"];
+    const randomDistrict = districts[Math.floor(Math.random() * districts.length)];
+
     const newReport: Report = {
       id: trackingNo,
       userId: auth.currentUser?.uid || "anonymous",
       isAnonymous: data.isAnonymous || false,
       description: data.description,
       type: data.type || "عام",
+      district: data.district || randomDistrict,
       status: status,
       priority: data.aiAnalysis?.priority || 'medium',
       createdAt: serverTimestamp(),

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow, Database, MessageCircle, Send } from 'lucide-react';
+import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, CheckCircle2, XCircle, AlertCircle, PieChart as PieChartIcon, TrendingUp, BarChart3, Clock, Star, MapPin, Download, ChevronLeft, ArrowLeftRight, Workflow, Database, MessageCircle, Send, MessageSquare } from 'lucide-react';
 import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../core/services/firebase';
 import { 
@@ -24,11 +24,24 @@ interface UserData {
   createdAt?: string;
 }
 
+interface NeighborhoodDissatisfactionReport {
+  id: string;
+  neighborhoodId: string;
+  neighborhoodName: string;
+  title: string;
+  content: string;
+  status: 'pending' | 'reviewed';
+  createdAt: any;
+  reviewedBy?: string;
+  reviewedAt?: any;
+}
+
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'alerts' | 'departments' | 'logs' | 'flow' | 'schema'>('analytics');
   const [users, setUsers] = useState<UserData[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [clarifications, setClarifications] = useState<any[]>([]);
+  const [neighborhoodReports, setNeighborhoodReports] = useState<NeighborhoodDissatisfactionReport[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [reroutingReportId, setReroutingReportId] = useState<string | null>(null);
@@ -49,7 +62,8 @@ export const AdminDashboard: React.FC = () => {
     satisfactionRate: '0/5',
     systemHealth: '100%',
     delayedReports: 0,
-    criticalReports: 0
+    criticalReports: 0,
+    dissatisfactionReports: 0
   });
 
   useEffect(() => {
@@ -95,12 +109,34 @@ export const AdminDashboard: React.FC = () => {
        setClarifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
+    // Fetch neighborhood dissatisfaction reports
+    const qNeighborhood = query(collection(db, 'neighborhood_dissatisfaction_reports'), orderBy('createdAt', 'desc'));
+    const unsubNeighborhood = onSnapshot(qNeighborhood, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NeighborhoodDissatisfactionReport));
+      setNeighborhoodReports(docs);
+      setStats(prev => ({ ...prev, dissatisfactionReports: docs.filter(d => d.status === 'pending').length }));
+    });
+
     return () => {
       unsubUsers();
       unsubReports();
       unsubClarify();
+      unsubNeighborhood();
     };
   }, []);
+
+  const handleReviewNeighborhoodReport = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'neighborhood_dissatisfaction_reports', id), {
+        status: 'reviewed',
+        reviewedAt: serverTimestamp(),
+        reviewedBy: 'المدير العام'
+      });
+      toast.success("تم تأكيد مراجعة تقرير عدم الرضا");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'neighborhood_dissatisfaction_reports');
+    }
+  };
 
   const calculateSatisfaction = (docs: Report[]) => {
     const rated = docs.filter(r => r.rating && r.rating > 0);
@@ -298,7 +334,13 @@ export const AdminDashboard: React.FC = () => {
       {/* Header Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <StatCard icon={<Users className="text-blue-600" />} label="المستخدمين" value={stats.totalUsers.toString()} color="blue" />
-        <StatCard icon={<Star className="text-amber-500 fill-amber-500" />} label="معدل الرضا" value={stats.satisfactionRate} color="amber" />
+        <StatCard 
+          icon={<MessageSquare className={cn("text-amber-600", stats.dissatisfactionReports > 0 && "animate-pulse")} />} 
+          label="تقارير عدم الرضا" 
+          value={stats.dissatisfactionReports.toString()} 
+          color="amber" 
+          highlight={stats.dissatisfactionReports > 0}
+        />
         <StatCard icon={<Activity className="text-emerald-600" />} label="بلاغات قيد الإجراء" value={stats.activeReports.toString()} color="emerald" />
         <div className="bg-rose-50 p-6 rounded-[2rem] border border-rose-200 shadow-sm flex items-center gap-4 relative overflow-hidden">
             <div className={`w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-inner`}>
@@ -466,6 +508,56 @@ export const AdminDashboard: React.FC = () => {
                                      <button onClick={() => setReroutingReportId(r.id)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-black hover:bg-slate-800 transition flex items-center gap-2">
                                         توجيه إلزامي
                                      </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-slate-700 shadow-xl overflow-hidden relative">
+                    <div className="absolute top-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl" />
+                    <h3 className="text-xl font-black text-amber-400 mb-2 flex items-center gap-2 relative z-10">
+                        <MessageSquare className="w-6 h-6" /> تفاعلات المجتمع (تقارير عدم الرضا)
+                    </h3>
+                    <p className="text-xs text-slate-400 font-bold mb-8 relative z-10">تقارير مباشرة من لجان الأحياء والمجلس المحلي تشير إلى استياء قطاع عريض من المواطنين.</p>
+
+                    <div className="space-y-4 relative z-10">
+                        {neighborhoodReports.length === 0 && <p className="text-sm font-black text-slate-500 text-center py-10 border-2 border-dashed border-slate-800 rounded-3xl">لا يوجد تقارير استياء نشطة</p>}
+                        {neighborhoodReports.map(nr => (
+                            <div key={nr.id} className="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700 hover:bg-slate-800 transition-all group">
+                                <div className="flex justify-between items-start mb-4">
+                                     <div>
+                                        <h4 className="font-black text-white text-md mb-1">{nr.title}</h4>
+                                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
+                                            <Building2 size={12} /> {nr.neighborhoodName}
+                                        </p>
+                                     </div>
+                                     <span className={cn(
+                                         "text-[8px] font-black px-2 py-0.5 rounded uppercase",
+                                         nr.status === 'pending' ? 'bg-amber-500 text-slate-900 ring-4 ring-amber-500/20' : 'bg-slate-700 text-slate-400'
+                                     )}>
+                                         {nr.status === 'pending' ? 'تنبيه عاجل' : 'تم الاطلاع'}
+                                     </span>
+                                </div>
+                                <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 mb-4">
+                                    <p className="text-xs font-bold text-slate-300 leading-relaxed">{nr.content}</p>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] font-black text-slate-500">
+                                    <span>{new Date(nr.createdAt?.toDate ? nr.createdAt.toDate() : nr.createdAt).toLocaleString('ar-SA')}</span>
+                                    {nr.status === 'pending' && (
+                                        <button 
+                                            onClick={() => handleReviewNeighborhoodReport(nr.id)}
+                                            className="bg-amber-500 text-slate-900 px-4 py-1.5 rounded-lg hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
+                                        >
+                                            تأكيد المراجعة والاطلاع
+                                        </button>
+                                    )}
+                                    {nr.status === 'reviewed' && (
+                                        <div className="flex items-center gap-2 text-emerald-500">
+                                            <CheckCircle2 size={12} />
+                                            <span>تمت مراجعتها بواسطة: {nr.reviewedBy}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -1072,10 +1164,16 @@ export const AdminDashboard: React.FC = () => {
   );
 };
 
-const StatCard: React.FC<{ icon: React.ReactNode, label: string, value: string, color: string }> = ({ icon, label, value, color }) => (
-  <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4 relative overflow-hidden group">
+const StatCard: React.FC<{ icon: React.ReactNode, label: string, value: string, color: string, highlight?: boolean }> = ({ icon, label, value, color, highlight }) => (
+  <div className={cn(
+    "bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4 relative overflow-hidden group",
+    highlight && "border-amber-300 ring-4 ring-amber-500/10"
+  )}>
     <div className={`absolute top-0 right-0 w-2 h-full bg-${color}-500/20 group-hover:bg-${color}-500 transition-colors`} />
-    <div className={`w-14 h-14 bg-${color}-50 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform shrink-0`}>
+    <div className={cn(
+      `w-14 h-14 bg-${color}-50 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform shrink-0`,
+      highlight && "bg-amber-100"
+    )}>
       {icon}
     </div>
     <div className="min-w-0">

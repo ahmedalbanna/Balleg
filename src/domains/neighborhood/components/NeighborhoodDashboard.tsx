@@ -1,7 +1,7 @@
 import { Users, Map as MapIcon, AlertCircle, MessageSquare, ThumbsDown, Calendar, Eye, Search, Filter, MessageCircle, Send } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, doc, setDoc, updateDoc, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { Report } from "../../core/services/reportApi";
 import MapView from "../../locations/components/MapView";
@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import { useAuth } from "../../core/context/AuthContext";
 
 export function NeighborhoodDashboard() {
-  const { currentRole } = useAuth();
-  const [activeDistrict] = useState("حي الصافية"); // Default for prototype
+  const { currentRole, profile } = useAuth();
+  const activeDistrict = profile?.neighborhood || "حي الصافية";
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -24,8 +24,14 @@ export function NeighborhoodDashboard() {
   const [isAddingComment, setIsAddingComment] = useState(false);
 
   useEffect(() => {
-    // In a real app, this would filter by neighborhood. For prototype, we show all.
-    const q = query(collection(db, 'reports'));
+    // Filter by neighborhood if available. 
+    const reportsRef = collection(db, 'reports');
+    // For prototype, if the report doesn't have a district, we might want to see them if we are testing.
+    // However, the requirement is "ONLY neighborhood reports".
+    const q = profile?.neighborhood 
+      ? query(reportsRef, where('district', '==', profile.neighborhood))
+      : query(reportsRef);
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
       setReports(docs);
@@ -33,7 +39,7 @@ export function NeighborhoodDashboard() {
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'reports'));
 
     return () => unsubscribe();
-  }, []);
+  }, [profile?.neighborhood]);
 
   const pendingCount = reports.filter(r => r.status === 'pending_official' || r.status === 'in_progress').length;
   const poorRatings = reports.filter(r => r.rating && r.rating <= 2);
@@ -51,12 +57,16 @@ export function NeighborhoodDashboard() {
     { label: "تقييمات سلبية", value: poorRatings.length.toString(), icon: ThumbsDown, color: "text-slate-600" },
   ];
 
-  const mapPoints = reports.filter(r => r.location).map(r => ({
-     lat: r.location![0],
-     lng: r.location![1],
-     intensity: r.priority === 'critical' ? 1 : r.status === 'in_progress' ? 0.6 : 0.4,
-     label: r.description
-  }));
+  const mapPoints = reports.filter(r => r.location).map(r => {
+     const isLate = lateReports.some(lr => lr.id === r.id);
+     return {
+       lat: r.location![0],
+       lng: r.location![1],
+       intensity: r.priority === 'critical' ? 1 : r.status === 'in_progress' ? 0.6 : 0.4,
+       label: r.description,
+       status: isLate ? 'late' : undefined
+     };
+  });
 
   // Combine late and poorly rated reports into a single alerts list
   const alerts = [
@@ -71,20 +81,20 @@ export function NeighborhoodDashboard() {
     }
     setIsSubmittingEscalation(true);
     try {
-      const newRef = doc(collection(db, 'clarifications'));
-      await setDoc(newRef, {
-        department: "إدارة البلدية (شكوى مجتمعية)",
-        text: `[تقرير عدم رضا مجتمعي - ${activeDistrict}]\n${escalateTitle}\n\n${escalateDetail}`,
-        status: 'open',
-        type: 'community_escalation',
-        createdAt: new Date().toISOString()
+      await addDoc(collection(db, 'neighborhood_dissatisfaction_reports'), {
+        neighborhoodId: profile?.uid || "unknown",
+        neighborhoodName: activeDistrict,
+        title: escalateTitle,
+        content: escalateDetail,
+        status: 'pending',
+        createdAt: serverTimestamp()
       });
       toast.success('تم رفع تقرير عدم الرضا بنجاح للتنبيه الإداري');
       setIsEscalateModalOpen(false);
       setEscalateTitle("");
       setEscalateDetail("");
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'clarifications');
+      handleFirestoreError(err, OperationType.CREATE, 'neighborhood_dissatisfaction_reports');
     } finally {
       setIsSubmittingEscalation(false);
     }

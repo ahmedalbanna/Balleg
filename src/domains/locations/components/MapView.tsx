@@ -7,6 +7,7 @@ interface Point {
   lng: number;
   intensity: number;
   label: string;
+  status?: string;
 }
 
 interface MapViewProps {
@@ -37,10 +38,10 @@ export default function MapView({
             key={idx}
             center={[point.lat, point.lng]}
             radius={10 + point.intensity * 5}
-            fillColor={point.intensity > 0.7 ? '#ef4444' : point.intensity > 0.4 ? '#f59e0b' : '#3b82f6'}
-            color="white"
-            weight={2}
-            fillOpacity={0.6}
+            fillColor={point.status === 'late' ? '#f43f5e' : point.intensity > 0.7 ? '#ef4444' : point.intensity > 0.4 ? '#f59e0b' : '#3b82f6'}
+            color={point.status === 'late' ? '#ffe4e6' : 'white'}
+            weight={point.status === 'late' ? 3 : 2}
+            fillOpacity={0.7}
           >
             <Tooltip permanent direction="top" offset={[0, -10]} opacity={0.9} className="custom-tooltip">
                <div className="text-[10px] font-black px-2 py-1 bg-white rounded-lg shadow-sm border border-slate-100">

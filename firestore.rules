@@ -63,7 +63,34 @@ service cloud.firestore {
              (!('path' in data) || (data.path is string && data.path.size() <= 256));
     }
 
+    function isValidJournalistCommentRequest(data) {
+      return data.keys().hasAll(['journalistId', 'reportId', 'targetDepartment', 'content', 'status', 'deadline', 'createdAt']) &&
+             data.status in ['pending', 'replied'] &&
+             data.deadline is timestamp &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidNeighborhoodDissatisfactionReport(data) {
+      return data.keys().hasAll(['neighborhoodId', 'neighborhoodName', 'title', 'content', 'status', 'createdAt']) &&
+             data.neighborhoodId is string &&
+             data.neighborhoodName is string &&
+             data.title is string && data.title.size() <= 200 &&
+             data.content is string && data.content.size() <= 5000 &&
+             data.status in ['pending', 'reviewed'] &&
+             data.createdAt is timestamp;
+    }
+
     // --- Collection Rules ---
+
+    match /neighborhood_dissatisfaction_reports/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidNeighborhoodDissatisfactionReport(incoming()) &&
+                    incoming().status == 'pending';
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt']))
+      );
+    }
 
     match /roles/{roleId} {
       allow read: if true;
