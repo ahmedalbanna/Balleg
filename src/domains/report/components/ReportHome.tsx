@@ -15,7 +15,7 @@ export function ReportHome() {
       try {
         const q = query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(3));
         const snapshot = await getDocs(q);
-        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
+        const docs = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Report));
         setRecentReports(docs);
       } catch (err) {
         console.error("Error fetching recent reports", err);

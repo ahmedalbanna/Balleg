@@ -34,7 +34,7 @@ export function DonorDashboard() {
     
     // Also fetch reports for export
     const unsub = onSnapshot(query(collection(db, 'reports')), (snap) => {
-        setReportsData(snap.docs.map(d => ({id: d.id, ...d.data()})));
+        setReportsData(snap.docs.map(d => ({...d.data(), id: d.id})));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'reports'));
 
     return () => unsub();

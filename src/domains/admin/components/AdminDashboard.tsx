@@ -50,7 +50,7 @@ export const AdminDashboard: React.FC = () => {
     // Fetch users mapping
     const qUsers = query(collection(db, 'users'));
     const unsubUsers = onSnapshot(qUsers, (snapshot) => {
-      const userData = snapshot.docs.map(doc => doc.data() as UserData);
+      const userData = snapshot.docs.map(doc => ({...doc.data(), uid: doc.id} as UserData));
       setUsers(userData);
       setStats(prev => ({ ...prev, totalUsers: userData.length }));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
@@ -58,7 +58,7 @@ export const AdminDashboard: React.FC = () => {
     // Fetch reports
     const qReports = query(collection(db, 'reports'));
     const unsubReports = onSnapshot(qReports, (snapshot) => {
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
+      const docs = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Report));
       setReports(docs);
 
       const active = docs.filter(r => r.status === 'in_progress' || r.status === 'pending_official' || r.status === 'pending_operator').length;

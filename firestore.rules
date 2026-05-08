@@ -91,7 +91,7 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow get: if isSignedIn() && isValidId(uid) && (isOwner(uid) || isAdmin());
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
 
       allow create: if (isOwner(uid) || isAdmin()) && isValidId(uid) && isValidUser(incoming()) && 
                        incoming().createdAt is timestamp;
