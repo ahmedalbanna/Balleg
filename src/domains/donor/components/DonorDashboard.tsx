@@ -10,6 +10,8 @@ export function DonorDashboard() {
   const [resolvedReports, setResolvedReports] = useState<number>(0);
   const [totalUsers, setTotalUsers] = useState<number>(0);
   
+  const [reportsData, setReportsData] = useState<any[]>([]);
+
   useEffect(() => {
     async function fetchMetrics() {
         try {
@@ -29,7 +31,50 @@ export function DonorDashboard() {
         }
     }
     fetchMetrics();
+    
+    // Also fetch reports for export
+    const unsub = onSnapshot(query(collection(db, 'reports')), (snap) => {
+        setReportsData(snap.docs.map(d => ({id: d.id, ...d.data()})));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'reports'));
+
+    return () => unsub();
   },[]);
+
+  const handleExportCSV = () => {
+    try {
+      const headers = ["ID", "Status", "Department", "Created At", "Priority", "Type", "Rating"];
+      const csvRows = [headers.join(',')];
+      
+      reportsData.forEach(r => {
+        const row = [
+          r.id,
+          r.status,
+          r.department || '',
+          r.createdAt || '',
+          r.priority || '',
+          r.type || '',
+          r.rating || ''
+        ];
+        // Escape content
+        const safeRow = row.map(v => `"${String(v).replace(/"/g, '""')}"`);
+        csvRows.push(safeRow.join(','));
+      });
+
+      const csvData = csvRows.join('\n');
+      const blob = new Blob(['\uFEFF' + csvData], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `donor_impact_data_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const impactData = [
     { month: "يناير", reports: 120, resolved: 80 },
@@ -71,7 +116,7 @@ export function DonorDashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-            <button className="px-6 py-3 bg-slate-50 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2">
+            <button onClick={handleExportCSV} className="px-6 py-3 bg-slate-50 border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2">
                 <Download className="w-4 h-4" />
                 تحميل تقرير الربع السنوي
             </button>
