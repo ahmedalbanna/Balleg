@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 interface Department {
   id: string;
   name: string;
-  category: string;
+  type: string;
   parentDepartmentId?: string;
   managerUid?: string;
 }
@@ -21,7 +21,7 @@ export const DepartmentsManager: React.FC = () => {
 
   // Form state
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
+  const [type, setType] = useState('');
   const [parentDepartmentId, setParentDepartmentId] = useState('');
   const [managerUid, setManagerUid] = useState('');
 
@@ -44,8 +44,8 @@ export const DepartmentsManager: React.FC = () => {
   }, []);
 
   const handleSave = async () => {
-    if (!name || !category) {
-      toast.error('يرجى تعبئة اسم القطاع وتصنيفه');
+    if (!name || !type) {
+      toast.error('يرجى تعبئة اسم التنظيم والمستوى الإداري');
       return;
     }
 
@@ -55,7 +55,7 @@ export const DepartmentsManager: React.FC = () => {
       
       const payload: Partial<Department> = {
         name,
-        category,
+        type,
       };
 
       if (parentDepartmentId) payload.parentDepartmentId = parentDepartmentId;
@@ -89,7 +89,7 @@ export const DepartmentsManager: React.FC = () => {
 
   const resetForm = () => {
     setName('');
-    setCategory('');
+    setType('');
     setParentDepartmentId('');
     setManagerUid('');
   };
@@ -97,7 +97,7 @@ export const DepartmentsManager: React.FC = () => {
   const startEdit = (dept: Department) => {
     setEditingDept(dept);
     setName(dept.name);
-    setCategory(dept.category);
+    setType(dept.type);
     setParentDepartmentId(dept.parentDepartmentId || '');
     setManagerUid(dept.managerUid || '');
     setIsAdding(true);
@@ -149,19 +149,18 @@ export const DepartmentsManager: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">التصنيف <span className="text-rose-500">*</span></label>
+              <label className="block text-xs font-bold text-slate-500 mb-1">المستوى الإداري <span className="text-rose-500">*</span></label>
               <select
-                value={category}
-                onChange={e => setCategory(e.target.value)}
+                value={type}
+                onChange={e => setType(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500 font-bold"
               >
-                <option value="">اختر التصنيف...</option>
-                <option value="infrastructure">بنية تحتية (طرق، إنارة، ...)</option>
-                <option value="sanitation">الصحة والبيئة (نظافة، مكافحة مكافحة...)</option>
-                <option value="utilities">مرافق (مياه، كهرباء...)</option>
-                <option value="services">خدمات مجتمعية</option>
-                <option value="municipality">بلدية فرعية</option>
-                <option value="other">أخرى</option>
+                <option value="">اختر المستوى (النوع)...</option>
+                <option value="sector">1. قطاع وطني (Sector)</option>
+                <option value="ministry">2. وزارة / سلطة مركزية (Ministry)</option>
+                <option value="agency">3. هيئة / مؤسسة (Agency)</option>
+                <option value="local_dept">4. إدارة / فرع محلي (Local Dept)</option>
+                <option value="unit">5. وحدة / فريق ميداني (Unit)</option>
               </select>
             </div>
             <div>
@@ -219,8 +218,8 @@ export const DepartmentsManager: React.FC = () => {
           <table className="w-full text-right">
             <thead>
               <tr className="border-b-2 border-slate-100 pb-2">
-                <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">اسم القطاع</th>
-                <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">التصنيف</th>
+                <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">اسم التنظيم</th>
+                <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">المستوى</th>
                 <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">المرجعية</th>
                 <th className="py-4 px-4 text-xs font-black text-slate-400 uppercase tracking-wider">إجراءات</th>
               </tr>
@@ -234,11 +233,11 @@ export const DepartmentsManager: React.FC = () => {
                   </td>
                   <td className="py-4 px-4">
                     <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-xs font-black inline-block">
-                      {dept.category === 'infrastructure' ? 'بنية تحتية' :
-                       dept.category === 'sanitation' ? 'الصحة والبيئة' :
-                       dept.category === 'utilities' ? 'مرافق' :
-                       dept.category === 'municipality' ? 'بلدية فرعية' : 
-                       dept.category === 'services' ? 'خدمات مجتمعية' : dept.category}
+                      {dept.type === 'sector' ? 'قطاع' :
+                       dept.type === 'ministry' ? 'وزارة' :
+                       dept.type === 'agency' ? 'هيئة' :
+                       dept.type === 'local_dept' ? 'إدارة محلية' : 
+                       dept.type === 'unit' ? 'وحدة ميدانية' : dept.type}
                     </span>
                   </td>
                   <td className="py-4 px-4">

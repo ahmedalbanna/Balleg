@@ -681,38 +681,40 @@ export const AdminDashboard: React.FC = () => {
             <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm flex flex-col gap-12 overflow-x-auto min-h-[400px]">
                <div>
                  <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Database className="w-6 h-6 text-blue-500" /> مخطط الكيانات والعلاقات (ERD)
+                    <Database className="w-6 h-6 text-blue-500" /> مخطط الكيانات والعلاقات (ERD) المتوافق مع هيكل الحكومة اليمنية
                  </h3>
                  <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 overflow-x-auto min-w-[800px]">
                    <MermaidChart chart={`erDiagram
-    USERS ||--o{ REPORTS : "يقدم (مواطن) / يعالج (أخصائي)"
-    DEPARTMENTS ||--o{ USERS : "يضم (موظفين)"
-    DEPARTMENTS ||--o{ REPORTS : "يسند إليها"
+    ORGANIZATIONS ||--o{ ORGANIZATIONS : "يتبع له (تسلسل هرمي 5 مستويات)"
+    ORGANIZATIONS ||--o{ USERS : "يضم (موظفين)"
+    ORGANIZATIONS ||--o{ REPORTS : "يسند إليها"
+    USERS ||--o{ REPORTS : "يقدم (مواطن) / يعالج (فريق)"
     REPORTS ||--o| RATINGS : "له تقييم (مواطن)"
-    REPORTS ||--o| PRIVATE_TICKETS : "يتحول إلى"
-    DEPARTMENTS ||--o{ CONTRACTS : "يبرم عقداً"
-    USERS ||--o{ CONTRACTS : "يدير (مقاول)"
-    USERS ||--o{ REQUESTS : "يرسل (صحفي/لجنة)"
-    DEPARTMENTS ||--o{ REQUESTS : "يستقبل"
+    REPORTS ||--o| PRIVATE_TICKETS : "تذكرة قطاع خاص"
+    ORGANIZATIONS ||--o{ CONTRACTS : "يبرم عقداً"
+    USERS ||--o{ CONTRACTS : "مقاول"
+    USERS ||--o{ REQUESTS : "يرسل (لجنة/صحفي/أخرى)"
+    ORGANIZATIONS ||--o{ REQUESTS : "يستقبل"
     USERS ||--o{ AUDIT_LOGS : "يقوم بإجراء"
     USERS ||--o{ NOTIFICATIONS : "يتلقى"
 
+    ORGANIZATIONS {
+        string id PK
+        string name
+        string type "sector, ministry, agency, local_dept, unit"
+        string parentId FK
+        string location "optional"
+    }
     USERS {
         string uid PK
         string role
-        string departmentId FK
-    }
-    DEPARTMENTS {
-        string id PK
-        string name
-        string category
-        string parentDepartmentId
+        string organizationId FK
     }
     REPORTS {
         string id PK
         string citizenUid FK
         string status
-        string assignedDeptId FK
+        string assignedOrgId FK "could be at any level"
         string assignedSpecialistUid FK
     }
     RATINGS {
@@ -735,7 +737,7 @@ export const AdminDashboard: React.FC = () => {
     REQUESTS {
         string id PK
         string fromUserId FK
-        string toDepartmentId FK
+        string toOrgId FK
         string status
     }
     CONTRACTS {
@@ -755,25 +757,26 @@ export const AdminDashboard: React.FC = () => {
 
                <div>
                  <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Database className="w-6 h-6 text-blue-500" /> تفاصيل إضافية عن البيانات
+                    <Database className="w-6 h-6 text-blue-500" /> تفاصيل الهيكل التنظيمي (Organizations)
                  </h3>
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-                        <h4 className="font-bold text-slate-800 mb-4">أنواع البيانات الموصى بها</h4>
+                        <h4 className="font-bold text-slate-800 mb-4">أنواع التنظيمات (Types)</h4>
                         <ul className="space-y-4 text-sm text-slate-600">
-                            <li><strong className="text-slate-800">الموقع الجغرافي (locationGeo):</strong> GeoPoint لحفظ الإحداثيات للاستعلام المكاني.</li>
-                            <li><strong className="text-slate-800">الملفات (audioUrl, imageUrl):</strong> روابط (URL) للملفات المرفوعة على التخزين السحابي (Cloud Storage).</li>
-                            <li><strong className="text-slate-800">حالة البلاغ (status):</strong> قائمة محددة (جديد، قيد المعالجة، تحت التنفيذ، منتهي...إلخ).</li>
-                            <li><strong className="text-slate-800">الأدوار (role):</strong> تحدد صلاحيات المستخدمين (مواطن، أخصائي، مشغل، صحفي...إلخ).</li>
+                            <li><strong className="text-slate-800">Sector (قطاع):</strong> المستوى الأول، يجمع وزارات وهيئات مترابطة (مثل قطاع البنية التحتية).</li>
+                            <li><strong className="text-slate-800">Ministry (وزارة):</strong> المستوى الثاني، السلطة المركزية (مثل وزارة الأشغال العامة).</li>
+                            <li><strong className="text-slate-800">Agency (هيئة/مؤسسة):</strong> المستوى الثالث، مؤسسة تابعة لوزارة أو مستقلة (مثل هيئة الطرق).</li>
+                            <li><strong className="text-slate-800">Local Dept (إدارة محلية):</strong> المستوى الرابع، فرع في محافظة أو مديرية.</li>
+                            <li><strong className="text-slate-800">Unit (وحدة/فريق):</strong> المستوى الخامس، أصغر وحدة تنفيذية ميدانية.</li>
                         </ul>
                     </div>
                     <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-                        <h4 className="font-bold text-slate-800 mb-4">اعتبارات إضافية للمشروع</h4>
+                        <h4 className="font-bold text-slate-800 mb-4">آليات إحالة البلاغات (Routing)</h4>
                          <ul className="space-y-4 text-sm text-slate-600">
-                            <li><strong className="text-slate-800">الفصل بين البيانات:</strong> فصل تفاصيل المواطن عن الهيكل الأساسي للحد من الازدحام.</li>
-                            <li><strong className="text-slate-800">الإشعارات:</strong> يجب دعم الإشعارات اللحظية عبر الجوال والمتصفح.</li>
-                            <li><strong className="text-slate-800">بلاغات مجهولة:</strong> دعم البلاغات غير المسجلة (مثل النازحين) بآلية خاصة للرقم التعريفي.</li>
-                            <li><strong className="text-slate-800">فهرسة البيانات (Indexing):</strong> على الحقول الأكثر استخداماً بالبحث مثل status و departmentId.</li>
+                            <li><strong className="text-slate-800">التصعيد التلقائي (Bottom-Up):</strong> إذا لم تقم "الوحدة" الميدانية بالمعالجة، يُصعد البلاغ إلى "الإدارة المحلية"، ثم "الهيئة".</li>
+                            <li><strong className="text-slate-800">التوجيه من أعلى (Top-Down):</strong> للبلاغات ذات الأولوية القصوى التي تحددها الوزارة وتكلف بها فروعها.</li>
+                            <li><strong className="text-slate-800">ارتباط الموظفين:</strong> يمكن للموظف الانتماء إلى وحدة واحدة، ولكنه يمتلك صلاحيات استناداً إلى مستوى تنظيم وحدته.</li>
+                            <li><strong className="text-slate-800">مرونة الهيكل:</strong> تم دمج المستويات الخمسة في جدول (Organizations) باستخدام العلاقة الذاتية (parentId).</li>
                         </ul>
                     </div>
                  </div>
