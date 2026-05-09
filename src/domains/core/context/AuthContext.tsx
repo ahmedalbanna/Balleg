@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  onAuthStateChanged, 
+import {
+  onAuthStateChanged,
   User as FirebaseUser,
   signOut as firebaseSignOut
 } from 'firebase/auth';
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
         setProfile(docSnap.data() as UserProfile);
       } else {
@@ -57,8 +57,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        await fetchProfile(firebaseUser.uid);
-        logActivity('LOGIN', `User ${firebaseUser.email || firebaseUser.uid} logged in`);
+        if (firebaseUser.isAnonymous) {
+          // Assign guest profile for anonymous users
+          setProfile({
+            uid: firebaseUser.uid,
+            email: null,
+            phoneNumber: null,
+            displayName: 'ضيف (مواطن)',
+            role: 'citizen',
+            isActive: true
+          });
+        } else {
+          await fetchProfile(firebaseUser.uid);
+        }
+        logActivity('LOGIN', `User ${firebaseUser.email || firebaseUser.uid} logged in ${firebaseUser.isAnonymous ? '(Guest)' : ''}`);
       } else {
         if (user) logActivity('LOGOUT', `User ${user.email || user.uid} logged out`);
         setProfile(null);
@@ -74,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.uid);
+    if (user && !user.isAnonymous) await fetchProfile(user.uid);
   };
 
   return (

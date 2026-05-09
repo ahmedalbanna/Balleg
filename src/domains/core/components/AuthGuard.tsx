@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useRole } from '../context/RoleContext';
 import { Loader2 } from 'lucide-react';
 
 interface AuthGuardProps {
@@ -10,6 +11,7 @@ interface AuthGuardProps {
 
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children, requireRole }) => {
   const { user, profile, loading } = useAuth();
+  const { currentRole } = useRole();
   const location = useLocation();
 
   if (loading) {
@@ -24,7 +26,13 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children, requireRole }) =
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requireRole && profile && !requireRole.includes(profile.role)) {
+  // Determine the effective role for checking permissions
+  // 1. If it's an admin, they can switch roles for preview purposes
+  // 2. If it's an anonymous user, they are guests (citizen by default)
+  // 3. Otherwise, use the assigned profile role
+  const effectiveRole = profile?.role === 'admin' ? currentRole?.slug : (user.isAnonymous ? 'citizen' : profile?.role);
+
+  if (requireRole && effectiveRole && !requireRole.includes(effectiveRole)) {
     return <Navigate to="/" replace />;
   }
 

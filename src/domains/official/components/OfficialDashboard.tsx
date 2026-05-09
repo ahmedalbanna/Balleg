@@ -8,6 +8,7 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { toast } from "sonner";
 import { useAuth } from "../../core/context/AuthContext";
+import OfficialMapView from "./OfficialMapView";
 
 export function OfficialDashboard() {
   const { userProfile } = useAuth();
@@ -262,11 +263,41 @@ export function OfficialDashboard() {
         </div>
         <div className="flex gap-2">
             <button className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition-colors flex items-center gap-2">
-                <LayoutDashboard className="w-4 h-4" />
+                <BarChart3 className="w-4 h-4" />
                 تصدير تقرير إنجاز
             </button>
         </div>
       </header>
+
+      {/* Map Overview Section */}
+      <section className="grid grid-cols-1 gap-6">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-black text-slate-900 font-readex">نطاق العمل الميداني</h3>
+              <p className="text-xs font-bold text-slate-400 mt-1">توزيع جغرافي للبلاغات النشطة في قطاع {department}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                <span className="text-[10px] font-bold text-slate-500">بلاغ نشط</span>
+              </div>
+            </div>
+          </div>
+          <div className="h-[400px] w-full relative">
+            <OfficialMapView 
+              points={reports.map(r => ({
+                lat: r.location?.lat || 15.3694 + (Math.random() - 0.5) * 0.05,
+                lng: r.location?.lng || 44.1910 + (Math.random() - 0.5) * 0.05,
+                intensity: r.priority === 'critical' ? 1 : 0.4,
+                label: r.id,
+                category: r.type,
+                assignedTo: r.assignedTo
+              }))} 
+            />
+          </div>
+        </div>
+      </section>
 
       {/* Delay Alert Banner */}
       <AnimatePresence>

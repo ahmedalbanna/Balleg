@@ -1,4 +1,4 @@
-import { Signal, Activity, Zap, Users, MessageSquare, PhoneCall, MapPin, AlertTriangle, TrendingUp, Cpu, Globe, BarChart3, Radio, CheckCircle2 } from "lucide-react";
+import { Signal, Activity, Zap, Users, MessageSquare, PhoneCall, MapPin, AlertTriangle, TrendingUp, Cpu, Globe, BarChart3, Radio, CheckCircle2, Box, Map, Scale, Archive, User, ShieldCheck, Settings, HardDrive, LayoutDashboard, Share2, ClipboardList, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
@@ -7,6 +7,9 @@ import { db, handleFirestoreError, OperationType } from "../../core/services/fir
 import { Report } from "../../core/services/reportApi";
 import { toast } from "sonner";
 import { useAuth } from "../../core/context/AuthContext";
+import TelecomMapView from "./TelecomMapView";
+import { Link } from "react-router-dom";
+import { cn } from "../../core/utils/cn";
 
 export function TelecomDashboard() {
   const { currentRole } = useAuth();
@@ -64,6 +67,32 @@ export function TelecomDashboard() {
 
   return (
     <div className="flex flex-col gap-8 w-full p-2 sm:p-10 bg-slate-50 min-h-[85vh] rounded-[3rem] border border-sky-100/50 shadow-sm relative overflow-hidden">
+      
+      {/* Map Overview Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full h-[400px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden relative group z-10 shadow-sm"
+      >
+        <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <MapPin size={14} className="text-blue-600" />
+            <span className="text-[10px] font-black text-slate-900 tracking-tight">رصد جغرافي للأبراج ومواقع التغطية النشطة</span>
+        </div>
+        <TelecomMapView 
+          points={activeReports.slice(0, 15).map(r => ({
+            lat: r.location?.[0] || 15.3694,
+            lng: r.location?.[1] || 44.1910,
+            intensity: r.priority === 'critical' ? 0.9 : 0.4,
+            label: r.department || 'برج اتصالات',
+            type: r.priority === 'critical' ? 'incident' : 'tower',
+            status: r.priority === 'critical' ? 'offline' : 'active',
+            capacity: '1Gbps / 5G'
+          }))}
+          center={[15.3694, 44.1910]}
+          zoom={13}
+        />
+      </motion.div>
+
       {/* Abstract Tech Background */}
       <div className="absolute -top-20 -left-20 w-80 h-80 bg-sky-100/30 rounded-full blur-3xl -z-10" />
       
@@ -115,6 +144,35 @@ export function TelecomDashboard() {
                 <p className="text-[10px] font-black text-slate-400 capitalize tracking-widest mb-1">{stat.label}</p>
                 <p className="text-xl font-black text-slate-900">{stat.value}</p>
             </motion.div>
+        ))}
+      </div>
+
+      {/* Quick Navigation Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6 relative z-10 w-full pt-4">
+        {[
+          { name: 'مركز العمليات', icon: LayoutDashboard, path: "/telecom/operations", color: "bg-blue-50 text-blue-600" },
+          { name: 'خارطة التغطية', icon: Globe, path: "/telecom/coverage", color: "bg-emerald-50 text-emerald-600" },
+          { name: 'إدارة المواقع', icon: Radio, path: "/telecom/sites", color: "bg-indigo-50 text-indigo-600" },
+          { name: 'مؤشرات الأداء', icon: BarChart3, path: "/telecom/kpis", color: "bg-violet-50 text-violet-600" },
+          { name: 'الشبكة الأساسية', icon: Cpu, path: "/telecom/core", color: "bg-cyan-50 text-cyan-600" },
+          { name: 'صيانة المحطات', icon: Box, path: "/telecom/maintenance", color: "bg-amber-50 text-amber-600" },
+          { name: 'سجل الأعطال', icon: ClipboardList, path: "/telecom/faults", color: "bg-rose-50 text-rose-600" },
+          { name: 'الربط المتبادل', icon: Share2, path: "/telecom/interconnect", color: "bg-fuchsia-50 text-fuchsia-600" },
+          { name: 'تقارير السعة', icon: TrendingUp, path: "/telecom/capacity", color: "bg-slate-100 text-slate-800" },
+          { name: 'تنبيهات النظام', icon: Bell, path: "/telecom/alerts", color: "bg-rose-100 text-rose-700" },
+          { name: 'الملف الفني', icon: User, path: "/telecom/profile", color: "bg-slate-50 text-slate-600" },
+          { name: 'الإعدادات', icon: Settings, path: "/telecom/settings", color: "bg-gray-100 text-gray-800" },
+        ].map((item, idx) => (
+          <Link
+            key={idx}
+            to={item.path}
+            className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center gap-5 group"
+          >
+            <div className={cn("w-16 h-16 rounded-[1.5rem] flex items-center justify-center transition-transform group-hover:rotate-12 shadow-sm", item.color)}>
+              <item.icon className="w-8 h-8" />
+            </div>
+            <span className="text-[11px] font-black text-slate-800 uppercase italic tracking-tighter leading-none">{item.name}</span>
+          </Link>
         ))}
       </div>
 

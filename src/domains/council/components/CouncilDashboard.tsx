@@ -1,12 +1,14 @@
-import { LayoutDashboard, BarChart3, PieChart, Layers, Search, MapPin, CheckCircle, Clock, AlertTriangle, Filter, ChevronLeft, ShieldCheck, TrendingUp, Info, MessageSquarePlus, Send, MessageCircle } from "lucide-react";
+import { LayoutDashboard, BarChart3, PieChart, Layers, Search, MapPin, CheckCircle, Clock, AlertTriangle, Filter, ChevronLeft, ShieldCheck, TrendingUp, Info, MessageSquarePlus, Send, MessageCircle, Map as MapIcon, FileText, Briefcase, History, User, Bell, HelpCircle, Settings, Scale, HardHat, Archive } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { collection, query, onSnapshot, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { Report } from "../../core/services/reportApi";
 import { cn } from "../../core/utils/cn";
 import { useAuth } from "../../core/context/AuthContext";
 import { toast } from "sonner";
+import CouncilMapView from "./CouncilMapView";
 
 export interface ClarificationRequest {
   id: string;
@@ -135,6 +137,31 @@ export function CouncilDashboard() {
         </div>
       </header>
 
+      {/* Quick Navigation Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-8 gap-3">
+          {[
+              { label: 'البلاغات', icon: Scale, path: '/council/reports', color: 'bg-rose-50 text-rose-600' },
+              { label: 'الرقابة', icon: HardHat, path: '/council/monitoring', color: 'bg-emerald-50 text-emerald-600' },
+              { label: 'الإحصائيات', icon: BarChart3, path: '/council/stats', color: 'bg-blue-50 text-blue-600' },
+              { label: 'المشاريع', icon: Briefcase, path: '/council/projects', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'الأرشيف', icon: Archive, path: '/council/archive', color: 'bg-amber-50 text-amber-600' },
+              { label: 'التنبيهات', icon: Bell, path: '/council/alerts', color: 'bg-rose-50 text-rose-600' },
+              { label: 'الدعم', icon: HelpCircle, path: '/council/support', color: 'bg-teal-50 text-teal-600' },
+              { label: 'الإعدادات', icon: Settings, path: '/council/settings', color: 'bg-slate-100 text-slate-600' },
+          ].map((action, i) => (
+              <Link 
+                  key={i} 
+                  to={action.path}
+                  className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-100 hover:shadow-lg transition-all hover:-translate-y-1 group"
+              >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${action.color} group-hover:scale-110 transition-transform`}>
+                      <action.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">{action.label}</span>
+              </Link>
+          ))}
+      </div>
+
       {/* Overview Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
@@ -157,6 +184,31 @@ export function CouncilDashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* Map Overview Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full h-[400px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden relative group"
+      >
+        <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <MapIcon size={14} className="text-slate-600" />
+            <span className="text-[10px] font-black text-slate-900 tracking-tight">الرصد الجغرافي الحي للميدان</span>
+        </div>
+        <CouncilMapView 
+          points={reports.map(r => ({
+            lat: r.location?.lat || 15.3694,
+            lng: r.location?.lng || 44.1910,
+            intensity: r.priority === 'critical' ? 0.9 : 0.4,
+            label: r.department || 'بلاغ عام',
+            type: r.status === 'resolved' ? 'audit' : r.priority === 'critical' ? 'incident' : 'project',
+            status: getStatusLabel(r.status).label,
+            inspector: r.assignedTo || 'لم يتم التعيين'
+          }))}
+          center={[15.3694, 44.1910]}
+          zoom={13}
+        />
+      </motion.div>
 
       {/* Tab Switching & Actions */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">

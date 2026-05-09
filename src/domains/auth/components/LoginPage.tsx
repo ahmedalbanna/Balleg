@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Phone, Lock, ArrowRight, Shield, User, Store, Car, Loader2 } from 'lucide-react';
 import { signInWithEmailAndPassword, signInAnonymously, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { getDoc, doc } from 'firebase/firestore';
-import { auth, db } from '../../core/services/firebase';
 import { useNavigate } from 'react-router-dom';
+import { auth, db } from '../../core/services/firebase';
+import { useAuth } from '../../core/context/AuthContext';
 
 export const LoginPage: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
   const [method, setMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +18,15 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [rememberedUser, setRememberedUser] = useState<{ method: string, email?: string, phone?: string, displayName: string } | null>(null);
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (!(window as any).recaptchaVerifier) {
@@ -24,7 +34,21 @@ export const LoginPage: React.FC = () => {
         size: 'invisible'
       });
     }
+
+    // Check for remembered login
+    const saved = localStorage.getItem('lastLogin');
+    if (saved) {
+      try {
+        setRememberedUser(JSON.parse(saved));
+      } catch (e) {
+        localStorage.removeItem('lastLogin');
+      }
+    }
   }, []);
+
+  const saveLastLogin = (data: any) => {
+    localStorage.setItem('lastLogin', JSON.stringify(data));
+  };
 
   const handlePhoneRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,16 +79,19 @@ export const LoginPage: React.FC = () => {
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
       
-      // Check if user has a profile and is active
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.exists()) {
-        // Force them to register if no profile
         setError('لا يوجد حساب مسجل بهذا الرقم. يرجى إنشاء حساب جديد.');
         await auth.signOut();
       } else if (userDoc.data().isActive === false) {
         setError('هذا الحساب معطل حالياً. يرجى مراجعة الإدارة.');
         await auth.signOut();
       } else {
+        saveLastLogin({
+          method: 'phone',
+          phone: phone,
+          displayName: userDoc.data().fullName || phone
+        });
         navigate('/');
       }
     } catch (err: any) {
@@ -83,12 +110,16 @@ export const LoginPage: React.FC = () => {
       const result = await signInWithEmailAndPassword(auth, email, password);
       const user = result.user;
       
-      // Check if user is active
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists() && userDoc.data().isActive === false) {
         setError('هذا الحساب معطل حالياً. يرجى مراجعة الإدارة.');
         await auth.signOut();
       } else {
+        saveLastLogin({
+          method: 'email',
+          email: email,
+          displayName: userDoc.exists() ? userDoc.data().fullName : (user.displayName || email)
+        });
         navigate('/');
       }
     } catch (err: any) {
@@ -102,6 +133,10 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await signInAnonymously(auth);
+      saveLastLogin({
+        method: 'guest',
+        displayName: 'ضيف (مواطن)'
+      });
       navigate('/');
     } catch (err) {
       setError('فشل تسجيل الدخول كضيف');
@@ -122,6 +157,21 @@ export const LoginPage: React.FC = () => {
       setError('النطاق الحالي غير مصرح به في فايربيس (إعدادات Auth -> Authorized Domains).');
     } else {
       setError('حدث خطأ. يرجى المحاولة مرة أخرى.');
+    }
+  };
+
+  const handleQuickRelogin = () => {
+    if (!rememberedUser) return;
+    if (rememberedUser.method === 'guest') {
+      handleGuestLogin();
+    } else if (rememberedUser.method === 'email' && rememberedUser.email) {
+      setMethod('email');
+      setEmail(rememberedUser.email);
+      setRememberedUser(null);
+    } else if (rememberedUser.method === 'phone' && rememberedUser.phone) {
+      setMethod('phone');
+      setPhone(rememberedUser.phone);
+      setRememberedUser(null);
     }
   };
 
@@ -149,149 +199,186 @@ export const LoginPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 text-center mb-2">مرحباً بك في بلّغ</h1>
             <p className="text-slate-500 text-center mb-8">المنصة الذكية لإدارة وتحسين الخدمات العامة</p>
 
-            <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
-              <button 
-                onClick={() => { setMethod('email'); setOtpSent(false); setError(null); }}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${method === 'email' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            {rememberedUser ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-blue-50 rounded-2xl p-6 border border-blue-100 text-center mb-6"
               >
-                <Mail className="w-4 h-4" />
-                البريد الإلكتروني
-              </button>
-              <button 
-                onClick={() => { setMethod('phone'); setOtpSent(false); setError(null); }}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${method === 'phone' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <Phone className="w-4 h-4" />
-                رقم الهاتف
-              </button>
-            </div>
-
-            <AnimatePresence mode="wait">
-              {method === 'email' ? (
-                <motion.form 
-                  key="email-form"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  onSubmit={handleEmailLogin}
-                  className="space-y-4"
-                >
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-slate-700 mr-1">البريد الإلكتروني</label>
-                    <div className="relative">
-                      <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input 
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-right"
-                        placeholder="example@mail.com"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-slate-700 mr-1">كلمة المرور</label>
-                    <div className="relative">
-                      <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input 
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-right"
-                        placeholder="••••••••"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {error && (
-                    <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2 rounded-lg border border-red-100">{error}</p>
-                  )}
-
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                  <User className="w-8 h-8 text-blue-600" />
+                </div>
+                <p className="text-slate-500 text-[10px] font-bold mb-1 uppercase tracking-tight">تسجيل الدخول السابق</p>
+                <h3 className="text-lg font-black text-slate-900 mb-6">{rememberedUser.displayName}</h3>
+                
+                <div className="space-y-3">
                   <button 
-                    type="submit"
+                    onClick={handleQuickRelogin}
                     disabled={loading}
-                    className="w-full bg-slate-900 text-white rounded-xl py-3.5 font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group"
+                    className="w-full bg-blue-600 text-white rounded-xl py-3 font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                       <>
-                        تسجيل الدخول
-                        <ArrowRight className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                        {rememberedUser.method === 'guest' ? 'متابعة كضيف' : 'تسجيل دخول سريع'}
+                        <ArrowRight className="w-5 h-5" />
                       </>
                     )}
                   </button>
-                </motion.form>
-              ) : (
-                <motion.form 
-                  key="phone-form"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  onSubmit={otpSent ? handlePhoneVerify : handlePhoneRequest}
-                  className="space-y-4"
-                >
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-slate-700 mr-1">رقم الهاتف (بالصيغة الدولية)</label>
-                    <div className="relative">
-                      <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input 
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-left dir-ltr disabled:opacity-50"
-                        placeholder="+966xxxxxxxxx"
-                        required
-                        disabled={otpSent}
-                      />
-                    </div>
-                  </div>
-
-                  {otpSent && (
-                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
-                      <label className="text-sm font-medium text-slate-700 mr-1">رمز التحقق (OTP)</label>
-                      <input 
-                        type="text"
-                        value={otp}
-                        maxLength={6}
-                        onChange={(e) => setOtp(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 text-center text-lg font-black tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                        placeholder="123456"
-                        required
-                      />
-                    </motion.div>
-                  )}
-
-                  <p className="text-xs text-slate-400 text-center font-medium">
-                    {otpSent ? 'أدخل الرمز المكون من 6 أرقام' : 'سنقوم بإرسال كود التحقق عبر الرسائل النصية'}
-                  </p>
-
-                  {error && (
-                    <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2 rounded-lg border border-red-100">{error}</p>
-                  )}
-
                   <button 
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-slate-900 text-white rounded-xl py-3.5 font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                    onClick={() => setRememberedUser(null)}
+                    className="text-[11px] font-bold text-slate-400 hover:text-slate-600"
                   >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : otpSent ? 'تحقق ودخول' : 'إرسال كود التحقق'}
-                    <ArrowRight className="w-5 h-5" />
+                    استخدام حساب آخر؟
                   </button>
+                </div>
+              </motion.div>
+            ) : (
+              <>
+                <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
+                  <button 
+                    onClick={() => { setMethod('email'); setOtpSent(false); setError(null); }}
+                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${method === 'email' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <Mail className="w-4 h-4" />
+                    البريد الإلكتروني
+                  </button>
+                  <button 
+                    onClick={() => { setMethod('phone'); setOtpSent(false); setError(null); }}
+                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${method === 'phone' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <Phone className="w-4 h-4" />
+                    رقم الهاتف
+                  </button>
+                </div>
 
-                  {otpSent && (
-                    <button 
-                      type="button" 
-                      onClick={() => { setOtpSent(false); setOtp(''); }}
-                      className="w-full text-center text-xs font-bold text-blue-600 hover:text-blue-700"
+                <AnimatePresence mode="wait">
+                  {method === 'email' ? (
+                    <motion.form 
+                      key="email-form"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      onSubmit={handleEmailLogin}
+                      className="space-y-4"
                     >
-                      تغيير الرقم أو إعادة الإرسال؟
-                    </button>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-slate-700 mr-1">البريد الإلكتروني</label>
+                        <div className="relative">
+                          <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                          <input 
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-right"
+                            placeholder="example@mail.com"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-slate-700 mr-1">كلمة المرور</label>
+                        <div className="relative">
+                          <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                          <input 
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-right"
+                            placeholder="••••••••"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {error && (
+                        <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2 rounded-lg border border-red-100">{error}</p>
+                      )}
+
+                      <button 
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-slate-900 text-white rounded-xl py-3.5 font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group"
+                      >
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                          <>
+                            تسجيل الدخول
+                            <ArrowRight className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                          </>
+                        )}
+                      </button>
+                    </motion.form>
+                  ) : (
+                    <motion.form 
+                      key="phone-form"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      onSubmit={otpSent ? handlePhoneVerify : handlePhoneRequest}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-slate-700 mr-1">رقم الهاتف (بالصيغة الدولية)</label>
+                        <div className="relative">
+                          <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                          <input 
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-left dir-ltr disabled:opacity-50"
+                            placeholder="+966xxxxxxxxx"
+                            required
+                            disabled={otpSent}
+                          />
+                        </div>
+                      </div>
+
+                      {otpSent && (
+                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
+                          <label className="text-sm font-medium text-slate-700 mr-1">رمز التحقق (OTP)</label>
+                          <input 
+                            type="text"
+                            value={otp}
+                            maxLength={6}
+                            onChange={(e) => setOtp(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 text-center text-lg font-black tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                            placeholder="123456"
+                            required
+                          />
+                        </motion.div>
+                      )}
+
+                      <p className="text-xs text-slate-400 text-center font-medium">
+                        {otpSent ? 'أدخل الرمز المكون من 6 أرقام' : 'سنقوم بإرسال كود التحقق عبر الرسائل النصية'}
+                      </p>
+
+                      {error && (
+                        <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2 rounded-lg border border-red-100">{error}</p>
+                      )}
+
+                      <button 
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-slate-900 text-white rounded-xl py-3.5 font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                      >
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : otpSent ? 'تحقق ودخول' : 'إرسال كود التحقق'}
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+
+                      {otpSent && (
+                        <button 
+                          type="button" 
+                          onClick={() => { setOtpSent(false); setOtp(''); }}
+                          className="w-full text-center text-xs font-bold text-blue-600 hover:text-blue-700"
+                        >
+                          تغيير الرقم أو إعادة الإرسال؟
+                        </button>
+                      )}
+                    </motion.form>
                   )}
-                </motion.form>
-              )}
-            </AnimatePresence>
+                </AnimatePresence>
+              </>
+            )}
           </div>
 
           <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">

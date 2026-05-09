@@ -68,7 +68,7 @@ export function RoleSwitcher() {
 
   return (
     <div className="relative">
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 py-2 px-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 group cursor-pointer"
       >
@@ -81,7 +81,7 @@ export function RoleSwitcher() {
         {isOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 15, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 15, scale: 0.95 }}
@@ -92,7 +92,7 @@ export function RoleSwitcher() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">دليل الواجهات</p>
                   <h4 className="text-lg font-black text-slate-900">اختر دوراً للمحاكاة</h4>
                 </div>
-                <div 
+                <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center"
                   style={{ backgroundColor: `${themeColor}15`, color: themeColor }}
                 >
@@ -114,29 +114,27 @@ export function RoleSwitcher() {
                             <button
                               key={role.id}
                               onClick={() => {
-                                  setCurrentRole(role);
-                                  setIsOpen(false);
+                                setCurrentRole(role);
+                                setIsOpen(false);
                               }}
-                              className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all ${
-                                  currentRole.id === role.id 
-                                  ? 'text-white shadow-lg' 
+                              className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all ${currentRole.id === role.id
+                                  ? 'text-white shadow-lg'
                                   : 'hover:bg-slate-50 text-slate-600'
-                              }`}
-                              style={currentRole.id === role.id ? { 
+                                }`}
+                              style={currentRole.id === role.id ? {
                                 backgroundColor: themeColor,
                                 boxShadow: `0 8px 12px -2px ${themeColor}33`
                               } : {}}
                             >
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                                  currentRole.id === role.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                              }`}>
-                                  {getIcon(role.slug)}
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${currentRole.id === role.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                                }`}>
+                                {getIcon(role.slug)}
                               </div>
                               <div className="text-right">
-                                  <div className="text-sm font-black">{role.name}</div>
-                                  <div className={`text-[10px] ${currentRole.id === role.id ? 'text-blue-100' : 'text-slate-400'}`}>
-                                      عرض لوحة تحكم الشريك
-                                  </div>
+                                <div className="text-sm font-black">{role.name}</div>
+                                <div className={`text-[10px] ${currentRole.id === role.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                  عرض لوحة تحكم الشريك
+                                </div>
                               </div>
                             </button>
                           ))}

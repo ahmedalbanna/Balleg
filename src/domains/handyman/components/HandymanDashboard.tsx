@@ -1,4 +1,4 @@
-import { Wrench, MapPin, Star, TrendingUp, DollarSign, MessageSquare, Bell, PenTool as Tool, Package, Users, Search, Filter, ArrowUpRight, CheckCircle2, Clock, ShieldCheck } from "lucide-react";
+import { Wrench, MapPin, Star, TrendingUp, DollarSign, MessageSquare, Bell, PenTool as Tool, Package, Users, Search, Filter, ArrowUpRight, CheckCircle2, Clock, ShieldCheck, Construction, History, FileBarChart, Truck, ListTodo, HandMetal, Settings, User } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { collection, query, onSnapshot, doc, updateDoc, arrayUnion } from "firebase/firestore";
@@ -6,6 +6,8 @@ import { db, handleFirestoreError, OperationType } from "../../core/services/fir
 import { Report } from "../../core/services/reportApi";
 import { toast } from "sonner";
 import { useAuth } from "../../core/context/AuthContext";
+import HandymanMapView from "./HandymanMapView";
+import { Link } from "react-router-dom";
 
 export function HandymanDashboard() {
   const { currentRole, user } = useAuth();
@@ -131,6 +133,32 @@ export function HandymanDashboard() {
             </div>
         </div>
       </header>
+ 
+      {/* Quick Navigation Grid */}
+      <div className="grid grid-cols-3 lg:grid-cols-9 gap-3 relative z-10 transition-all">
+          {[
+              { label: 'مواقع العمل', icon: Construction, path: '/handyman/work-sites', color: 'bg-amber-50 text-amber-600' },
+              { label: 'صيانة المعدات', icon: Wrench, path: '/handyman/maintenance', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'تقارير الإنجاز', icon: FileBarChart, path: '/handyman/reports', color: 'bg-emerald-50 text-emerald-600' },
+              { label: 'الدعم اللوجستي', icon: Truck, path: '/handyman/logistics', color: 'bg-blue-50 text-blue-600' },
+              { label: 'سجل العمليات', icon: History, path: '/handyman/ops-log', color: 'bg-slate-50 text-slate-800' },
+              { label: 'الملف المهني', icon: User, path: '/handyman/profile', color: 'bg-slate-50 text-slate-800' },
+              { label: 'التنبيهات', icon: Bell, path: '/handyman/alerts', color: 'bg-rose-50 text-rose-600' },
+              { label: 'إرشادات السلامة', icon: HandMetal, path: '/handyman/safety', color: 'bg-rose-50 text-rose-600' },
+              { label: 'الإعدادات', icon: Settings, path: '/handyman/settings', color: 'bg-slate-50 text-slate-800' },
+          ].map((action, i) => (
+              <Link 
+                  key={i} 
+                  to={action.path}
+                   className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-100 hover:shadow-lg transition-all hover:-translate-y-1 group"
+              >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${action.color} group-hover:scale-110 transition-transform`}>
+                      <action.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter text-center">{action.label}</span>
+              </Link>
+          ))}
+      </div>
 
       {/* Ad & Business Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
@@ -315,6 +343,31 @@ export function HandymanDashboard() {
             </div>
         </div>
       </div>
+
+      {/* Map Overview Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full h-[400px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden relative group z-10"
+      >
+        <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <MapPin size={14} className="text-blue-600" />
+            <span className="text-[10px] font-black text-slate-900 tracking-tight">رصد المهام الميدانية والمواقع النشطة</span>
+        </div>
+        <HandymanMapView 
+          points={reports.slice(0, 10).map(r => ({
+            lat: r.location?.lat || 15.3694,
+            lng: r.location?.lng || 44.1910,
+            intensity: r.priority === 'critical' ? 0.8 : 0.4,
+            label: r.department || 'موقع صيانة',
+            type: r.priority === 'critical' ? 'repair' : 'maintenance',
+            status: r.status === 'resolved' ? 'completed' : r.status === 'in-progress' ? 'in-progress' : 'pending',
+            urgent: r.priority === 'critical'
+          }))}
+          center={[15.3694, 44.1910]}
+          zoom={13}
+        />
+      </motion.div>
 
       <AnimatePresence>
         {selectedReportId && (

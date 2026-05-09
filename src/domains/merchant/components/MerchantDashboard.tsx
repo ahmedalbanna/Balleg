@@ -1,4 +1,4 @@
-import { Store, TrendingUp, Award, Clock, MapPin, Plus, HeartHandshake, Zap, Trophy, ShieldCheck, Sun } from "lucide-react";
+import { Store, TrendingUp, Award, Clock, MapPin, Plus, HeartHandshake, Zap, Trophy, ShieldCheck, Sun, AreaChart, ShoppingBag, Truck, CreditCard, Bell, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -6,6 +6,7 @@ import { auth, db, handleFirestoreError, OperationType } from "../../core/servic
 import { collection, query, where, onSnapshot, getDocs, updateDoc, doc } from "firebase/firestore";
 import { toast } from "sonner";
 import { Report, reportApi } from "../../core/services/reportApi";
+import MerchantMapView from "./MerchantMapView";
 
 export function MerchantDashboard() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -86,6 +87,30 @@ export function MerchantDashboard() {
         </div>
       </header>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        {[
+          { label: 'المنتجات', icon: ShoppingBag, path: '/merchant/products', color: 'bg-indigo-50 text-indigo-600' },
+          { label: 'الطلبات', icon: Clock, path: '/merchant/orders', color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'الشحن', icon: Truck, path: '/merchant/shipping', color: 'bg-orange-50 text-orange-600' },
+          { label: 'المالية', icon: AreaChart, path: '/merchant/financials', color: 'bg-blue-50 text-blue-600' },
+          { label: 'المدفوعات', icon: CreditCard, path: '/merchant/payments', color: 'bg-rose-50 text-rose-600' },
+          { label: 'الإشعارات', icon: Bell, path: '/merchant/notifications', color: 'bg-amber-50 text-amber-600' },
+          { label: 'الدعم', icon: Award, path: '/merchant/support', color: 'bg-teal-50 text-teal-600' },
+          { label: 'الإعدادات', icon: Settings, path: '/merchant/settings', color: 'bg-slate-50 text-slate-600' },
+        ].map((action, i) => (
+          <Link 
+            key={i} 
+            to={action.path}
+            className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-100 hover:shadow-lg transition-all hover:-translate-y-1 group"
+          >
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${action.color} group-hover:scale-110 transition-transform`}>
+              <action.icon className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">{action.label}</span>
+          </Link>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {businessStats.map((stat, i) => (
           <motion.div 
@@ -97,7 +122,7 @@ export function MerchantDashboard() {
           >
              <div className="flex items-center gap-4">
                 <div className={`w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
-                  <stat.icon className="w-7 h-7" />
+                   <stat.icon className="w-7 h-7" />
                 </div>
                 <div>
                   <p className="text-[11px] font-black text-slate-400 mb-1">{stat.label}</p>
@@ -110,6 +135,25 @@ export function MerchantDashboard() {
           </motion.div>
         ))}
       </div>
+
+      <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+            <AreaChart className="w-6 h-6 text-indigo-600" />
+            نطاق العمليات التجارية
+          </h3>
+          <span className="text-[10px] font-bold text-slate-400 italic">مباشر الآن</span>
+        </div>
+        <div className="h-[350px] w-full rounded-3xl overflow-hidden border border-slate-100 relative grayscale hover:grayscale-0 transition-all duration-700">
+           <MerchantMapView 
+              points={[
+                { lat: 15.3694, lng: 44.1910, intensity: 0.8, label: "المتجر الرئيسي", type: 'store', status: 'نشط' },
+                { lat: 15.3800, lng: 44.2000, intensity: 0.5, label: "مستودع التوزيع", type: 'warehouse', status: 'ممتلئ' },
+                { lat: 15.3500, lng: 44.1800, intensity: 0.4, label: "شحنة توريد", type: 'delivery', status: 'في الطريق' }
+              ]}
+           />
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 flex flex-col gap-6">

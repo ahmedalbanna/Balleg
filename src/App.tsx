@@ -3,91 +3,66 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./domains/core/context/AuthContext";
-import { RoleProvider, useRole } from "./domains/core/context/RoleContext";
-import { Layout } from "./domains/core/components/Layout";
-import { AuthGuard } from "./domains/core/components/AuthGuard";
-import { LoginPage } from "./domains/auth/components/LoginPage";
-import { RegisterPage } from "./domains/auth/components/RegisterPage";
-import { ReportHome } from "./domains/report/components/ReportHome";
-import { NewReport } from "./domains/report/components/NewReport";
-import { TrackReport } from "./domains/report/components/TrackReport";
-import { MyReports } from "./domains/report/components/MyReports";
-import { EditReport } from "./domains/report/components/EditReport";
-import { OfficialDashboard } from "./domains/official/components/OfficialDashboard";
-import { MerchantDashboard } from "./domains/merchant/components/MerchantDashboard";
-import { DriverDashboard } from "./domains/driver/components/DriverDashboard";
-import { DisplacedDashboard } from "./domains/displaced/components/DisplacedDashboard";
-import { OperatorDashboard } from "./domains/operator/components/OperatorDashboard";
-import { SpecialistDashboard } from "./domains/specialist/components/SpecialistDashboard";
-import { ManagerDashboard } from "./domains/manager/components/ManagerDashboard";
-import { AdminDashboard } from "./domains/admin/components/AdminDashboard";
-import { CouncilDashboard } from "./domains/council/components/CouncilDashboard";
-import { NeighborhoodDashboard } from "./domains/neighborhood/components/NeighborhoodDashboard";
-import { HumanitarianDashboard } from "./domains/humanitarian/components/HumanitarianDashboard";
-import { JournalistDashboard } from "./domains/journalist/components/JournalistDashboard";
-import { TelecomDashboard } from "./domains/telecom/components/TelecomDashboard";
-import { ContractorDashboard } from "./domains/contractor/components/ContractorDashboard";
-import { HandymanDashboard } from "./domains/handyman/components/HandymanDashboard";
-import { VerifierDashboard } from "./domains/verifier/components/VerifierDashboard";
-import { DeveloperDashboard } from "./domains/developer/components/DeveloperDashboard";
-import { DonorDashboard } from "./domains/donor/components/DonorDashboard";
-
-import { ProfilePage } from "./domains/core/components/ProfilePage";
-
-import { DataSeeder } from "./domains/admin/components/DataSeeder";
-
-function HomeSwitcher() {
-  const { currentRole } = useRole();
-  const { profile } = useAuth();
-  
-  if (currentRole?.slug === 'admin') return <AdminDashboard />;
-  if (currentRole?.slug === 'official') return <OfficialDashboard />;
-  if (currentRole?.slug === 'merchant') return <MerchantDashboard />;
-  if (currentRole?.slug === 'driver') return <DriverDashboard />;
-  if (currentRole?.slug === 'displaced') return <DisplacedDashboard />;
-  if (currentRole?.slug === 'operator') return <OperatorDashboard />;
-  if (currentRole?.slug === 'specialist') return <SpecialistDashboard />;
-  if (currentRole?.slug === 'manager') return <ManagerDashboard />;
-  if (currentRole?.slug === 'council') return <CouncilDashboard />;
-  if (currentRole?.slug === 'neighborhood_council') return <NeighborhoodDashboard />;
-  if (currentRole?.slug === 'humanitarian') return <HumanitarianDashboard />;
-  if (currentRole?.slug === 'journalist') return <JournalistDashboard />;
-  if (currentRole?.slug === 'telecom') return <TelecomDashboard />;
-  if (currentRole?.slug === 'contractor') return <ContractorDashboard />;
-  if (currentRole?.slug === 'handyman') return <HandymanDashboard />;
-  if (currentRole?.slug === 'verifier') return <VerifierDashboard />;
-  if (currentRole?.slug === 'developer') return <DeveloperDashboard />;
-  if (currentRole?.slug === 'donor') return <DonorDashboard />;
-  
-  return <ReportHome />;
-}
+import React, { Suspense } from "react";
+import { BrowserRouter, Routes } from "react-router-dom";
+import { AuthProvider } from "./domains/core/context/AuthContext";
+import { RoleProvider } from "./domains/core/context/RoleContext";
+import { coreRoutes } from "./domains/core/routes";
+import { adminRoutes } from "./domains/admin/routes";
+import { officialRoutes } from "./domains/official/routes";
+import { operatorRoutes } from "./domains/operator/routes";
+import { specialistRoutes } from "./domains/specialist/routes";
+import { displacedRoutes } from "./domains/displaced/routes";
+import { merchantRoutes } from "./domains/merchant/routes";
+import { driverRoutes } from "./domains/driver/routes";
+import { councilRoutes } from "./domains/council/routes";
+import { contractorRoutes } from "./domains/contractor/routes";
+import { developerRoutes } from "./domains/developer/routes";
+import { donorRoutes } from "./domains/donor/routes";
+import { handymanRoutes } from "./domains/handyman/routes";
+import { humanitarianRoutes } from "./domains/humanitarian/routes";
+import { journalistRoutes } from "./domains/journalist/routes";
+import { neighborhoodRoutes } from "./domains/neighborhood/routes";
+import { telecomRoutes } from "./domains/telecom/routes";
+import { verifierRoutes } from "./domains/verifier/routes";
+import { citizenRoutes } from "./domains/citizen/routes";
 
 export default function App() {
   return (
     <AuthProvider>
       <RoleProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/demo-seed" element={<DataSeeder />} />
-            
-            <Route element={<AuthGuard><Layout /></AuthGuard>}>
-              <Route path="/" element={<HomeSwitcher />} />
-              <Route path="/new" element={<NewReport />} />
-              <Route path="/edit" element={<EditReport />} />
-              <Route path="/track" element={<TrackReport />} />
-              <Route path="/reports/my" element={<MyReports />} />
-              <Route path="/profile" element={<ProfilePage />} />
-            </Route>
-            
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={
+            <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+              <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+            </div>
+          }>
+            <Routes>
+              {coreRoutes}
+              {citizenRoutes}
+              {adminRoutes}
+              {officialRoutes}
+              {operatorRoutes}
+              {specialistRoutes}
+              {displacedRoutes}
+              {merchantRoutes}
+              {driverRoutes}
+              {councilRoutes}
+              {contractorRoutes}
+              {developerRoutes}
+              {donorRoutes}
+              {handymanRoutes}
+              {humanitarianRoutes}
+              {journalistRoutes}
+              {neighborhoodRoutes}
+              {telecomRoutes}
+              {verifierRoutes}
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </RoleProvider>
     </AuthProvider>
   );
 }
+
 

@@ -1,9 +1,11 @@
-import { Terminal, Activity, Cpu, Server, Code2, Bug, Zap, Database, Search, Filter, MessageSquare, AlertTriangle, ShieldCheck, ExternalLink, GitBranch, Github, ShieldAlert } from "lucide-react";
+import { Terminal, Activity, Cpu, Server, Code2, Bug, Zap, Database, Search, Filter, MessageSquare, AlertTriangle, ShieldCheck, ExternalLink, GitBranch, Github, ShieldAlert, Map as MapIcon, Layers, User, Bell, HelpCircle, Settings } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
+import DeveloperMapView from "./DeveloperMapView";
+import { Link } from "react-router-dom";
 
 export function DeveloperDashboard() {
   const [activeTab, setActiveTab] = useState("api");
@@ -65,6 +67,32 @@ export function DeveloperDashboard() {
         </div>
       </header>
 
+      {/* Quick Navigation Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-9 gap-3 relative z-10 transition-all">
+          {[
+              { label: 'الأدوات', icon: Terminal, path: '/developer/edge-tools', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'البنية', icon: Cpu, path: '/developer/architecture', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'البيانات', icon: Database, path: '/developer/databases', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'الأداء', icon: Activity, path: '/developer/performance', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'الطبقات', icon: Layers, path: '/developer/layers', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'الملف', icon: User, path: '/developer/profile', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'التنبيهات', icon: Bell, path: '/developer/alerts', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'المركز', icon: HelpCircle, path: '/developer/center', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'الإعدادات', icon: Settings, path: '/developer/settings', color: 'bg-indigo-50 text-indigo-600' },
+          ].map((action, i) => (
+              <Link 
+                  key={i} 
+                  to={action.path}
+                  className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-100 hover:shadow-lg transition-all hover:-translate-y-1 group"
+              >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${action.color} group-hover:scale-110 transition-transform`}>
+                      <action.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">{action.label}</span>
+              </Link>
+          ))}
+      </div>
+
       {/* Cluster Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
         {[
@@ -90,6 +118,27 @@ export function DeveloperDashboard() {
             </motion.div>
         ))}
       </div>
+
+      {/* Infrastructure Map */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full h-[400px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden relative group z-10"
+      >
+        <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <MapIcon size={14} className="text-indigo-600" />
+            <span className="text-[10px] font-black text-slate-900 tracking-tight">رصد المواقع السحابية والبنية التحتية</span>
+        </div>
+        <DeveloperMapView 
+          points={[
+            { lat: 15.3694, lng: 44.1910, intensity: 0.8, label: "MAIN-SERVER-CENTRAL", type: 'server', status: 'active', load: 45 },
+            { lat: 15.3800, lng: 44.2000, intensity: 0.5, label: "DB-CLUSTER-ALPHA", type: 'database', status: 'active', load: 62 },
+            { lat: 15.3500, lng: 44.1800, intensity: 0.4, label: "GATEWAY-API-X", type: 'api', status: 'maintenance', load: 12 }
+          ]}
+          center={[15.3694, 44.1910]}
+          zoom={13}
+        />
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
         {/* Performance Visualization */}

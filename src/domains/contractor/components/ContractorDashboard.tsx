@@ -1,4 +1,4 @@
-import { Hammer, ClipboardList, PenTool as Tool, CheckCircle2, Clock, Calendar, MapPin, ChevronRight, TrendingUp, Trophy, FileText, Users, Building2, ExternalLink, Camera, UploadCloud } from "lucide-react";
+import { Hammer, ClipboardList, PenTool as Tool, CheckCircle2, Clock, Calendar, MapPin, ChevronRight, TrendingUp, Trophy, FileText, Users, Building2, ExternalLink, Camera, UploadCloud, Construction, FileStack, Warehouse, Truck, Ruler, User, Bell, HelpCircle, Settings, ShieldCheck, HardHat } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { collection, query, onSnapshot, doc, updateDoc } from "firebase/firestore";
@@ -6,6 +6,8 @@ import { db, handleFirestoreError, OperationType } from "../../core/services/fir
 import { Report } from "../../core/services/reportApi";
 import { toast } from "sonner";
 import { useAuth } from "../../core/context/AuthContext";
+import ContractorMapView from "./ContractorMapView";
+import { Link } from "react-router-dom";
 
 export function ContractorDashboard() {
   const { currentRole } = useAuth();
@@ -90,6 +92,32 @@ export function ContractorDashboard() {
             </div>
         </div>
       </header>
+
+      {/* Quick Navigation Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-9 gap-3 relative z-10">
+          {[
+              { label: 'العقود', icon: FileStack, path: '/contractor/contracts', color: 'bg-amber-50 text-amber-600' },
+              { label: 'الفرق', icon: HardHat, path: '/contractor/teams', color: 'bg-blue-50 text-blue-600' },
+              { label: 'المخزون', icon: Warehouse, path: '/contractor/inventory', color: 'bg-emerald-50 text-emerald-600' },
+              { label: 'المعدات', icon: Truck, path: '/contractor/equipment', color: 'bg-indigo-50 text-indigo-600' },
+              { label: 'الجودة', icon: Ruler, path: '/contractor/quality', color: 'bg-rose-50 text-rose-600' },
+              { label: 'الملف', icon: User, path: '/contractor/profile', color: 'bg-slate-100 text-slate-600' },
+              { label: 'التنبيهات', icon: Bell, path: '/contractor/alerts', color: 'bg-amber-50 text-amber-600' },
+              { label: 'الدعم', icon: HelpCircle, path: '/contractor/support', color: 'bg-teal-50 text-teal-600' },
+              { label: 'الإعدادات', icon: Settings, path: '/contractor/settings', color: 'bg-slate-100 text-slate-600' },
+          ].map((action, i) => (
+              <Link 
+                  key={i} 
+                  to={action.path}
+                  className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-100 hover:shadow-lg transition-all hover:-translate-y-1 group"
+              >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${action.color} group-hover:scale-110 transition-transform`}>
+                      <action.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">{action.label}</span>
+              </Link>
+          ))}
+      </div>
 
       {/* Contract Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
@@ -234,6 +262,31 @@ export function ContractorDashboard() {
             </div>
         </div>
       </div>
+
+      {/* Map Overview Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full h-[400px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden relative group"
+      >
+        <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <Construction size={14} className="text-amber-600" />
+            <span className="text-[10px] font-black text-slate-900 tracking-tight">رصد المواقع الإنشائية والموارد الميدانية</span>
+        </div>
+        <ContractorMapView 
+          points={activeReports.map(r => ({
+            lat: r.location?.lat || 15.3694,
+            lng: r.location?.lng || 44.1910,
+            intensity: r.priority === 'critical' ? 0.8 : 0.4,
+            label: r.department || 'موقع عمل',
+            type: r.priority === 'critical' ? 'hazard' : 'worksite',
+            status: r.status,
+            progress: 35 // Mock progress
+          }))}
+          center={[15.3694, 44.1910]}
+          zoom={13}
+        />
+      </motion.div>
 
       <AnimatePresence>
         {selectedReportId && (

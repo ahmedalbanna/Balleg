@@ -4,12 +4,12 @@ import { Users, Building2, ShieldCheck, Activity, Search, Plus, MoreVertical, Ch
 import { collection, query, getDocs, doc, updateDoc, onSnapshot, where, serverTimestamp, orderBy, limit, setDoc } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../core/services/firebase';
 import { logActivity } from '../../core/services/audit';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, BarChart, Bar, Legend 
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts';
 import { cn } from '../../core/utils/cn';
-import MapView from '../../locations/components/MapView';
+import AdminMapView from './AdminMapView';
 import { Report } from '../../core/services/reportApi';
 import { toast } from 'sonner';
 import { MermaidChart } from '../../core/components/MermaidChart';
@@ -50,7 +50,7 @@ export const AdminDashboard: React.FC = () => {
     standardProcessingTimeoutHours: 72
   });
   const [loading, setLoading] = useState(true);
-  
+
   const [reroutingReportId, setReroutingReportId] = useState<string | null>(null);
   const [rerouteDepartment, setRerouteDepartment] = useState("");
   const [rerouteReason, setRerouteReason] = useState("");
@@ -61,10 +61,10 @@ export const AdminDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [newUserMsg, setNewUserMsg] = useState("");
-  const [newUserForm, setNewUserForm] = useState({ 
-    displayName: '', 
-    email: '', 
-    role: 'official', 
+  const [newUserForm, setNewUserForm] = useState({
+    displayName: '',
+    email: '',
+    role: 'official',
     department: '',
     permissions: [] as string[]
   });
@@ -84,7 +84,7 @@ export const AdminDashboard: React.FC = () => {
     // Fetch users mapping
     const qUsers = query(collection(db, 'users'));
     const unsubUsers = onSnapshot(qUsers, (snapshot) => {
-      const userData = snapshot.docs.map(doc => ({...doc.data(), uid: doc.id} as UserData));
+      const userData = snapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as UserData));
       setUsers(userData);
       setStats(prev => ({ ...prev, totalUsers: userData.length }));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
@@ -96,7 +96,7 @@ export const AdminDashboard: React.FC = () => {
       setReports(docs);
 
       const active = docs.filter(r => r.status === 'in_progress' || r.status === 'pending_official' || r.status === 'pending_operator').length;
-      
+
       const now = new Date();
       const delayed = docs.filter(r => {
         if (r.status.startsWith('resolved')) return false;
@@ -106,8 +106,8 @@ export const AdminDashboard: React.FC = () => {
 
       const critical = docs.filter(r => r.priority === 'critical' && !r.status.startsWith('resolved')).length;
 
-      setStats(prev => ({ 
-        ...prev, 
+      setStats(prev => ({
+        ...prev,
         activeReports: active,
         delayedReports: delayed,
         criticalReports: critical,
@@ -120,7 +120,7 @@ export const AdminDashboard: React.FC = () => {
     // Fetch clarification requests
     const qClarify = query(collection(db, 'clarification_requests'), orderBy('createdAt', 'desc'));
     const unsubClarify = onSnapshot(qClarify, (snapshot) => {
-       setClarifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setClarifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
     // Fetch neighborhood dissatisfaction reports
@@ -140,10 +140,10 @@ export const AdminDashboard: React.FC = () => {
     // Fetch audit logs
     const qLogs = query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(50));
     const unsubLogs = onSnapshot(qLogs, (snapshot) => {
-      setAuditLogs(snapshot.docs.map(d => ({ 
-        id: d.id, 
+      setAuditLogs(snapshot.docs.map(d => ({
+        id: d.id,
         ...d.data(),
-        timestamp: d.data().timestamp?.toDate ? d.data().timestamp.toDate() : d.data().timestamp 
+        timestamp: d.data().timestamp?.toDate ? d.data().timestamp.toDate() : d.data().timestamp
       })));
     });
 
@@ -191,13 +191,13 @@ export const AdminDashboard: React.FC = () => {
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser?.uid
       }, { merge: true });
-      
+
       await logActivity(
         'تعديل إعدادات النظام',
         `تحديث المهلات الزمنية: تقييم (${systemSettings.evaluationTimeoutHours}س)، طوارئ (${systemSettings.emergencyProcessingTimeoutHours}س)`,
         'settings/global'
       );
-      
+
       toast.success('تم حفظ إعدادات النظام بنجاح', { id: toastId });
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, 'settings/global');
@@ -267,18 +267,18 @@ export const AdminDashboard: React.FC = () => {
         isActive: true,
         createdAt: serverTimestamp()
       }).catch(async (err) => {
-         // fallback if updateDoc fails because it doesn't exist
-         const { setDoc, serverTimestamp } = await import('firebase/firestore');
-         await setDoc(doc(db, 'users', newUid), {
-            uid: newUid,
-            displayName: newUserForm.displayName,
-            email: newUserForm.email,
-            role: newUserForm.role,
-            departmentId: newUserForm.department,
-            permissions: newUserForm.permissions,
-            isActive: true,
-            createdAt: serverTimestamp()
-         });
+        // fallback if updateDoc fails because it doesn't exist
+        const { setDoc, serverTimestamp } = await import('firebase/firestore');
+        await setDoc(doc(db, 'users', newUid), {
+          uid: newUid,
+          displayName: newUserForm.displayName,
+          email: newUserForm.email,
+          role: newUserForm.role,
+          departmentId: newUserForm.department,
+          permissions: newUserForm.permissions,
+          isActive: true,
+          createdAt: serverTimestamp()
+        });
       });
       await logActivity('إنشاء حساب', `تم إنشاء حساب جديد للموظف ${newUserForm.displayName} بدور ${newUserForm.role}`, `users/${newUid}`);
       toast.success('تم إنشاء الحساب بنجاح', { id: toastId });
@@ -307,129 +307,129 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredUsers = users.filter(u =>
+    u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.role?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleExport = () => {
-      const csvRows = [];
-      // CSV Headers
-      csvRows.push(['ID', 'Status', 'Department', 'Type', 'Priority', 'Created At', 'Rating'].join(','));
-      
-      // Data Rows
-      reports.forEach(r => {
-         const row = [
-             r.id,
-             r.status,
-             r.department || 'N/A',
-             r.type || 'N/A',
-             r.priority || 'medium',
-             new Date(r.createdAt).toLocaleString(),
-             r.rating || ''
-         ];
-         // Escape commas and quotes
-         const safeRow = row.map(v => `"${String(v).replace(/"/g, '""')}"`);
-         csvRows.push(safeRow.join(','));
-      });
-      
-      const csvString = '\uFEFF' + csvRows.join('\n'); // adding BOM for unicode support in Excel
-      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `reports_export_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    const csvRows = [];
+    // CSV Headers
+    csvRows.push(['ID', 'Status', 'Department', 'Type', 'Priority', 'Created At', 'Rating'].join(','));
 
-      toast.success("تم تصدير التقرير بصيغة CSV بنجاح");
+    // Data Rows
+    reports.forEach(r => {
+      const row = [
+        r.id,
+        r.status,
+        r.department || 'N/A',
+        r.type || 'N/A',
+        r.priority || 'medium',
+        new Date(r.createdAt).toLocaleString(),
+        r.rating || ''
+      ];
+      // Escape commas and quotes
+      const safeRow = row.map(v => `"${String(v).replace(/"/g, '""')}"`);
+      csvRows.push(safeRow.join(','));
+    });
+
+    const csvString = '\uFEFF' + csvRows.join('\n'); // adding BOM for unicode support in Excel
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `reports_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("تم تصدير التقرير بصيغة CSV بنجاح");
   };
 
   // Generate chart data based on real reports
   const deptMap: Record<string, { total: number, resolved: number }> = {};
   const typeMap: Record<string, number> = {};
   reports.forEach(r => {
-      const d = r.department || 'غير مصنف';
-      if (!deptMap[d]) deptMap[d] = { total: 0, resolved: 0 };
-      deptMap[d].total++;
-      if (r.status.startsWith('resolved')) deptMap[d].resolved++;
+    const d = r.department || 'غير مصنف';
+    if (!deptMap[d]) deptMap[d] = { total: 0, resolved: 0 };
+    deptMap[d].total++;
+    if (r.status.startsWith('resolved')) deptMap[d].resolved++;
 
-      const t = r.type || 'أخرى';
-      typeMap[t] = (typeMap[t] || 0) + 1;
+    const t = r.type || 'أخرى';
+    typeMap[t] = (typeMap[t] || 0) + 1;
   });
 
   const deptPerformance = Object.keys(deptMap).map(k => ({
-      name: k,
-      score: Math.round((deptMap[k].resolved / deptMap[k].total) * 100),
-      total: deptMap[k].total
-  })).sort((a,b) => b.score - a.score);
+    name: k,
+    score: Math.round((deptMap[k].resolved / deptMap[k].total) * 100),
+    total: deptMap[k].total
+  })).sort((a, b) => b.score - a.score);
 
   const typeDistribution = Object.keys(typeMap).map(k => ({
-      name: k, value: typeMap[k]
+    name: k, value: typeMap[k]
   }));
 
   const mapPoints = reports.filter(r => r.location).map(r => ({
-      lat: r.location![0],
-      lng: r.location![1],
-      intensity: r.priority === 'critical' ? 1 : r.status === 'in_progress' ? 0.6 : 0.4,
-      label: r.description
+    lat: r.location![0],
+    lng: r.location![1],
+    intensity: r.priority === 'critical' ? 1 : r.status === 'in_progress' ? 0.6 : 0.4,
+    label: r.description
   }));
 
   const delayedList = reports.filter(r => {
-      if (r.status.startsWith('resolved')) return false;
-      const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
-      return diffMs > (systemSettings.standardProcessingTimeoutHours || 72) * 60 * 60 * 1000;
+    if (r.status.startsWith('resolved')) return false;
+    const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
+    return diffMs > (systemSettings.standardProcessingTimeoutHours || 72) * 60 * 60 * 1000;
   });
 
   const criticalList = reports.filter(r => r.priority === 'critical' && !r.status.startsWith('resolved'));
-  
+
   const emergencyViolations = criticalList.filter(r => {
-      const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
-      return diffMs > (systemSettings.emergencyProcessingTimeoutHours || 24) * 60 * 60 * 1000;
+    const diffMs = new Date().getTime() - new Date(r.createdAt).getTime();
+    return diffMs > (systemSettings.emergencyProcessingTimeoutHours || 24) * 60 * 60 * 1000;
   });
 
   return (
     <div className="space-y-8 p-6 max-w-7xl mx-auto w-full" dir="rtl">
-      
+
       {/* Header section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl" />
         <div className="relative z-10 flex items-center gap-5">
-           <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center p-3">
-              <ShieldCheck className="w-full h-full text-blue-400" />
-           </div>
-           <div>
-              <h2 className="text-3xl font-black text-white font-readex">لوحة الإدارة العليا (Admin)</h2>
-              <p className="text-sm font-bold text-slate-300 mt-1">الرؤية الاستراتيجية لأداء العاصمة والمديريات</p>
-           </div>
+          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center p-3">
+            <ShieldCheck className="w-full h-full text-blue-400" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-black text-white font-readex">لوحة الإدارة العليا (Admin)</h2>
+            <p className="text-sm font-bold text-slate-300 mt-1">الرؤية الاستراتيجية لأداء العاصمة والمديريات</p>
+          </div>
         </div>
         <button onClick={handleExport} className="relative z-10 bg-white text-slate-900 px-6 py-3 rounded-2xl text-sm font-black flex items-center gap-2 hover:bg-slate-100 transition-colors shadow-lg">
-           <Download className="w-4 h-4" />
-           تصدير التقارير القيادية
+          <Download className="w-4 h-4" />
+          تصدير التقارير القيادية
         </button>
       </div>
 
       {/* Header Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
         <StatCard icon={<Users className="text-blue-600" />} label="المستخدمين" value={stats.totalUsers.toString()} color="blue" />
-        <StatCard 
-          icon={<MessageSquare className={cn("text-amber-600", stats.dissatisfactionReports > 0 && "animate-pulse")} />} 
-          label="تقارير عدم الرضا" 
-          value={stats.dissatisfactionReports.toString()} 
-          color="amber" 
+        <StatCard
+          icon={<MessageSquare className={cn("text-amber-600", stats.dissatisfactionReports > 0 && "animate-pulse")} />}
+          label="تقارير عدم الرضا"
+          value={stats.dissatisfactionReports.toString()}
+          color="amber"
           highlight={stats.dissatisfactionReports > 0}
         />
         <StatCard icon={<Activity className="text-emerald-600" />} label="بلاغات قيد الإجراء" value={stats.activeReports.toString()} color="emerald" />
         <div className="bg-rose-50 p-6 rounded-[2rem] border border-rose-200 shadow-sm flex items-center gap-4 relative overflow-hidden">
-            <div className={`w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-inner`}>
-                <AlertCircle className="text-rose-600" />
-            </div>
-            <div>
+          <div className={`w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-inner`}>
+            <AlertCircle className="text-rose-600" />
+          </div>
+          <div>
             <p className="text-[10px] font-black text-rose-500 uppercase mb-1">مخاطر حرجة</p>
             <p className="text-2xl font-black text-rose-900">{stats.criticalReports}</p>
-            </div>
+          </div>
         </div>
       </div>
 
@@ -439,9 +439,8 @@ export const AdminDashboard: React.FC = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                activeTab === tab ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                }`}
             >
               {tab === 'analytics' && <TrendingUp className="w-4 h-4" />}
               {tab === 'users' && <Users className="w-4 h-4" />}
@@ -452,15 +451,15 @@ export const AdminDashboard: React.FC = () => {
               {tab === 'schema' && <Database className="w-4 h-4" />}
               {tab === 'logs' && <Activity className="w-4 h-4" />}
               {tab === 'settings' && <Settings className="w-4 h-4" />}
-              
-              {tab === 'analytics' ? 'المؤشرات والخرائط' : 
-               tab === 'alerts' ? 'التنبيهات والمساءلة' :
-               tab === 'clarifications' ? 'استيضاحات المجلس' :
-               tab === 'users' ? 'إدارة الوصول' : 
-               tab === 'departments' ? 'الهيكل التنظيمي' :
-               tab === 'flow' ? 'دورات العمل' : 
-               tab === 'schema' ? 'هيكل النظام (DB)' : 
-               tab === 'logs' ? 'سجل التدقيق' : 'إعدادات المنصة'}
+
+              {tab === 'analytics' ? 'المؤشرات والخرائط' :
+                tab === 'alerts' ? 'التنبيهات والمساءلة' :
+                  tab === 'clarifications' ? 'استيضاحات المجلس' :
+                    tab === 'users' ? 'إدارة الوصول' :
+                      tab === 'departments' ? 'الهيكل التنظيمي' :
+                        tab === 'flow' ? 'دورات العمل' :
+                          tab === 'schema' ? 'هيكل النظام (DB)' :
+                            tab === 'logs' ? 'سجل التدقيق' : 'إعدادات المنصة'}
             </button>
           ))}
         </div>
@@ -468,199 +467,199 @@ export const AdminDashboard: React.FC = () => {
         <div className="p-6 md:p-8">
           {activeTab === 'analytics' && (
             <div className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 {/* Distribution Pie */}
-                 <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm">
-                    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2 mb-6 tracking-widest uppercase">
-                        <PieChartIcon size={16} className="text-purple-500" />
-                        القطاعات الأكثر بلاغاً
-                    </h4>
-                    <div className="h-[250px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={typeDistribution}
-                                    innerRadius={50}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {typeDistribution.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981'][index % 5]} />
-                                    ))}
-                                </Pie>
-                                <RechartsTooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                                <Legend verticalAlign="bottom" height={36}/>
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                 </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10">
+                {/* Distribution Pie */}
+                <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm">
+                  <h4 className="text-sm font-black text-slate-800 flex items-center gap-2 mb-6 tracking-widest uppercase">
+                    <PieChartIcon size={16} className="text-purple-500" />
+                    القطاعات الأكثر بلاغاً
+                  </h4>
+                  <div className="h-[250px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={typeDistribution}
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {typeDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981'][index % 5]} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                        <Legend verticalAlign="bottom" height={36} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
 
                 {/* Department Performance */}
                 <div className="lg:col-span-2 bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm flex flex-col">
-                    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2 mb-6 tracking-widest uppercase">
-                        <BarChart3 size={16} className="text-orange-500" />
-                        كفاءة الإدارات (نسبة الإنجاز)
-                    </h4>
-                    <div className="space-y-4 flex-1">
-                        {deptPerformance.slice(0,5).map((dept) => (
-                            <div key={dept.name} className="space-y-2">
-                                <div className="flex justify-between text-xs font-black">
-                                    <span className="text-slate-700">{dept.name} <span className="text-slate-400 font-bold mr-1">({dept.total} بلاغ)</span></span>
-                                    <span className={cn(
-                                        dept.score > 80 ? "text-emerald-600" : dept.score > 60 ? "text-amber-500" : "text-rose-500"
-                                    )}>{dept.score}%</span>
-                                </div>
-                                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                    <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${dept.score}%` }}
-                                        transition={{ duration: 1, ease: "easeOut" }}
-                                        className={cn(
-                                            "h-full rounded-full",
-                                            dept.score > 80 ? "bg-emerald-500" : dept.score > 60 ? "bg-amber-500" : "bg-rose-500"
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                  <h4 className="text-sm font-black text-slate-800 flex items-center gap-2 mb-6 tracking-widest uppercase">
+                    <BarChart3 size={16} className="text-orange-500" />
+                    كفاءة الإدارات (نسبة الإنجاز)
+                  </h4>
+                  <div className="space-y-4 flex-1">
+                    {deptPerformance.slice(0, 5).map((dept) => (
+                      <div key={dept.name} className="space-y-2">
+                        <div className="flex justify-between text-xs font-black">
+                          <span className="text-slate-700">{dept.name} <span className="text-slate-400 font-bold mr-1">({dept.total} بلاغ)</span></span>
+                          <span className={cn(
+                            dept.score > 80 ? "text-emerald-600" : dept.score > 60 ? "text-amber-500" : "text-rose-500"
+                          )}>{dept.score}%</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${dept.score}%` }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            className={cn(
+                              "h-full rounded-full",
+                              dept.score > 80 ? "bg-emerald-500" : dept.score > 60 ? "bg-amber-500" : "bg-rose-500"
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* Heatmap Section */}
               <div className="bg-white rounded-[2rem] p-1 border border-slate-100 shadow-sm overflow-hidden">
-                  <div className="flex justify-between items-center p-5 border-b border-slate-50 mb-2">
-                       <h4 className="text-sm font-black text-slate-800 flex items-center gap-2 tracking-widest uppercase">
-                          <MapPin size={16} className="text-rose-500" />
-                          الخريطة الاستراتيجية للعمليات
-                      </h4>
-                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{mapPoints.length} نقطة نشطة</span>
-                  </div>
-                  <div className="h-[400px] w-full rounded-[1.5rem] overflow-hidden">
-                      <MapView points={mapPoints} center={[15.3694, 44.1910]} zoom={12} />
-                  </div>
+                <div className="flex justify-between items-center p-5 border-b border-slate-50 mb-2">
+                  <h4 className="text-sm font-black text-slate-800 flex items-center gap-2 tracking-widest uppercase">
+                    <MapPin size={16} className="text-rose-500" />
+                    الخريطة الاستراتيجية للعمليات
+                  </h4>
+                  <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{mapPoints.length} نقطة نشطة</span>
+                </div>
+                <div className="h-[400px] w-full rounded-[1.5rem] overflow-hidden">
+                  <AdminMapView points={mapPoints} center={[15.3694, 44.1910]} zoom={12} />
+                </div>
               </div>
             </div>
           )}
 
           {activeTab === 'alerts' && (
             <div className="space-y-6">
-                <div className="bg-rose-50 rounded-[2rem] p-6 border border-rose-100">
-                    <h3 className="text-lg font-black text-rose-900 mb-2 flex items-center gap-2">
-                        <AlertCircle className="w-6 h-6" /> بلاغات حرجة تتطلب تدخلاً (Critical)
-                    </h3>
-                    <div className="flex items-center gap-2 mb-6">
-                        <p className="text-xs text-rose-700 font-bold">هذه البلاغات صنفت حرجة ويجب معالجتها فوراً.</p>
-                        {emergencyViolations.length > 0 && (
-                            <span className="bg-rose-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                                انتهاك مهلة الطوارئ ({emergencyViolations.length})
-                            </span>
+              <div className="bg-rose-50 rounded-[2rem] p-6 border border-rose-100">
+                <h3 className="text-lg font-black text-rose-900 mb-2 flex items-center gap-2">
+                  <AlertCircle className="w-6 h-6" /> بلاغات حرجة تتطلب تدخلاً (Critical)
+                </h3>
+                <div className="flex items-center gap-2 mb-6">
+                  <p className="text-xs text-rose-700 font-bold">هذه البلاغات صنفت حرجة ويجب معالجتها فوراً.</p>
+                  {emergencyViolations.length > 0 && (
+                    <span className="bg-rose-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                      انتهاك مهلة الطوارئ ({emergencyViolations.length})
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {criticalList.length === 0 && <p className="text-sm font-black text-rose-300 text-center py-4">لا توجد حالات حرجة حالياً</p>}
+                  {criticalList.map(r => {
+                    const isViolated = (new Date().getTime() - new Date(r.createdAt).getTime()) > (systemSettings.emergencyProcessingTimeoutHours || 24) * 60 * 60 * 1000;
+                    return (
+                      <div key={r.id} className={cn(
+                        "bg-white p-4 rounded-2xl border flex flex-col md:flex-row gap-4 justify-between md:items-center transition-all",
+                        isViolated ? "border-rose-300 border-2 shadow-lg shadow-rose-600/10" : "border-rose-100"
+                      )}>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-black text-slate-900">{r.description}</p>
+                            {isViolated && <span className="text-[8px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded font-black">متجاوز للمهلة</span>}
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-bold mt-1">
+                            الحالة: {r.status} / القطاع: {r.department || 'غير مصنف'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => setReroutingReportId(r.id)} className="bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition flex items-center gap-2">
+                            <ArrowLeftRight className="w-4 h-4" /> إعادة توجيه طارئ
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-amber-50 rounded-[2rem] p-6 border border-amber-100">
+                <h3 className="text-lg font-black text-amber-900 mb-2 flex items-center gap-2">
+                  <Clock className="w-6 h-6" /> بلاغات متأخرة (تجاوز {systemSettings.standardProcessingTimeoutHours} ساعة)
+                </h3>
+                <p className="text-xs text-amber-700 font-bold mb-6">مساءلة الأقسام: هذه القائمة تجاوزت المهلة القياسية المحددة في النظام.</p>
+
+                <div className="space-y-3">
+                  {delayedList.length === 0 && <p className="text-sm font-black text-amber-300 text-center py-4">لا يوجد تقاعس يتجاوز المهلة</p>}
+                  {delayedList.map(r => (
+                    <div key={r.id} className="bg-white p-4 rounded-2xl border border-amber-100 flex flex-col md:flex-row gap-4 justify-between md:items-center">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">{r.description}</p>
+                        <p className="text-[10px] text-slate-500 font-bold mt-1">تاريخ البلاغ: {new Date(r.createdAt).toLocaleDateString('ar-SA')} - القطاع الموجه إليه: {r.department || 'غير مصنف'}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setReroutingReportId(r.id)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-black hover:bg-slate-800 transition flex items-center gap-2">
+                          توجيه إلزامي
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-slate-700 shadow-xl overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl" />
+                <h3 className="text-xl font-black text-amber-400 mb-2 flex items-center gap-2 relative z-10">
+                  <MessageSquare className="w-6 h-6" /> تفاعلات المجتمع (تقارير عدم الرضا)
+                </h3>
+                <p className="text-xs text-slate-400 font-bold mb-8 relative z-10">تقارير مباشرة من لجان الأحياء والمجلس المحلي تشير إلى استياء قطاع عريض من المواطنين.</p>
+
+                <div className="space-y-4 relative z-10">
+                  {neighborhoodReports.length === 0 && <p className="text-sm font-black text-slate-500 text-center py-10 border-2 border-dashed border-slate-800 rounded-3xl">لا يوجد تقارير استياء نشطة</p>}
+                  {neighborhoodReports.map(nr => (
+                    <div key={nr.id} className="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700 hover:bg-slate-800 transition-all group">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h4 className="font-black text-white text-md mb-1">{nr.title}</h4>
+                          <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
+                            <Building2 size={12} /> {nr.neighborhoodName}
+                          </p>
+                        </div>
+                        <span className={cn(
+                          "text-[8px] font-black px-2 py-0.5 rounded uppercase",
+                          nr.status === 'pending' ? 'bg-amber-500 text-slate-900 ring-4 ring-amber-500/20' : 'bg-slate-700 text-slate-400'
+                        )}>
+                          {nr.status === 'pending' ? 'تنبيه عاجل' : 'تم الاطلاع'}
+                        </span>
+                      </div>
+                      <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 mb-4">
+                        <p className="text-xs font-bold text-slate-300 leading-relaxed">{nr.content}</p>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] font-black text-slate-500">
+                        <span>{new Date(nr.createdAt?.toDate ? nr.createdAt.toDate() : nr.createdAt).toLocaleString('ar-SA')}</span>
+                        {nr.status === 'pending' && (
+                          <button
+                            onClick={() => handleReviewNeighborhoodReport(nr.id)}
+                            className="bg-amber-500 text-slate-900 px-4 py-1.5 rounded-lg hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
+                          >
+                            تأكيد المراجعة والاطلاع
+                          </button>
                         )}
+                        {nr.status === 'reviewed' && (
+                          <div className="flex items-center gap-2 text-emerald-500">
+                            <CheckCircle2 size={12} />
+                            <span>تمت مراجعتها بواسطة: {nr.reviewedBy}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="space-y-3">
-                        {criticalList.length === 0 && <p className="text-sm font-black text-rose-300 text-center py-4">لا توجد حالات حرجة حالياً</p>}
-                        {criticalList.map(r => {
-                            const isViolated = (new Date().getTime() - new Date(r.createdAt).getTime()) > (systemSettings.emergencyProcessingTimeoutHours || 24) * 60 * 60 * 1000;
-                            return (
-                                <div key={r.id} className={cn(
-                                    "bg-white p-4 rounded-2xl border flex flex-col md:flex-row gap-4 justify-between md:items-center transition-all",
-                                    isViolated ? "border-rose-300 border-2 shadow-lg shadow-rose-600/10" : "border-rose-100"
-                                )}>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-black text-slate-900">{r.description}</p>
-                                            {isViolated && <span className="text-[8px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded font-black">متجاوز للمهلة</span>}
-                                        </div>
-                                        <p className="text-[10px] text-slate-500 font-bold mt-1">
-                                            الحالة: {r.status} / القطاع: {r.department || 'غير مصنف'}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                         <button onClick={() => setReroutingReportId(r.id)} className="bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition flex items-center gap-2">
-                                             <ArrowLeftRight className="w-4 h-4" /> إعادة توجيه طارئ
-                                         </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                  ))}
                 </div>
-
-                <div className="bg-amber-50 rounded-[2rem] p-6 border border-amber-100">
-                    <h3 className="text-lg font-black text-amber-900 mb-2 flex items-center gap-2">
-                        <Clock className="w-6 h-6" /> بلاغات متأخرة (تجاوز {systemSettings.standardProcessingTimeoutHours} ساعة)
-                    </h3>
-                    <p className="text-xs text-amber-700 font-bold mb-6">مساءلة الأقسام: هذه القائمة تجاوزت المهلة القياسية المحددة في النظام.</p>
-
-                    <div className="space-y-3">
-                        {delayedList.length === 0 && <p className="text-sm font-black text-amber-300 text-center py-4">لا يوجد تقاعس يتجاوز المهلة</p>}
-                        {delayedList.map(r => (
-                            <div key={r.id} className="bg-white p-4 rounded-2xl border border-amber-100 flex flex-col md:flex-row gap-4 justify-between md:items-center">
-                                <div>
-                                    <p className="text-sm font-black text-slate-900">{r.description}</p>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-1">تاريخ البلاغ: {new Date(r.createdAt).toLocaleDateString('ar-SA')} - القطاع الموجه إليه: {r.department || 'غير مصنف'}</p>
-                                </div>
-                                <div className="flex gap-2">
-                                     <button onClick={() => setReroutingReportId(r.id)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-black hover:bg-slate-800 transition flex items-center gap-2">
-                                        توجيه إلزامي
-                                     </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-slate-700 shadow-xl overflow-hidden relative">
-                    <div className="absolute top-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl" />
-                    <h3 className="text-xl font-black text-amber-400 mb-2 flex items-center gap-2 relative z-10">
-                        <MessageSquare className="w-6 h-6" /> تفاعلات المجتمع (تقارير عدم الرضا)
-                    </h3>
-                    <p className="text-xs text-slate-400 font-bold mb-8 relative z-10">تقارير مباشرة من لجان الأحياء والمجلس المحلي تشير إلى استياء قطاع عريض من المواطنين.</p>
-
-                    <div className="space-y-4 relative z-10">
-                        {neighborhoodReports.length === 0 && <p className="text-sm font-black text-slate-500 text-center py-10 border-2 border-dashed border-slate-800 rounded-3xl">لا يوجد تقارير استياء نشطة</p>}
-                        {neighborhoodReports.map(nr => (
-                            <div key={nr.id} className="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700 hover:bg-slate-800 transition-all group">
-                                <div className="flex justify-between items-start mb-4">
-                                     <div>
-                                        <h4 className="font-black text-white text-md mb-1">{nr.title}</h4>
-                                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
-                                            <Building2 size={12} /> {nr.neighborhoodName}
-                                        </p>
-                                     </div>
-                                     <span className={cn(
-                                         "text-[8px] font-black px-2 py-0.5 rounded uppercase",
-                                         nr.status === 'pending' ? 'bg-amber-500 text-slate-900 ring-4 ring-amber-500/20' : 'bg-slate-700 text-slate-400'
-                                     )}>
-                                         {nr.status === 'pending' ? 'تنبيه عاجل' : 'تم الاطلاع'}
-                                     </span>
-                                </div>
-                                <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 mb-4">
-                                    <p className="text-xs font-bold text-slate-300 leading-relaxed">{nr.content}</p>
-                                </div>
-                                <div className="flex justify-between items-center text-[10px] font-black text-slate-500">
-                                    <span>{new Date(nr.createdAt?.toDate ? nr.createdAt.toDate() : nr.createdAt).toLocaleString('ar-SA')}</span>
-                                    {nr.status === 'pending' && (
-                                        <button 
-                                            onClick={() => handleReviewNeighborhoodReport(nr.id)}
-                                            className="bg-amber-500 text-slate-900 px-4 py-1.5 rounded-lg hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
-                                        >
-                                            تأكيد المراجعة والاطلاع
-                                        </button>
-                                    )}
-                                    {nr.status === 'reviewed' && (
-                                        <div className="flex items-center gap-2 text-emerald-500">
-                                            <CheckCircle2 size={12} />
-                                            <span>تمت مراجعتها بواسطة: {nr.reviewedBy}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+              </div>
             </div>
           )}
 
@@ -669,8 +668,8 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="relative flex-1 w-full max-w-md">
                   <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="بحث بالمستخدمين... (الاسم، الدور، الايميل)"
@@ -737,7 +736,7 @@ export const AdminDashboard: React.FC = () => {
                         </td>
                         <td className="py-3 px-6 text-center">
                           <div className="flex items-center justify-center gap-2">
-                             <button 
+                            <button
                               onClick={() => {
                                 if (user.isActive && user.email === auth.currentUser?.email) {
                                   toast.error("لا يمكنك تعطيل حسابك الخاص لضمان استمرارية الوصول");
@@ -748,8 +747,8 @@ export const AdminDashboard: React.FC = () => {
                               title={user.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
                               className={cn(
                                 "p-2 rounded-xl border transition-all",
-                                user.isActive 
-                                  ? 'text-rose-500 border-rose-100 hover:bg-rose-50' 
+                                user.isActive
+                                  ? 'text-rose-500 border-rose-100 hover:bg-rose-50'
                                   : 'text-emerald-600 border-emerald-100 hover:bg-emerald-50'
                               )}
                             >
@@ -774,13 +773,13 @@ export const AdminDashboard: React.FC = () => {
 
           {activeTab === 'flow' && (
             <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm overflow-x-auto min-h-[400px] flex flex-col gap-12">
-               
-               <div>
-                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Workflow className="w-6 h-6 text-blue-500" /> مخطط سير العمل (Sequence Diagram) الدورة النموذجية للبلاغ
-                 </h3>
-                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
-                   <MermaidChart chart={`sequenceDiagram
+
+              <div>
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Workflow className="w-6 h-6 text-blue-500" /> مخطط سير العمل (Sequence Diagram) الدورة النموذجية للبلاغ
+                </h3>
+                <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                  <MermaidChart chart={`sequenceDiagram
     participant C as المواطن
     participant S as النظام
     participant O as موظف الاستقبال
@@ -816,15 +815,15 @@ export const AdminDashboard: React.FC = () => {
         Note over S: مرور 48 ساعة
         Note over S: الحالة: مغلق - ضمني
     end`} />
-                 </div>
-               </div>
+                </div>
+              </div>
 
-               <div>
-                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Workflow className="w-6 h-6 text-blue-500" /> مخطط حالة (State Diagram) لدورة حياة البلاغ
-                 </h3>
-                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
-                   <MermaidChart chart={`stateDiagram-v2
+              <div>
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Workflow className="w-6 h-6 text-blue-500" /> مخطط حالة (State Diagram) لدورة حياة البلاغ
+                </h3>
+                <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                  <MermaidChart chart={`stateDiagram-v2
     [*] --> جديد: يقدم المواطن بلاغاً
 
     جديد --> محل_إعادة: رفض من المشغل (بيانات ناقصة)
@@ -851,14 +850,14 @@ export const AdminDashboard: React.FC = () => {
     مغلق_استياء --> [*]: إذا رئي أن التقييم غير مبرر
 
     ملغى --> [*]`} />
-                 </div>
-               </div>
-               <div>
-                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: إدارة المستخدمين والأدوار (للمسؤول فقط)
-                 </h3>
-                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
-                   <MermaidChart chart={`sequenceDiagram
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: إدارة المستخدمين والأدوار (للمسؤول فقط)
+                </h3>
+                <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                  <MermaidChart chart={`sequenceDiagram
     participant A as مدير النظام العام
     participant S as النظام
     participant E as الموظف الجديد
@@ -867,15 +866,15 @@ export const AdminDashboard: React.FC = () => {
     S-->>E: إرسال دعوة التفعيل
     E->>S: تفعيل الحساب وتسجيل الدخول
     Note over S: الموظف جاهز لاستخدام النظام بحسب الصلاحيات`} />
-                 </div>
-               </div>
+                </div>
+              </div>
 
-               <div>
-                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: اعتراض صحفي أو لجنة حي
-                 </h3>
-                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
-                   <MermaidChart chart={`sequenceDiagram
+              <div>
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: اعتراض صحفي أو لجنة حي
+                </h3>
+                <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                  <MermaidChart chart={`sequenceDiagram
     participant J as صحفي / لجنة
     participant S as النظام
     participant D as الجهة المختصة
@@ -886,15 +885,15 @@ export const AdminDashboard: React.FC = () => {
     D->>S: الرد والتوضيح (خلال المهلة المحددة)
     S-->>J: وصول رد الجهة للصحفي
     J->>J: تصدير وبناء تقرير للمجتمع`} />
-                 </div>
-               </div>
+                </div>
+              </div>
 
-               <div>
-                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: تكامل القطاع الخاص (مثال: شركة اتصالات)
-                 </h3>
-                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
-                   <MermaidChart chart={`sequenceDiagram
+              <div>
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Workflow className="w-6 h-6 text-blue-500" /> سير عمل فرعي: تكامل القطاع الخاص (مثال: شركة اتصالات)
+                </h3>
+                <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 min-w-[800px]">
+                  <MermaidChart chart={`sequenceDiagram
     participant C as المواطن
     participant S as النظام
     participant V as القطاع الخاص (شركة الاتصالات)
@@ -904,19 +903,19 @@ export const AdminDashboard: React.FC = () => {
     S-->>V: ظهور البلاغ في لوحة تحكم الشركة
     V->>S: معالجة المشكلة وتحديث الحالة داخلياً
     S-->>C: إشعار للمواطن بإغلاق البلاغ وحل المشكلة`} />
-                 </div>
-               </div>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'schema' && (
             <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm flex flex-col gap-12 overflow-x-auto min-h-[400px]">
-               <div>
-                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Database className="w-6 h-6 text-blue-500" /> مخطط الكيانات والعلاقات (ERD) المتوافق مع هيكل الحكومة اليمنية
-                 </h3>
-                 <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 overflow-x-auto min-w-[800px]">
-                   <MermaidChart chart={`erDiagram
+              <div>
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Database className="w-6 h-6 text-blue-500" /> مخطط الكيانات والعلاقات (ERD) المتوافق مع هيكل الحكومة اليمنية
+                </h3>
+                <div className="bg-slate-50 rounded-3xl border border-slate-100 p-6 overflow-x-auto min-w-[800px]">
+                  <MermaidChart chart={`erDiagram
     ORGANIZATIONS ||--o{ ORGANIZATIONS : "يتبع له (تسلسل هرمي 5 مستويات)"
     ORGANIZATIONS ||--o{ USERS : "يضم (موظفين)"
     ORGANIZATIONS ||--o{ REPORTS : "يسند إليها"
@@ -984,271 +983,271 @@ export const AdminDashboard: React.FC = () => {
         string companyType
         string status
     }`} />
-                 </div>
-               </div>
+                </div>
+              </div>
 
-               <div>
-                 <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                    <Database className="w-6 h-6 text-blue-500" /> تفاصيل الهيكل التنظيمي (Organizations)
-                 </h3>
-                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-                        <h4 className="font-bold text-slate-800 mb-4">أنواع التنظيمات (Types)</h4>
-                        <ul className="space-y-4 text-sm text-slate-600">
-                            <li><strong className="text-slate-800">Sector (قطاع):</strong> المستوى الأول، يجمع وزارات وهيئات مترابطة (مثل قطاع البنية التحتية).</li>
-                            <li><strong className="text-slate-800">Ministry (وزارة):</strong> المستوى الثاني، السلطة المركزية (مثل وزارة الأشغال العامة).</li>
-                            <li><strong className="text-slate-800">Agency (هيئة/مؤسسة):</strong> المستوى الثالث، مؤسسة تابعة لوزارة أو مستقلة (مثل هيئة الطرق).</li>
-                            <li><strong className="text-slate-800">Local Dept (إدارة محلية):</strong> المستوى الرابع، فرع في محافظة أو مديرية.</li>
-                            <li><strong className="text-slate-800">Unit (وحدة/فريق):</strong> المستوى الخامس، أصغر وحدة تنفيذية ميدانية.</li>
-                        </ul>
-                    </div>
-                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-                        <h4 className="font-bold text-slate-800 mb-4">آليات إحالة البلاغات (Routing)</h4>
-                         <ul className="space-y-4 text-sm text-slate-600">
-                            <li><strong className="text-slate-800">التصعيد التلقائي (Bottom-Up):</strong> إذا لم تقم "الوحدة" الميدانية بالمعالجة، يُصعد البلاغ إلى "الإدارة المحلية"، ثم "الهيئة".</li>
-                            <li><strong className="text-slate-800">التوجيه من أعلى (Top-Down):</strong> للبلاغات ذات الأولوية القصوى التي تحددها الوزارة وتكلف بها فروعها.</li>
-                            <li><strong className="text-slate-800">ارتباط الموظفين:</strong> يمكن للموظف الانتماء إلى وحدة واحدة، ولكنه يمتلك صلاحيات استناداً إلى مستوى تنظيم وحدته.</li>
-                            <li><strong className="text-slate-800">مرونة الهيكل:</strong> تم دمج المستويات الخمسة في جدول (Organizations) باستخدام العلاقة الذاتية (parentId).</li>
-                        </ul>
-                    </div>
-                 </div>
-               </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                  <Database className="w-6 h-6 text-blue-500" /> تفاصيل الهيكل التنظيمي (Organizations)
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                    <h4 className="font-bold text-slate-800 mb-4">أنواع التنظيمات (Types)</h4>
+                    <ul className="space-y-4 text-sm text-slate-600">
+                      <li><strong className="text-slate-800">Sector (قطاع):</strong> المستوى الأول، يجمع وزارات وهيئات مترابطة (مثل قطاع البنية التحتية).</li>
+                      <li><strong className="text-slate-800">Ministry (وزارة):</strong> المستوى الثاني، السلطة المركزية (مثل وزارة الأشغال العامة).</li>
+                      <li><strong className="text-slate-800">Agency (هيئة/مؤسسة):</strong> المستوى الثالث، مؤسسة تابعة لوزارة أو مستقلة (مثل هيئة الطرق).</li>
+                      <li><strong className="text-slate-800">Local Dept (إدارة محلية):</strong> المستوى الرابع، فرع في محافظة أو مديرية.</li>
+                      <li><strong className="text-slate-800">Unit (وحدة/فريق):</strong> المستوى الخامس، أصغر وحدة تنفيذية ميدانية.</li>
+                    </ul>
+                  </div>
+                  <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                    <h4 className="font-bold text-slate-800 mb-4">آليات إحالة البلاغات (Routing)</h4>
+                    <ul className="space-y-4 text-sm text-slate-600">
+                      <li><strong className="text-slate-800">التصعيد التلقائي (Bottom-Up):</strong> إذا لم تقم "الوحدة" الميدانية بالمعالجة، يُصعد البلاغ إلى "الإدارة المحلية"، ثم "الهيئة".</li>
+                      <li><strong className="text-slate-800">التوجيه من أعلى (Top-Down):</strong> للبلاغات ذات الأولوية القصوى التي تحددها الوزارة وتكلف بها فروعها.</li>
+                      <li><strong className="text-slate-800">ارتباط الموظفين:</strong> يمكن للموظف الانتماء إلى وحدة واحدة، ولكنه يمتلك صلاحيات استناداً إلى مستوى تنظيم وحدته.</li>
+                      <li><strong className="text-slate-800">مرونة الهيكل:</strong> تم دمج المستويات الخمسة في جدول (Organizations) باستخدام العلاقة الذاتية (parentId).</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'clarifications' && (
             <div className="space-y-6">
-               <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-black text-blue-900">طلبات الاستيضاح من المجلس المحلي</h3>
-                    <p className="text-xs text-blue-700 font-bold mt-1">هنا يظهر تساؤلات المجلس حول سير البلاغات أو احتياجات المديريات.</p>
-                  </div>
-                  <div className="bg-white px-4 py-2 rounded-xl border border-blue-200">
-                    <span className="text-xs font-black text-blue-600">إجمالي الطلبات: {clarifications.length}</span>
-                  </div>
-               </div>
+              <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-blue-900">طلبات الاستيضاح من المجلس المحلي</h3>
+                  <p className="text-xs text-blue-700 font-bold mt-1">هنا يظهر تساؤلات المجلس حول سير البلاغات أو احتياجات المديريات.</p>
+                </div>
+                <div className="bg-white px-4 py-2 rounded-xl border border-blue-200">
+                  <span className="text-xs font-black text-blue-600">إجمالي الطلبات: {clarifications.length}</span>
+                </div>
+              </div>
 
-               <div className="grid grid-cols-1 gap-4">
-                  {clarifications.length === 0 && (
-                    <div className="py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                       <MessageCircle className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                       <p className="text-sm font-black text-slate-400">لا توجد طلبات استيضاح حالياً</p>
+              <div className="grid grid-cols-1 gap-4">
+                {clarifications.length === 0 && (
+                  <div className="py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                    <MessageCircle className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                    <p className="text-sm font-black text-slate-400">لا توجد طلبات استيضاح حالياً</p>
+                  </div>
+                )}
+                {clarifications.map((req) => (
+                  <motion.div
+                    key={req.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest">{req.targetDepartment}</span>
+                          {req.status === 'pending' && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+                        </div>
+                        <h4 className="text-md font-black text-slate-900 mt-1">{req.subject}</h4>
+                      </div>
+                      <span className={cn(
+                        "text-[10px] font-black px-3 py-1 rounded-lg uppercase",
+                        req.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                      )}>
+                        {req.status === 'pending' ? 'بانتظار الرد' : 'تمت الإجابة'}
+                      </span>
                     </div>
-                  )}
-                  {clarifications.map((req) => (
-                    <motion.div 
-                      key={req.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4"
-                    >
-                        <div className="flex justify-between items-start">
-                           <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest">{req.targetDepartment}</span>
-                                {req.status === 'pending' && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
-                              </div>
-                              <h4 className="text-md font-black text-slate-900 mt-1">{req.subject}</h4>
-                           </div>
-                           <span className={cn(
-                             "text-[10px] font-black px-3 py-1 rounded-lg uppercase",
-                             req.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                           )}>
-                              {req.status === 'pending' ? 'بانتظار الرد' : 'تمت الإجابة'}
-                           </span>
-                        </div>
 
-                        <div className="bg-slate-50 p-4 rounded-2xl">
-                           <p className="text-xs font-bold text-slate-600 leading-relaxed">{req.content}</p>
-                        </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl">
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">{req.content}</p>
+                    </div>
 
-                        {req.status === 'replied' ? (
-                           <div className="border-t border-slate-50 pt-4 mt-2">
-                              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-                                <div className="flex items-center gap-2 mb-2">
-                                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                   <span className="text-[10px] font-black text-emerald-700 uppercase">رد الإدارة:</span>
-                                </div>
-                                <p className="text-xs font-bold text-emerald-900 leading-relaxed">{req.reply}</p>
-                                <div className="mt-3 text-[8px] font-black text-emerald-600/50 uppercase">بواسطة: {req.repliedBy}</div>
-                              </div>
-                           </div>
-                        ) : (
-                          <div className="border-t border-slate-50 pt-4 mt-2">
-                             {replyingToId === req.id ? (
-                                <div className="space-y-4">
-                                   <textarea 
-                                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 min-h-[100px] resize-none"
-                                      placeholder="اكتب الرد الرسمي هنا..."
-                                      value={replyText}
-                                      onChange={(e) => setReplyText(e.target.value)}
-                                   />
-                                   <div className="flex gap-2">
-                                      <button 
-                                        onClick={() => handleSendReply(req.id)}
-                                        className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-600/10 hover:bg-blue-700 flex items-center gap-2"
-                                      >
-                                         <Send className="w-3 h-3" /> إرسال الرد
-                                      </button>
-                                      <button 
-                                        onClick={() => setReplyingToId(null)}
-                                        className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-xs font-black hover:bg-slate-200"
-                                      >
-                                         إلغاء
-                                      </button>
-                                   </div>
-                                </div>
-                             ) : (
-                                <button 
-                                  onClick={() => setReplyingToId(req.id)}
-                                  className="text-blue-600 text-[10px] font-black uppercase hover:underline flex items-center gap-2"
-                                >
-                                   <MessageCircle className="w-3 h-3" /> كتابة رد رسمي الآن
-                                </button>
-                             )}
+                    {req.status === 'replied' ? (
+                      <div className="border-t border-slate-50 pt-4 mt-2">
+                        <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            <span className="text-[10px] font-black text-emerald-700 uppercase">رد الإدارة:</span>
                           </div>
+                          <p className="text-xs font-bold text-emerald-900 leading-relaxed">{req.reply}</p>
+                          <div className="mt-3 text-[8px] font-black text-emerald-600/50 uppercase">بواسطة: {req.repliedBy}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border-t border-slate-50 pt-4 mt-2">
+                        {replyingToId === req.id ? (
+                          <div className="space-y-4">
+                            <textarea
+                              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 min-h-[100px] resize-none"
+                              placeholder="اكتب الرد الرسمي هنا..."
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleSendReply(req.id)}
+                                className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-600/10 hover:bg-blue-700 flex items-center gap-2"
+                              >
+                                <Send className="w-3 h-3" /> إرسال الرد
+                              </button>
+                              <button
+                                onClick={() => setReplyingToId(null)}
+                                className="bg-slate-100 text-slate-500 px-6 py-2 rounded-xl text-xs font-black hover:bg-slate-200"
+                              >
+                                إلغاء
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setReplyingToId(req.id)}
+                            className="text-blue-600 text-[10px] font-black uppercase hover:underline flex items-center gap-2"
+                          >
+                            <MessageCircle className="w-3 h-3" /> كتابة رد رسمي الآن
+                          </button>
                         )}
-                    </motion.div>
-                  ))}
-               </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
             </div>
           )}
 
           {activeTab === 'logs' && (
-             <div className="space-y-6">
-                <div className="flex justify-between items-center bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                            <Activity className="w-6 h-6 text-indigo-500" /> سجل التدقيق والرقابة (Audit Log)
-                        </h3>
-                        <p className="text-sm font-bold text-slate-500 mt-1">عرض جميع العمليات الحساسة التي تمت عبر المنصة للشفافية المطلقة.</p>
-                    </div>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                    <Activity className="w-6 h-6 text-indigo-500" /> سجل التدقيق والرقابة (Audit Log)
+                  </h3>
+                  <p className="text-sm font-bold text-slate-500 mt-1">عرض جميع العمليات الحساسة التي تمت عبر المنصة للشفافية المطلقة.</p>
                 </div>
+              </div>
 
-                <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
-                    <table className="w-full text-right">
-                        <thead className="bg-slate-50 border-b border-slate-100">
-                            <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                <th className="py-4 px-6">العملية</th>
-                                <th className="py-4 px-6">المسؤول</th>
-                                <th className="py-4 px-6">التاريخ والوقت</th>
-                                <th className="py-4 px-6">التفاصيل</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {auditLogs.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className="py-20 text-center text-slate-300 font-bold">لا يوجد سجلات تدقيق متاحة حالياً</td>
-                                </tr>
-                            ) : auditLogs.map((log) => {
-                                const actor = users.find(u => u.uid === log.userId);
-                                return (
-                                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="py-4 px-6">
-                                            <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-[10px] font-black">
-                                                {log.action}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-black text-slate-700">{actor?.displayName || 'مسؤول النظام'}</span>
-                                                <span className="text-[9px] font-mono text-slate-400">{log.userId.substring(0, 8)}...</span>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-6 text-xs font-bold text-slate-500">
-                                            {log.timestamp ? new Date(log.timestamp).toLocaleString('ar-SA') : '...'}
-                                        </td>
-                                        <td className="py-4 px-6 text-xs font-bold text-slate-600">
-                                            {log.details}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-             </div>
+              <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
+                <table className="w-full text-right">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <th className="py-4 px-6">العملية</th>
+                      <th className="py-4 px-6">المسؤول</th>
+                      <th className="py-4 px-6">التاريخ والوقت</th>
+                      <th className="py-4 px-6">التفاصيل</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-20 text-center text-slate-300 font-bold">لا يوجد سجلات تدقيق متاحة حالياً</td>
+                      </tr>
+                    ) : auditLogs.map((log) => {
+                      const actor = users.find(u => u.uid === log.userId);
+                      return (
+                        <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 px-6">
+                            <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-[10px] font-black">
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black text-slate-700">{actor?.displayName || 'مسؤول النظام'}</span>
+                              <span className="text-[9px] font-mono text-slate-400">{log.userId.substring(0, 8)}...</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 text-xs font-bold text-slate-500">
+                            {log.timestamp ? new Date(log.timestamp).toLocaleString('ar-SA') : '...'}
+                          </td>
+                          <td className="py-4 px-6 text-xs font-bold text-slate-600">
+                            {log.details}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
 
           {activeTab === 'settings' && (
             <div className="space-y-6">
-               <div className="bg-slate-900 p-8 rounded-[3rem] border border-slate-800 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
-                  <div className="relative z-10">
-                    <h3 className="text-2xl font-black text-white flex items-center gap-3">
-                      <Settings className="w-8 h-8 text-blue-400" /> إعدادات النظام المتقدمة
-                    </h3>
-                    <p className="text-slate-400 font-bold mt-2 max-w-2xl">ضبط الثوابت التشغيلية والمهلات الزمنية ومعايير جودة الخدمة لجميع قطاعات البلدية.</p>
-                  </div>
-               </div>
+              <div className="bg-slate-900 p-8 rounded-[3rem] border border-slate-800 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
+                <div className="relative z-10">
+                  <h3 className="text-2xl font-black text-white flex items-center gap-3">
+                    <Settings className="w-8 h-8 text-blue-400" /> إعدادات النظام المتقدمة
+                  </h3>
+                  <p className="text-slate-400 font-bold mt-2 max-w-2xl">ضبط الثوابت التشغيلية والمهلات الزمنية ومعايير جودة الخدمة لجميع قطاعات البلدية.</p>
+                </div>
+              </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-6">
-                    <div>
-                      <h4 className="text-lg font-black text-slate-900 mb-2">المهلات الزمنية (Timeouts)</h4>
-                      <p className="text-xs text-slate-500 font-bold">تحديد الوقت المسموح به لكل مرحلة قبل إطلاق التنبيهات.</p>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة تقييم المواطن (ساعة)</label>
-                        <div className="relative">
-                           <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                           <input 
-                             type="number"
-                             value={systemSettings.evaluationTimeoutHours}
-                             onChange={(e) => setSystemSettings({...systemSettings, evaluationTimeoutHours: parseInt(e.target.value)})}
-                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
-                           />
-                        </div>
-                        <p className="text-[9px] text-slate-400 font-bold">الوقت المتاح للمواطن لتقييم الخدمة قبل إغلاق البلاغ تلقائياً.</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة معالجة الطوارئ (ساعة)</label>
-                        <div className="relative">
-                           <AlertCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-300" />
-                           <input 
-                             type="number"
-                             value={systemSettings.emergencyProcessingTimeoutHours}
-                             onChange={(e) => setSystemSettings({...systemSettings, emergencyProcessingTimeoutHours: parseInt(e.target.value)})}
-                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all"
-                           />
-                        </div>
-                        <p className="text-[9px] text-rose-400 font-bold">المهلة القصوى للبلاغات ذات الأولوية "حرجة" قبل التصعيد المباشر.</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة المعالجة القياسية (ساعة)</label>
-                        <div className="relative">
-                           <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-300" />
-                           <input 
-                             type="number"
-                             value={systemSettings.standardProcessingTimeoutHours}
-                             onChange={(e) => setSystemSettings({...systemSettings, standardProcessingTimeoutHours: parseInt(e.target.value)})}
-                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all"
-                           />
-                        </div>
-                        <p className="text-[9px] text-amber-500 font-bold">المهلة الاعتيادية لمعظم البلاغات قبل أن تظهر في قائمة المتأخرات.</p>
-                      </div>
-                    </div>
-
-                    <button 
-                      onClick={handleUpdateSettings}
-                      className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black text-sm shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
-                    >
-                      <Save className="w-5 h-5" /> حفظ التغييرات الاستراتيجية
-                    </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-6">
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 mb-2">المهلات الزمنية (Timeouts)</h4>
+                    <p className="text-xs text-slate-500 font-bold">تحديد الوقت المسموح به لكل مرحلة قبل إطلاق التنبيهات.</p>
                   </div>
 
-                  <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 border-dashed flex flex-col items-center justify-center text-center">
-                    <div className="bg-white w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                      <ShieldCheck className="w-10 h-10 text-indigo-500" />
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة تقييم المواطن (ساعة)</label>
+                      <div className="relative">
+                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                        <input
+                          type="number"
+                          value={systemSettings.evaluationTimeoutHours}
+                          onChange={(e) => setSystemSettings({ ...systemSettings, evaluationTimeoutHours: parseInt(e.target.value) })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                      <p className="text-[9px] text-slate-400 font-bold">الوقت المتاح للمواطن لتقييم الخدمة قبل إغلاق البلاغ تلقائياً.</p>
                     </div>
-                    <h4 className="text-lg font-black text-slate-900 mb-2">السياسات الأمنية والقيود</h4>
-                    <p className="text-xs text-slate-500 font-bold max-w-xs">سيتم قريباً إضافة خيارات لضبط عدد محاولات الدخول، وقوة كلمة المرور، وتشفير البيانات الحساسة.</p>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة معالجة الطوارئ (ساعة)</label>
+                      <div className="relative">
+                        <AlertCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-300" />
+                        <input
+                          type="number"
+                          value={systemSettings.emergencyProcessingTimeoutHours}
+                          onChange={(e) => setSystemSettings({ ...systemSettings, emergencyProcessingTimeoutHours: parseInt(e.target.value) })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all"
+                        />
+                      </div>
+                      <p className="text-[9px] text-rose-400 font-bold">المهلة القصوى للبلاغات ذات الأولوية "حرجة" قبل التصعيد المباشر.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">مهلة المعالجة القياسية (ساعة)</label>
+                      <div className="relative">
+                        <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-300" />
+                        <input
+                          type="number"
+                          value={systemSettings.standardProcessingTimeoutHours}
+                          onChange={(e) => setSystemSettings({ ...systemSettings, standardProcessingTimeoutHours: parseInt(e.target.value) })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-12 py-4 text-sm font-black outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all"
+                        />
+                      </div>
+                      <p className="text-[9px] text-amber-500 font-bold">المهلة الاعتيادية لمعظم البلاغات قبل أن تظهر في قائمة المتأخرات.</p>
+                    </div>
                   </div>
-               </div>
+
+                  <button
+                    onClick={handleUpdateSettings}
+                    className="w-full bg-blue-600 text-white rounded-2xl py-4 font-black text-sm shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
+                  >
+                    <Save className="w-5 h-5" /> حفظ التغييرات الاستراتيجية
+                  </button>
+                </div>
+
+                <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 border-dashed flex flex-col items-center justify-center text-center">
+                  <div className="bg-white w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                    <ShieldCheck className="w-10 h-10 text-indigo-500" />
+                  </div>
+                  <h4 className="text-lg font-black text-slate-900 mb-2">السياسات الأمنية والقيود</h4>
+                  <p className="text-xs text-slate-500 font-bold max-w-xs">سيتم قريباً إضافة خيارات لضبط عدد محاولات الدخول، وقوة كلمة المرور، وتشفير البيانات الحساسة.</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1256,174 +1255,174 @@ export const AdminDashboard: React.FC = () => {
 
       {reroutingReportId && (
         <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
-           {/* Backdrop */}
-           <motion.div 
-              initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-              onClick={() => setReroutingReportId(null)}
-           />
-           {/* Modal */}
-           <motion.div
-              initial={{scale:0.95, opacity:0, y:20}} animate={{scale:1, opacity:1, y:0}} exit={{scale:0.95, opacity:0, y:20}}
-              className="relative bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl border border-slate-100"
-           >
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
-                   <ArrowLeftRight className="w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-black text-slate-900 mb-2">توجيه إداري إلزامي</h3>
-                <p className="text-xs font-bold text-slate-500 mb-6">سجل التوجيه ليتم إحالته للقطاع المعني فوراً.</p>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setReroutingReportId(null)}
+          />
+          {/* Modal */}
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="relative bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl border border-slate-100"
+          >
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
+              <ArrowLeftRight className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900 mb-2">توجيه إداري إلزامي</h3>
+            <p className="text-xs font-bold text-slate-500 mb-6">سجل التوجيه ليتم إحالته للقطاع المعني فوراً.</p>
 
-                <div className="space-y-4 font-bold text-sm">
-                    <div>
-                        <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">اختر الجهة المستهدفة</label>
-                        <select 
-                            value={rerouteDepartment}
-                            onChange={(e) => setRerouteDepartment(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                        >
-                            <option value="">-- اختر --</option>
-                            <option value="النظافة والمخلفات">النظافة والمخلفات</option>
-                            <option value="الإنارة والكهرباء">الإنارة والكهرباء</option>
-                            <option value="الطرق والجسور">الطرق والجسور</option>
-                            <option value="الصرف الصحي والمياه">الصرف الصحي والمياه</option>
-                            <option value="التشجير والمرافق">التشجير والمرافق</option>
-                            <option value="الشرطة والمطافئ">الشرطة والمطافئ</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">سبب التوجيه أو تعليماتك</label>
-                        <textarea
-                            value={rerouteReason}
-                            onChange={(e) => setRerouteReason(e.target.value)}
-                            placeholder="مثال: تعاملوا معها فوراً حسب توجيهات الأمانة..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none min-h-[100px]"
-                        ></textarea>
-                    </div>
-                </div>
+            <div className="space-y-4 font-bold text-sm">
+              <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">اختر الجهة المستهدفة</label>
+                <select
+                  value={rerouteDepartment}
+                  onChange={(e) => setRerouteDepartment(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                >
+                  <option value="">-- اختر --</option>
+                  <option value="النظافة والمخلفات">النظافة والمخلفات</option>
+                  <option value="الإنارة والكهرباء">الإنارة والكهرباء</option>
+                  <option value="الطرق والجسور">الطرق والجسور</option>
+                  <option value="الصرف الصحي والمياه">الصرف الصحي والمياه</option>
+                  <option value="التشجير والمرافق">التشجير والمرافق</option>
+                  <option value="الشرطة والمطافئ">الشرطة والمطافئ</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">سبب التوجيه أو تعليماتك</label>
+                <textarea
+                  value={rerouteReason}
+                  onChange={(e) => setRerouteReason(e.target.value)}
+                  placeholder="مثال: تعاملوا معها فوراً حسب توجيهات الأمانة..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none min-h-[100px]"
+                ></textarea>
+              </div>
+            </div>
 
-                <div className="flex gap-3 mt-8">
-                    <button onClick={() => handleReroute(reroutingReportId)} className="flex-1 bg-blue-600 text-white rounded-xl py-3 text-sm font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition">
-                        اعتماد وتوجيه
-                    </button>
-                    <button onClick={() => setReroutingReportId(null)} className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 text-sm font-black hover:bg-slate-200 transition">
-                        إلغاء
-                    </button>
-                </div>
-           </motion.div>
+            <div className="flex gap-3 mt-8">
+              <button onClick={() => handleReroute(reroutingReportId)} className="flex-1 bg-blue-600 text-white rounded-xl py-3 text-sm font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition">
+                اعتماد وتوجيه
+              </button>
+              <button onClick={() => setReroutingReportId(null)} className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 text-sm font-black hover:bg-slate-200 transition">
+                إلغاء
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 
       {isAddUserModalOpen && (
         <div className="fixed inset-0 z-50 flex justify-center items-center p-4">
-           {/* Backdrop */}
-           <motion.div 
-              initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-              onClick={() => setIsAddUserModalOpen(false)}
-           />
-           {/* Modal */}
-           <motion.div
-              initial={{scale:0.95, opacity:0, y:20}} animate={{scale:1, opacity:1, y:0}} exit={{scale:0.95, opacity:0, y:20}}
-              className="relative bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl border border-slate-100"
-           >
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
-                   <Plus className="w-6 h-6" />
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setIsAddUserModalOpen(false)}
+          />
+          {/* Modal */}
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="relative bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl border border-slate-100"
+          >
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
+              <Plus className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900 mb-2">إضافة حساب موظف جديد</h3>
+            <p className="text-xs font-bold text-slate-500 mb-6">قم بإدخال بيانات الموظف والصلاحيات ليتمكن من الدخول للمنظومة.</p>
+
+            <form onSubmit={handleAddUser} className="space-y-4 font-bold text-sm">
+              <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الاسم الكامل</label>
+                <input
+                  required
+                  value={newUserForm.displayName}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, displayName: e.target.value })}
+                  placeholder="مثال: صالح عبدالله"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">البريد الإلكتروني</label>
+                <input
+                  required
+                  type="email"
+                  value={newUserForm.email}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                  placeholder="employee@city.gov.sa"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-left dir-ltr"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الدور البرمجي</label>
+                  <select
+                    value={newUserForm.role}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  >
+                    <option value="official">مسؤول جهة (Official)</option>
+                    <option value="operator">موظف استجابة (Operator)</option>
+                    <option value="manager">مدير قسم (Manager)</option>
+                    <option value="council">مجلس بلدي (Council)</option>
+                    <option value="specialist">مهندس/أخصائي (Specialist)</option>
+                    <option value="telecom">شركة اتصالات (Telecom)</option>
+                    <option value="contractor">مقاول (Contractor)</option>
+                    <option value="driver">سائق (Driver)</option>
+                  </select>
                 </div>
-                <h3 className="text-xl font-black text-slate-900 mb-2">إضافة حساب موظف جديد</h3>
-                <p className="text-xs font-bold text-slate-500 mb-6">قم بإدخال بيانات الموظف والصلاحيات ليتمكن من الدخول للمنظومة.</p>
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الجهة التابع لها</label>
+                  <select
+                    value={newUserForm.department}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, department: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  >
+                    <option value="">بدون جهة (عام)</option>
+                    {availableDepartments.map(d => (
+                      <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-                <form onSubmit={handleAddUser} className="space-y-4 font-bold text-sm">
-                    <div>
-                        <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الاسم الكامل</label>
-                        <input
-                            required
-                            value={newUserForm.displayName}
-                            onChange={(e) => setNewUserForm({...newUserForm, displayName: e.target.value})}
-                            placeholder="مثال: صالح عبدالله"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">البريد الإلكتروني</label>
-                        <input
-                            required
-                            type="email"
-                            value={newUserForm.email}
-                            onChange={(e) => setNewUserForm({...newUserForm, email: e.target.value})}
-                            placeholder="employee@city.gov.sa"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-left dir-ltr"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الدور البرمجي</label>
-                            <select 
-                                value={newUserForm.role}
-                                onChange={(e) => setNewUserForm({...newUserForm, role: e.target.value})}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                            >
-                                <option value="official">مسؤول جهة (Official)</option>
-                                <option value="operator">موظف استجابة (Operator)</option>
-                                <option value="manager">مدير قسم (Manager)</option>
-                                <option value="council">مجلس بلدي (Council)</option>
-                                <option value="specialist">مهندس/أخصائي (Specialist)</option>
-                                <option value="telecom">شركة اتصالات (Telecom)</option>
-                                <option value="contractor">مقاول (Contractor)</option>
-                                <option value="driver">سائق (Driver)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[10px] uppercase font-black text-slate-400 mb-1 pl-1">الجهة التابع لها</label>
-                            <select 
-                                value={newUserForm.department}
-                                onChange={(e) => setNewUserForm({...newUserForm, department: e.target.value})}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                            >
-                                <option value="">بدون جهة (عام)</option>
-                                {availableDepartments.map(d => (
-                                    <option key={d.id} value={d.name}>{d.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
+              <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 mb-3 pl-1">صلاحيات إضافية (اختياري)</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'delete_report', label: 'حذف البلاغات' },
+                    { id: 'export_data', label: 'تصدير البيانات' },
+                    { id: 'manage_users_lite', label: 'إدارة المستخدمين' },
+                    { id: 'edit_categories', label: 'تعديل التصنيفات' }
+                  ].map((perm) => (
+                    <label key={perm.id} className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-white transition-all group">
+                      <input
+                        type="checkbox"
+                        checked={newUserForm.permissions.includes(perm.id)}
+                        onChange={(e) => {
+                          const perms = e.target.checked
+                            ? [...newUserForm.permissions, perm.id]
+                            : newUserForm.permissions.filter(p => p !== perm.id);
+                          setNewUserForm({ ...newUserForm, permissions: perms });
+                        }}
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                      />
+                      <span className="text-[10px] font-bold text-slate-700">{perm.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-                    <div>
-                        <label className="block text-[10px] uppercase font-black text-slate-400 mb-3 pl-1">صلاحيات إضافية (اختياري)</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            {[
-                                { id: 'delete_report', label: 'حذف البلاغات' },
-                                { id: 'export_data', label: 'تصدير البيانات' },
-                                { id: 'manage_users_lite', label: 'إدارة المستخدمين' },
-                                { id: 'edit_categories', label: 'تعديل التصنيفات' }
-                            ].map((perm) => (
-                                <label key={perm.id} className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-white transition-all group">
-                                    <input 
-                                        type="checkbox"
-                                        checked={newUserForm.permissions.includes(perm.id)}
-                                        onChange={(e) => {
-                                            const perms = e.target.checked 
-                                                ? [...newUserForm.permissions, perm.id]
-                                                : newUserForm.permissions.filter(p => p !== perm.id);
-                                            setNewUserForm({...newUserForm, permissions: perms});
-                                        }}
-                                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                                    />
-                                    <span className="text-[10px] font-bold text-slate-700">{perm.label}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3 mt-8 pt-4">
-                        <button type="submit" className="flex-1 bg-blue-600 text-white rounded-xl py-3 text-sm font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition">
-                            أضف الحساب
-                        </button>
-                        <button type="button" onClick={() => setIsAddUserModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 text-sm font-black hover:bg-slate-200 transition">
-                            إلغاء
-                        </button>
-                    </div>
-                </form>
-           </motion.div>
+              <div className="flex gap-3 mt-8 pt-4">
+                <button type="submit" className="flex-1 bg-blue-600 text-white rounded-xl py-3 text-sm font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition">
+                  أضف الحساب
+                </button>
+                <button type="button" onClick={() => setIsAddUserModalOpen(false)} className="flex-1 bg-slate-100 text-slate-700 rounded-xl py-3 text-sm font-black hover:bg-slate-200 transition">
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </motion.div>
         </div>
       )}
 

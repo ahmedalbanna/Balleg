@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Globe2, TrendingUp, Users, DollarSign, Target, Map as MapIcon, Download, ShieldCheck, ArrowUpRight, BarChart3, PieChart, Activity, LayoutGrid, MapPin, CheckCircle2, AlertCircle } from "lucide-react";
+import { Globe2, TrendingUp, Users, DollarSign, Target, Map as MapIcon, Download, ShieldCheck, ArrowUpRight, BarChart3, PieChart, Activity, LayoutGrid, MapPin, CheckCircle2, AlertCircle, Heart, Gift, HandHelping, Bell, HelpCircle, Settings, User } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart as RePieChart, Pie } from "recharts";
 import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../../core/services/firebase";
 import { Report } from "../../core/services/reportApi";
+import DonorMapView from "./DonorMapView";
+import { Link } from "react-router-dom";
 
 export function DonorDashboard() {
   const [reportsData, setReportsData] = useState<Report[]>([]);
@@ -109,8 +111,8 @@ export function DonorDashboard() {
       {/* Strategic Header */}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-5">
-          <div className="w-16 h-16 rounded-[2rem] bg-blue-900 text-white flex items-center justify-center shadow-xl shadow-blue-900/20">
-            <Globe2 className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-[2rem] bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-900/20">
+            <Heart className="w-8 h-8" fill="currentColor" />
           </div>
           <div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">بوابة المانحين والشركاء</h2>
@@ -126,28 +128,54 @@ export function DonorDashboard() {
             <div className="flex bg-slate-100 p-1 rounded-2xl">
                 <button 
                   onClick={() => setActiveTab('impact')}
-                  className={`px-6 py-2 rounded-xl text-[10px] font-black transition-all ${activeTab === 'impact' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
+                  className={`px-6 py-2 rounded-xl text-[10px] font-black transition-all ${activeTab === 'impact' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}
                 >الأثر العام</button>
                 <button 
                   onClick={() => setActiveTab('regional')}
-                  className={`px-6 py-2 rounded-xl text-[10px] font-black transition-all ${activeTab === 'regional' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
+                  className={`px-6 py-2 rounded-xl text-[10px] font-black transition-all ${activeTab === 'regional' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}
                 >المقارنة المناطقية</button>
                 <button 
                   onClick={() => setActiveTab('financials')}
-                  className={`px-6 py-2 rounded-xl text-[10px] font-black transition-all ${activeTab === 'financials' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
+                  className={`px-6 py-2 rounded-xl text-[10px] font-black transition-all ${activeTab === 'financials' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}
                 >الشفافية المالية</button>
             </div>
         </div>
       </header>
+ 
+       {/* Quick Navigation Grid */}
+       <div className="grid grid-cols-2 lg:grid-cols-9 gap-3 relative z-10 transition-all">
+           {[
+               { label: 'المشاريع', icon: Gift, path: '/donor/projects', color: 'bg-rose-50 text-rose-600' },
+               { label: 'التبرعات', icon: Heart, path: '/donor/donations', color: 'bg-indigo-50 text-indigo-600' },
+               { label: 'الأثر', icon: BarChart3, path: '/donor/impact', color: 'bg-emerald-50 text-emerald-600' },
+               { label: 'التطوع', icon: HandHelping, path: '/donor/volunteer', color: 'bg-blue-50 text-blue-600' },
+               { label: 'الشركاء', icon: Users, path: '/donor/partners', color: 'bg-amber-50 text-amber-600' },
+               { label: 'الملف', icon: User, path: '/donor/profile', color: 'bg-slate-50 text-slate-800' },
+               { label: 'التنبيهات', icon: Bell, path: '/donor/alerts', color: 'bg-rose-50 text-rose-600' },
+               { label: 'المركز', icon: HelpCircle, path: '/donor/support', color: 'bg-slate-50 text-slate-800' },
+               { label: 'الإعدادات', icon: Settings, path: '/donor/settings', color: 'bg-slate-50 text-slate-800' },
+           ].map((action, i) => (
+               <Link 
+                   key={i} 
+                   to={action.path}
+                   className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-slate-100 hover:shadow-lg transition-all hover:-translate-y-1 group"
+               >
+                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${action.color} group-hover:scale-110 transition-transform`}>
+                       <action.icon className="w-5 h-5" />
+                   </div>
+                   <span className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">{action.label}</span>
+               </Link>
+           ))}
+       </div>
 
-      {/* Main Impact KPIs */}
+       {/* Main Impact KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
           <ImpactCard 
             label="إجمالي الأثر الاجتماعي" 
             value={`${stats.impactScore}%`} 
             sub="بناء على كفاءة الاستجابة" 
-            icon={<Target className="text-blue-600" />} 
-            color="blue" 
+            icon={<Target className="text-emerald-600" />} 
+            color="emerald" 
           />
           <ImpactCard 
             label="مواطنون مستفيدون" 
@@ -172,6 +200,32 @@ export function DonorDashboard() {
           />
       </div>
 
+      {/* Map Overview Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full h-[400px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden relative group z-10"
+      >
+        <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <Heart size={14} className="text-emerald-600" />
+            <span className="text-[10px] font-black text-slate-900 tracking-tight">رصد المواقع والمشاريع المدعومة</span>
+        </div>
+        <DonorMapView 
+          points={reportsData.slice(0, 10).map(r => ({
+            lat: r.location?.lat || 15.3694,
+            lng: r.location?.lng || 44.1910,
+            intensity: r.priority === 'critical' ? 0.8 : 0.4,
+            label: r.department || 'مشروع تنموي',
+            type: r.priority === 'critical' ? 'emergency' : 'project',
+            status: r.status === 'resolved' ? 'completed' : 'active',
+            raised: 75,
+            goal: 100
+          }))}
+          center={[15.3694, 44.1910]}
+          zoom={13}
+        />
+      </motion.div>
+
       <AnimatePresence mode="wait">
         {activeTab === 'impact' && (
           <motion.div 
@@ -183,10 +237,10 @@ export function DonorDashboard() {
           >
             <div className="lg:col-span-8 bg-white rounded-[3rem] p-8 border border-slate-100 shadow-sm">
                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-black text-slate-900 border-r-4 border-blue-600 pr-4">تحليل النمو السكاني والاستجابة الميدانية</h3>
+                  <h3 className="text-lg font-black text-slate-900 border-r-4 border-emerald-600 pr-4">تحليل النمو السكاني والاستجابة الميدانية</h3>
                   <div className="flex gap-4">
-                    <span className="flex items-center gap-2 text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">إجمالي البلاغات</span>
-                    <span className="flex items-center gap-2 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg">تم الحل</span>
+                    <span className="flex items-center gap-2 text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg">إجمالي البلاغات</span>
+                    <span className="flex items-center gap-2 text-[10px] font-black text-teal-600 bg-teal-50 px-3 py-1 rounded-lg">تم الحل</span>
                   </div>
                </div>
                <div className="h-[350px]">
@@ -202,16 +256,16 @@ export function DonorDashboard() {
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
                       <Tooltip />
-                      <Area type="monotone" dataKey="reports" stroke="#2563eb" strokeWidth={3} fill="#3b82f6" fillOpacity={0.1} />
-                      <Area type="monotone" dataKey="resolved" stroke="#059669" strokeWidth={3} fill="#10b981" fillOpacity={0.1} />
+                      <Area type="monotone" dataKey="reports" stroke="#059669" strokeWidth={3} fill="#10b981" fillOpacity={0.1} />
+                      <Area type="monotone" dataKey="resolved" stroke="#0d9488" strokeWidth={3} fill="#14b8a6" fillOpacity={0.1} />
                     </AreaChart>
                   </ResponsiveContainer>
                </div>
             </div>
 
             <div className="lg:col-span-4 flex flex-col gap-6">
-              <div className="bg-blue-900 rounded-[3rem] p-8 text-white relative overflow-hidden h-full">
-                 <Globe2 className="w-12 h-12 mb-6 text-blue-400 opacity-50" />
+              <div className="bg-emerald-900 rounded-[3rem] p-8 text-white relative overflow-hidden h-full">
+                 <Heart className="w-12 h-12 mb-6 text-emerald-400 opacity-50" />
                  <h4 className="text-2xl font-black mb-4">التوافق مع أهداف التنمية (SDGs)</h4>
                  <div className="space-y-6">
                     <SDGItem label="مدن ومجتمعات مستدامة" progress={stats.impactScore} goalNo="11" />
@@ -219,7 +273,7 @@ export function DonorDashboard() {
                     <SDGItem label="الصناعة والابتكار" progress={92} goalNo="9" />
                  </div>
                  <div className="mt-10 p-4 bg-white/10 rounded-2xl border border-white/10">
-                    <p className="text-[10px] font-bold text-blue-200 leading-relaxed italic">"هذا التقرير تم تدقيقه آلياً استناداً إلى بيانات Firestore الموثقة في الوقت الفعلي لضمان أعلى مستويات النزاهة."</p>
+                    <p className="text-[10px] font-bold text-emerald-200 leading-relaxed italic">"هذا التقرير تم تدقيقه آلياً استناداً إلى بيانات Firestore الموثقة في الوقت الفعلي لضمان أعلى مستويات النزاهة."</p>
                  </div>
               </div>
             </div>

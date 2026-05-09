@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
-import { doc, setDoc, getDocs, deleteDoc, collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDocs, deleteDoc, collection, query, where, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
 import { logActivity } from './audit';
 
 export interface Report {
@@ -41,6 +41,7 @@ export interface Report {
 export const reportApi = {
   // 1. Citizen creates a report
   async createReport(data: { 
+    title?: string, // Added title to data
     description: string, 
     type?: string, 
     district?: string,
@@ -49,14 +50,16 @@ export const reportApi = {
     aiAnalysis?: any,
     isAnonymous?: boolean,
     role?: string,
-    isPrivateService?: boolean
+    isPrivateService?: boolean,
+    department?: string, // Added department
+    priority?: string // Added priority
   }) {
     // We hit AI/Upload via axis, but we can write the document straight to Firebase.
     // Ensure we have a tracking number.
     const trackingNo = "BLG-" + Math.floor(100000 + Math.random() * 900000);
     const isDisplaced = data.role === "displaced";
     const status = isDisplaced ? "pending_official" : (data.isPrivateService ? "pending_operator" : "pending_verification");
-    const department = isDisplaced ? "البلدية والمنظمات الإنسانية" : (data.isPrivateService ? "خدمات خاصة" : undefined);
+    const department = data.department || (isDisplaced ? "البلدية والمنظمات الإنسانية" : (data.isPrivateService ? "خدمات خاصة" : undefined));
     
     const districts = ["حي الصافية", "حي النزهة", "حي الروضة", "حي الملز", "حي العليا"];
     const randomDistrict = districts[Math.floor(Math.random() * districts.length)];
@@ -65,11 +68,12 @@ export const reportApi = {
       id: trackingNo,
       userId: auth.currentUser?.uid || "anonymous",
       isAnonymous: data.isAnonymous || false,
+      title: data.title || "بدون عنوان", // Use title
       description: data.description,
       type: data.type || "عام",
       district: data.district || randomDistrict,
       status: status,
-      priority: data.aiAnalysis?.priority || 'medium',
+      priority: data.priority || data.aiAnalysis?.priority || 'medium',
       createdAt: serverTimestamp(),
       isPrivateService: data.isPrivateService || false,
     };
@@ -90,6 +94,34 @@ export const reportApi = {
     }
 
     return { success: true, trackingNo, report: newReport };
+  },
+
+  // Subscription methods
+  subscribeToReports(callback: (reports: Report[]) => void) {
+    const q = query(
+      collection(db, 'reports'),
+      orderBy('createdAt', 'desc')
+    );
+    return onSnapshot(q, (snapshot) => {
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Report[];
+      callback(reports);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'reports');
+    });
+  },
+
+  subscribeToUserReports(userId: string, callback: (reports: Report[]) => void) {
+    const q = query(
+      collection(db, 'reports'),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    return onSnapshot(q, (snapshot) => {
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Report[];
+      callback(reports);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'reports');
+    });
   },
 
   async editReport(id: string, data: { description?: string, imageUrl?: string, audioUrl?: string, location?: [number, number], aiAnalysis?: any }) {

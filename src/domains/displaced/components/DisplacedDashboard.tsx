@@ -1,6 +1,7 @@
-import { Home, EyeOff, Heart, MessageSquare, HandHelping, ArrowRight, ShieldCheck, Info } from "lucide-react";
+import { Home, EyeOff, Heart, MessageSquare, HandHelping, ArrowRight, ShieldCheck, Info, MapPin } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
+import DisplacedMapView from "./DisplacedMapView";
 
 export function DisplacedDashboard() {
   const impactStats = [
@@ -71,7 +72,7 @@ export function DisplacedDashboard() {
                     <HandHelping className="w-6 h-6 text-orange-500" />
                     متابعة مطالب المخيم
                 </h3>
-                <Link to="/track" className="text-sm font-bold text-orange-600 flex items-center gap-1 hover:underline">
+                <Link to="/displaced/needs" className="text-sm font-bold text-orange-600 flex items-center gap-1 hover:underline">
                     جميع المطالب <ArrowRight className="w-4 h-4 rotate-180" />
                 </Link>
             </div>
@@ -105,28 +106,50 @@ export function DisplacedDashboard() {
                 ))}
             </div>
           </section>
+
+          <section className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+                    <MapPin className="w-6 h-6 text-orange-500" />
+                    خريطة الخدمات والمراكز
+                </h3>
+                <Link to="/displaced/shelters" className="text-sm font-bold text-orange-600 flex items-center gap-1 hover:underline">
+                    تكبير الخريطة <ArrowRight className="w-4 h-4 rotate-180" />
+                </Link>
+            </div>
+            <div className="h-[350px] w-full rounded-3xl overflow-hidden border border-slate-100">
+                <DisplacedMapView 
+                    points={[
+                        { lat: 15.3694, lng: 44.1910, intensity: 0.8, label: "مركز إيواء رقم 1", type: 'shelter', capacity: '80%' },
+                        { lat: 15.3800, lng: 44.2000, intensity: 0.5, label: "نقطة توزيع إغاثة", type: 'aid', capacity: 'متوفر' },
+                        { lat: 15.3500, lng: 44.1800, intensity: 0.3, label: "وحدة غسيل كلوى ميدانية", type: 'health', capacity: 'متاح' }
+                    ]}
+                />
+            </div>
+          </section>
         </div>
 
         {/* Info Sidebar */}
         <div className="space-y-6">
           <section className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-orange-500/10 relative overflow-hidden">
             <Heart className="absolute -bottom-6 -right-6 w-32 h-32 opacity-15 -rotate-12" />
-            <h4 className="text-lg font-black mb-4">لماذا بلاغك مهم؟</h4>
-            <ul className="space-y-4 opacity-90 text-sm leading-relaxed">
-              <li className="flex gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-2"></div>
-                تحويل مطالب المخيم من صوت مكتوم إلى تقارير رقمية مرئية.
-              </li>
-              <li className="flex gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-2"></div>
-                ربط مباشر بين احتياجك والمنظمات الإغاثية المتخصصة.
-              </li>
-              <li className="flex gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-2"></div>
-                التنبيه المبكر لبيئة صحية أفضل لأطفالنا.
-              </li>
-            </ul>
+            <h4 className="text-lg font-black mb-4">خدمات سريعة</h4>
+            <div className="grid grid-cols-1 gap-3">
+                <Link to="/displaced/aid" className="flex items-center justify-between p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 transition-all text-xs font-bold">
+                    طلب مساعدات إنسانية
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                </Link>
+                <Link to="/displaced/health" className="flex items-center justify-between p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 transition-all text-xs font-bold">
+                    الإرشادات الصحية العامة
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                </Link>
+                <Link to="/displaced/alerts" className="flex items-center justify-between p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 transition-all text-xs font-bold">
+                    مركز التنبيهات العاجلة
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                </Link>
+            </div>
           </section>
+
 
           <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">

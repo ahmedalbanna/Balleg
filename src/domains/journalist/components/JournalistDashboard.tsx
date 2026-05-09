@@ -1,4 +1,4 @@
-import { Newspaper, TrendingUp, Clock, Share2, FileVideo, Download, Filter, Search, MoreVertical, MessageSquare, ThumbsUp, AlertCircle, ExternalLink, ShieldCheck, FolderPlus, Send, RotateCw, CheckCircle2, Timer, MessageSquarePlus, Activity } from "lucide-react";
+import { Newspaper, TrendingUp, Clock, Share2, FileVideo, Download, Filter, Search, MoreVertical, MessageSquare, ThumbsUp, AlertCircle, ExternalLink, ShieldCheck, FolderPlus, Send, RotateCw, CheckCircle2, Timer, MessageSquarePlus, Activity, MapPin, Globe, Mic, Camera, BarChart3, Archive, User, Zap, Settings, Tent, ClipboardList, Users, Stethoscope, History, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { collection, query, onSnapshot, doc, setDoc, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
@@ -7,6 +7,8 @@ import { Report } from "../../core/services/reportApi";
 import { toast } from "sonner";
 import { useAuth } from "../../core/context/AuthContext";
 import { cn } from "../../core/utils/cn";
+import JournalistMapView from "./JournalistMapView";
+import { Link } from "react-router-dom";
 
 export interface JournalistRequest {
   id: string;
@@ -255,6 +257,58 @@ export function JournalistDashboard() {
 
   return (
     <div className="flex flex-col gap-8 w-full p-2 sm:p-10 bg-slate-50/20 min-h-[85vh] rounded-[3rem] border border-slate-200/50 shadow-sm relative overflow-hidden">
+      
+      {/* Map Overview Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full h-[350px] bg-slate-50 rounded-[3rem] border border-slate-100 overflow-hidden relative group z-10 shadow-sm"
+      >
+        <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <MapPin size={14} className="text-rose-600" />
+            <span className="text-[10px] font-black text-slate-900 tracking-tight">رصد ميداني لمناطق التغطية والأحداث النشطة</span>
+        </div>
+        <JournalistMapView 
+          points={reports.slice(0, 15).map(r => ({
+            lat: r.location?.[0] || 15.3694,
+            lng: r.location?.[1] || 44.1910,
+            intensity: r.priority === 'critical' ? 0.9 : 0.5,
+            label: r.department || 'حدث ميداني',
+            type: r.priority === 'critical' ? 'incident' : 'report',
+            status: r.priority === 'critical' ? 'urgent' : 'draft',
+            verified: true
+          }))}
+          center={[15.3694, 44.1910]}
+          zoom={13}
+        />
+      </motion.div>
+      
+      {/* Quick Navigation Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-4 relative z-10 w-full">
+        {[
+          { name: 'مناطق التغطية', icon: MapPin, path: "/journalist/coverage-areas", color: "bg-teal-50 text-teal-600" },
+          { name: 'المسودات والمقالات', icon: Newspaper, path: "/journalist/articles", color: "bg-indigo-50 text-indigo-600" },
+          { name: 'المقابلات الصوتية', icon: Mic, path: "/journalist/interviews", color: "bg-rose-50 text-rose-600" },
+          { name: 'المعرض المرئي', icon: Camera, path: "/journalist/visual-gallery", color: "bg-blue-50 text-blue-600" },
+          { name: 'إحصائيات القراء', icon: BarChart3, path: "/journalist/reader-stats", color: "bg-emerald-50 text-emerald-600" },
+          { name: 'الأرشيف الصحفي', icon: Archive, path: "/journalist/archive", color: "bg-slate-100 text-slate-800" },
+          { name: 'الملف المهني', icon: User, path: "/journalist/profile", color: "bg-amber-50 text-amber-600" },
+          { name: 'عواجل الصحافة', icon: Zap, path: "/journalist/breaking-news", color: "bg-rose-100 text-rose-700" },
+          { name: 'الإعدادات', icon: Settings, path: "/journalist/settings", color: "bg-gray-100 text-gray-800" },
+        ].map((item, idx) => (
+          <Link
+            key={idx}
+            to={item.path}
+            className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all flex flex-col items-center justify-center text-center gap-4 group"
+          >
+            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-12 shadow-sm", item.color)}>
+              <item.icon className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-black text-slate-800 uppercase italic tracking-tighter leading-none">{item.name}</span>
+          </Link>
+        ))}
+      </div>
+
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
         <div className="flex items-center gap-5">
           <div className="w-16 h-16 rounded-[2rem] bg-purple-900 text-white flex items-center justify-center shadow-xl shadow-purple-900/20">
